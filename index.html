@@ -172,6 +172,38 @@
   }
   .dtab.on { background: var(--accent); color:#5a3210; }
   .dtab:active { transform: scale(.92); }
+
+  /* ---------- Workbench / crafting ---------- */
+  #craftBtn {
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 70px);
+    pointer-events:auto; cursor:pointer; border:1.5px solid rgba(255,255,255,.22);
+    background: var(--accent); color:#5a3210; font-family:var(--hand-title); font-weight:700;
+    font-size:21px; padding:7px 22px; box-shadow:0 8px 22px rgba(255,160,60,.45);
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1); z-index:6;
+  }
+  #craftBtn:active { transform: translateX(-50%) scale(.92); }
+  #placeBtn { background: linear-gradient(145deg,#9be86a,#5abf4a); color:#13360f; }
+
+  #craftPanel { position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); backdrop-filter:blur(4px); padding:18px; }
+  #craftPanel.hidden { display:none; }
+  .craftCard { background:var(--panel); border:2px solid rgba(255,255,255,.22); padding:18px; max-width:460px; width:100%; max-height:86vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+  #craftTitle { font-family:var(--hand-title); font-size:30px; font-weight:700; }
+  #craftTabs { display:flex; gap:6px; margin:8px 0 12px; flex-wrap:wrap; }
+  .ctab { pointer-events:auto; cursor:pointer; border:1.5px solid rgba(255,255,255,.2); background:var(--panel-lite); color:#fff; font-family:var(--hand); font-size:15px; padding:5px 12px; }
+  .ctab.on { background:var(--accent); color:#5a3210; }
+  #craftList { display:flex; flex-direction:column; gap:6px; }
+  .recipe { pointer-events:auto; cursor:pointer; display:flex; align-items:center; gap:10px; text-align:left;
+    border:1px solid rgba(255,255,255,.12); border-left:4px solid #666; padding:8px 10px; color:#fff;
+    background:linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.03)); transition:transform .1s, background .15s; }
+  .recipe.ok { border-left-color:#9be86a; }
+  .recipe.ok:active { transform:scale(.97); }
+  .recipe.locked { opacity:.45; filter:grayscale(.6); }
+  .recipe .rIcon { font-size:28px; }
+  .recipe .rMid { display:flex; flex-direction:column; }
+  .recipe .rName { font-size:17px; } .recipe .rCost { font-size:14px; opacity:.9; }
+  .recipe .rLock { margin-left:auto; background:linear-gradient(145deg,#f0795f,#d84e38); padding:1px 8px; font-size:13px; transform:rotate(-4deg); }
+  .craftHint { font-size:14px; opacity:.8; margin:12px 0 0; }
   .actBtn.hidden { display:none; }
   #pickBtn { background: linear-gradient(145deg,#bfe0ff,#7fb0e0); color:#16314a; }
 
@@ -397,15 +429,21 @@
 
   <div id="toast"></div>
 
-  <div id="dockTabs">
-    <button id="tabBuild" class="dtab on">🏗️ Build</button>
-    <button id="tabDecor" class="dtab">🌷 Decor</button>
+  <!-- Workbench crafting -->
+  <button id="craftBtn" title="Craft (C)">🔨 Craft</button>
+  <div id="craftPanel" class="hidden">
+    <div class="craftCard">
+      <div class="invHead"><span id="craftTitle">🔨 Workbench</span><button id="craftClose" class="invX">✕</button></div>
+      <div id="craftTabs"></div>
+      <div id="craftList"></div>
+      <p class="craftHint">Crafted items go to your bag — select one in the hotbar and tap <b>Place</b>.</p>
+    </div>
   </div>
-  <div id="buildDock"></div>
 
   <!-- Action buttons (right side) -->
   <div id="actBtns">
-    <button id="pickBtn" class="actBtn hidden" title="Pick up (refund)">♻️</button>
+    <button id="placeBtn" class="actBtn" title="Place selected item">📍</button>
+    <button id="pickBtn" class="actBtn hidden" title="Pick up">♻️</button>
     <button id="dashBtn" class="actBtn" title="Dash">⚡</button>
     <button id="diveBtn" class="actBtn" title="Dive / Surface">🤿</button>
   </div>
@@ -444,7 +482,8 @@
       💨 <b>Oxygen:</b> air drains underwater &amp; dashing costs extra — surface in time!<br>
       🎒 <b>Inventory:</b> press <b>E</b> (or tap 🎒) for your backpack — drag to sort, 1–8 picks a hotbar slot. Build a 📦 Chest for storage.<br>
       💎 <b>Treasure:</b> grab hidden chests &amp; gems on the seabed for 💰 coins.<br>
-      🏗️ <b>Build &amp; 🌷 Decorate:</b> place huts, houses &amp; décor on the tile map (Build/Decor tabs).<br>
+      🪓 <b>Gather:</b> walk into 🌳 trees, 🪨 rocks &amp; 🌿 grass to harvest wood, stone &amp; fiber — they regrow.<br>
+      🔨 <b>Craft (C):</b> open the Workbench to craft tools, furniture &amp; buildings — they go in your bag; select one &amp; tap 📍 to place it.<br>
       🛠️ <b>Edit mode:</b> stand on an item &amp; tap ♻️ to pick it up (full refund). Tap a 🏠 house to repaint it.<br>
       🏝️ <b>Buy Land</b> with coins to grow the island &amp; 🐾 adopt pets!
     </div>
@@ -595,6 +634,19 @@ const DECOR = [
 const DECOR_BY_ID = Object.fromEntries(DECOR.map(d=>[d.id,d]));
 const BUILD_BY_ID = Object.fromEntries(BUILDINGS.map(b=>[b.id,b]));
 
+// ---------- Tools (crafted at the workbench) ----------
+const TOOLS = [
+  { id:'axe',  name:'Axe',         icon:'🪓', inputs:{wood:3,stone:2}, lvl:1, bonus:'tree' },
+  { id:'pick', name:'Pickaxe',     icon:'⛏️', inputs:{wood:3,stone:3}, lvl:1, bonus:'rock' },
+  { id:'rod',  name:'Fishing Rod', icon:'🎣', inputs:{wood:4,reed:2}, lvl:1 },
+  { id:'sickle',name:'Sickle',     icon:'🌾', inputs:{wood:2,stone:2}, lvl:1, bonus:'grass' },
+];
+// Register craftable placeable + tool items so they live in the inventory.
+// A building/furniture you craft becomes an item ("b_hut" / "d_bench") you place.
+for(const b of BUILDINGS){ if(b.special) continue; ITEMS['b_'+b.id]={ name:b.name, icon:b.icon, rarity:'uncommon', stack:99, place:{kind:'build', id:b.id} }; }
+for(const d of DECOR){ ITEMS['d_'+d.id]={ name:d.name, icon:d.icon, rarity:'common', stack:99, place:{kind:'decor', id:d.id} }; }
+for(const t of TOOLS){ ITEMS['tool_'+t.id]={ name:t.name, icon:t.icon, rarity:'rare', stack:1, tool:t.id }; }
+
 // ---------- State ----------
 const HOTBAR_N = 8, BAG_N = 24;        // hotbar slots + backpack slots
 const state = {
@@ -646,7 +698,7 @@ function pickFishSpecies(deep){
 
 // ---------- Renderer / Scene ----------
 const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));  // cap DPR for perf
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));   // cap DPR for perf
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -667,7 +719,7 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2cc, 1.25);
 sun.position.set(28, 46, 18);
 sun.castShadow = true;
-sun.shadow.mapSize.set(1536, 1536);
+sun.shadow.mapSize.set(1024, 1024);
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 140;
 const sc = 55;
 sun.shadow.camera.left=-sc; sun.shadow.camera.right=sc; sun.shadow.camera.top=sc; sun.shadow.camera.bottom=-sc;
@@ -678,7 +730,7 @@ scene.add(sun.target);
 // ---------- Water ----------
 // a finely subdivided plane (clipped to a disc in the shader) so the whole
 // surface ripples with smooth, fluid, layered waves
-const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 110, 110);
+const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 84, 84);
 const waterUniforms = {
   uTime: { value: 0 },
   uColorDeep:    { value: new THREE.Color(0x1565a0) },
@@ -932,7 +984,7 @@ function makeOtter(scaleScale=1, furColor=0x9b6a43){
   const eyeMat= new THREE.MeshBasicMaterial({ color:0x141414 });
 
   // sleek body along +Z (forward) — slimmer, not a round blob
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.95, 6, 12), fur);
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.95, 4, 8), fur);
   body.rotation.x = Math.PI/2; body.position.set(0, 0.52, -0.05); body.castShadow = true;
   g.add(body);
   // lighter chest/underside
@@ -942,8 +994,8 @@ function makeOtter(scaleScale=1, furColor=0x9b6a43){
   // head
   const head = new THREE.Group();
   head.position.set(0, 0.72, 0.58);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 14), fur); skull.castShadow = true; head.add(skull);
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 10), belly); snout.position.set(0,-0.07,0.24); snout.scale.set(1,0.85,0.95); head.add(snout);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), fur); skull.castShadow = true; head.add(skull);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), belly); snout.position.set(0,-0.07,0.24); snout.scale.set(1,0.85,0.95); head.add(snout);
   const nose  = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), dark); nose.position.set(0,-0.04,0.42); head.add(nose);
   for(const sx of [-1,1]){
     // small, cute black-dot eyes
@@ -1074,7 +1126,7 @@ function makeFishMesh(sp, scale=1){
     transparent:true, opacity:0.92 });
 
   // body — flattened ellipsoid (sphere scaled)
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), bodyMat);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), bodyMat);
   let bx = sp.long ? 1.7 : 1.25, by = sp.tall ? 1.25 : 0.9, bz = sp.puff ? 1.05 : 0.6;
   body.scale.set(bx, by, bz);
   g.add(body);
@@ -1431,6 +1483,7 @@ const FORAGE = {
   berry:   { yield:'berry',    n:[2,3], regrow:24, build:'berry' },
   mushroom:{ yield:'mushroom', n:[1,2], regrow:24, build:'mushroom' },
   flower:  { yield:'flower',   n:[1,2], regrow:20, build:'flower' },
+  grass:   { yield:'reed',     n:[1,2], regrow:14, build:'grass' },   // tall grass → fiber
 };
 function makeForageMesh(type){
   const g=new THREE.Group();
@@ -1446,6 +1499,9 @@ function makeForageMesh(type){
   } else if(type==='mushroom'){
     for(const sx of [-0.18,0.18]){ const st=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.09,0.3,6),new THREE.MeshStandardMaterial({color:0xf0e6d0})); st.position.set(sx,0.15,0); g.add(st);
       const cap=new THREE.Mesh(new THREE.SphereGeometry(0.17,10,8,0,Math.PI*2,0,Math.PI*0.5),new THREE.MeshStandardMaterial({color:0xd96a5a})); cap.position.set(sx,0.3,0); g.add(cap); }
+  } else if(type==='grass'){
+    const gm=new THREE.MeshStandardMaterial({color:0x7cc25e,roughness:1,side:THREE.DoubleSide});
+    for(let i=0;i<7;i++){ const bl=new THREE.Mesh(new THREE.ConeGeometry(0.07,rand(0.5,0.9),4), gm); bl.position.set(rand(-0.28,0.28),0.35,rand(-0.28,0.28)); bl.rotation.z=rand(-0.25,0.25); g.add(bl); }
   } else { // flower
     for(let i=0;i<3;i++){ const fl=makeFlower(); fl.scale.setScalar(0.9); fl.position.set(rand(-0.25,0.25),0,rand(-0.25,0.25)); g.add(fl); }
   }
@@ -1460,8 +1516,8 @@ function spawnForageNode(type, x, z){
   forageNodes.push({ mesh, type, def:FORAGE[type], ready:true, regrow:0, shake:0, baseY:GRASS_Y });
 }
 function scatterForage(){
-  const types=['tree','tree','rock','berry','mushroom','flower','flower'];
-  for(let i=0;i<18;i++){
+  const types=['tree','tree','rock','grass','grass','berry','mushroom','flower'];
+  for(let i=0;i<22;i++){
     const a=Math.random()*Math.PI*2, r=rand(2, ISLAND_R-2.5);
     spawnForageNode(types[(Math.random()*types.length)|0], Math.cos(a)*r, Math.sin(a)*r);
   }
@@ -1807,41 +1863,57 @@ function costStr(b){
   if(b.special==='expand' && ISLAND_R>=ISLAND_MAX) return 'MAX';
   return Object.entries(effectiveCost(b)).map(([k,v])=>`${ic(k)}${v}`).join(' ');
 }
-function dockList(){ return state.dockTab==='decor' ? DECOR : BUILDINGS; }
-let dockBuiltTab=null;
-function renderDock(){
-  const dock = $('#buildDock');
-  const list = dockList();
-  if(dockBuiltTab !== state.dockTab){
-    dockBuiltTab = state.dockTab;
-    dock.innerHTML='';
-    list.forEach(b=>{
-      const btn=document.createElement('button');
-      btn.className='build'; btn.dataset.id=b.id;
-      btn.innerHTML=`<span class="bIcon">${b.icon}</span><span class="bName">${b.name}</span><span class="bCost">${costStr(b)}</span>`;
-      btn.addEventListener('click',()=> state.dockTab==='decor' ? tryPlaceDecor(b) : tryBuild(b));
-      dock.appendChild(btn);
-    });
+// ---------- Crafting (workbench) ----------
+function costStrOf(inputs){ return Object.entries(inputs).map(([k,v])=>`${ic(k)}${v}`).join(' '); }
+function affordInputs(inputs){ for(const k in inputs){ if(have(k)<inputs[k]) return false; } return true; }
+const RECIPES = [];
+function buildRecipes(){
+  RECIPES.length=0;
+  for(const t of TOOLS) RECIPES.push({ cat:'Tools', name:t.name, icon:t.icon, inputs:t.inputs, lvl:t.lvl, make:'tool_'+t.id });
+  for(const b of BUILDINGS){ if(b.special) continue; RECIPES.push({ cat:'Buildings', name:b.name, icon:b.icon, inputs:b.cost, lvl:b.lvl, make:'b_'+b.id }); }
+  for(const d of DECOR) RECIPES.push({ cat:'Furniture', name:d.name, icon:d.icon, inputs:d.cost, lvl:d.lvl, make:'d_'+d.id });
+  RECIPES.push({ cat:'Village', name:'Adopt Pet', icon:'🐾', inputs:{food:6}, lvl:2, act:'pet' });
+  RECIPES.push({ cat:'Village', name:'Buy Land', icon:'🏝️', inputsFn:expandCost, lvl:1, act:'land' });
+}
+let craftCat='Buildings';
+function recipeInputs(r){ return r.inputsFn ? r.inputsFn() : r.inputs; }
+function renderCraft(){
+  const cats=['Tools','Buildings','Furniture','Village'];
+  const tabsEl=$('#craftTabs');
+  if(tabsEl.children.length!==cats.length){
+    tabsEl.innerHTML='';
+    cats.forEach(c=>{ const b=document.createElement('button'); b.className='ctab'; b.textContent=c; b.addEventListener('click',()=>{ craftCat=c; renderCraft(); }); tabsEl.appendChild(b); });
   }
-  // update affordability / lock
-  list.forEach(b=>{
-    const btn = dock.querySelector(`[data-id="${b.id}"]`);
-    if(!btn) return;
-    btn.classList.toggle('locked', state.level < b.lvl);
-    btn.classList.toggle('afford', state.level>=b.lvl && canAfford(b));
-    let tag = btn.querySelector('.lockTag');
-    if(state.level < b.lvl){
-      if(!tag){ tag=document.createElement('span'); tag.className='lockTag'; btn.appendChild(tag); }
-      tag.textContent='Lv'+b.lvl;
-    } else if(tag){ tag.remove(); }
+  [...tabsEl.children].forEach(b=> b.classList.toggle('on', b.textContent===craftCat));
+  const list=$('#craftList'); list.innerHTML='';
+  RECIPES.filter(r=>r.cat===craftCat).forEach(r=>{
+    const inputs=recipeInputs(r);
+    const locked=state.level<r.lvl;
+    const maxed = r.act==='land' && ISLAND_R>=ISLAND_MAX;
+    const afford = !locked && !maxed && affordInputs(inputs);
+    const row=document.createElement('button');
+    row.className='recipe'+(afford?' ok':'')+(locked?' locked':'');
+    row.innerHTML=`<span class="rIcon">${r.icon}</span><span class="rMid"><span class="rName">${r.name}</span><span class="rCost">${maxed?'MAX':costStrOf(inputs)}</span></span>`+(locked?`<span class="rLock">Lv${r.lvl}</span>`:'');
+    row.addEventListener('click',()=>craftRecipe(r));
+    list.appendChild(row);
   });
 }
-function setDockTab(tab){
-  state.dockTab = tab;
-  $('#tabBuild').classList.toggle('on', tab==='build');
-  $('#tabDecor').classList.toggle('on', tab==='decor');
-  renderDock();
+function openCraft(){ if(!RECIPES.length) buildRecipes(); $('#craftPanel').classList.remove('hidden'); renderCraft(); }
+function closeCraft(){ $('#craftPanel').classList.add('hidden'); }
+function craftRecipe(r){
+  if(state.level<r.lvl){ toast(`🔒 Reach Village Lv ${r.lvl} first!`); beep(180,0.08,'square'); return; }
+  if(r.act==='land' && ISLAND_R>=ISLAND_MAX){ toast('🏝️ Island is fully expanded!'); return; }
+  const inputs=recipeInputs(r);
+  if(!affordInputs(inputs)){ toast(`Need ${costStrOf(inputs)} — gather more!`); beep(180,0.08,'square'); return; }
+  pay(inputs);
+  if(r.act==='pet'){ adoptPet(); }
+  else if(r.act==='land'){ expandIsland(); spawnRing(new THREE.Vector3(0,1.6,0),0x9be86a,ISLAND_R); toast('🏝️ Island expanded!'); }
+  else { const over=addItem(r.make,1); toast(over>0?'🎒 Inventory full!':`🔨 Crafted ${r.name}! Select it & tap Place`); }
+  gainXP(6); beep(520,0.06,'triangle'); setTimeout(()=>beep(740,0.08,'triangle'),70); addShake(0.12);
+  updateResHUD(); updateStatsHUD(); renderCraft();
 }
+// kept as a no-op-ish hook so updateResHUD can refresh the open craft panel
+function renderDock(){ if(!$('#craftPanel').classList.contains('hidden')) renderCraft(); }
 
 let toastT=null;
 function toast(msg){
@@ -1852,92 +1924,54 @@ function toast(msg){
 const producers = [];   // { building, def, timer } for manufacture facilities
 function pay(cost){ for(const k in cost) spend(k, cost[k]); }
 
-function tryBuild(b){
-  if(state.level < b.lvl){ toast(`🔒 Reach Village Lv ${b.lvl} first!`); return; }
-
-  // ----- special actions: expand island / adopt pet -----
-  if(b.special==='expand'){
-    if(ISLAND_R>=ISLAND_MAX){ toast('🏝️ Island is fully expanded!'); return; }
-    if(!canAfford(b)){ toast(`Need ${costStr(b)} to expand!`); beep(180,0.08,'square'); return; }
-    pay(expandCost());
-    expandIsland();
-    gainXP(b.xp); updateResHUD(); updateStatsHUD();
-    toast('🏝️ Island expanded — more room to build!');
-    beep(440,0.1); setTimeout(()=>beep(660,0.14),100);
-    spawnRing(new THREE.Vector3(0,1.6,0), 0x9be86a, ISLAND_R);
-    return;
-  }
-  if(b.special==='pet'){
-    if(!canAfford(b)){ toast(`Need ${costStr(b)} food — run the Fish Factory!`); beep(180,0.08,'square'); return; }
-    pay(b.cost);
-    adoptPet();
-    gainXP(b.xp); updateResHUD(); updateStatsHUD();
-    beep(700,0.08); setTimeout(()=>beep(900,0.1),80); setTimeout(()=>beep(1100,0.12),160);
-    return;
-  }
-
-  // ----- normal placed buildings (on a tile) -----
-  if(state.diving){ toast('🤿 Surface to build on the island!'); return; }
-  // tapping an already-placed customizable house cycles its colour
-  if(b.customizable){
-    const onTile = tileAt(otter.position.x, otter.position.z);
-    if(onTile && onTile.used && onTile.obj && onTile.obj.userData.house){
-      const obj=onTile.obj; const nv=(obj.userData.variant+1)%HOUSE_ROOFS.length;
-      const rec=state.placed.find(p=>p.obj===obj);
-      const fresh=makeBuilding('house', nv);
-      fresh.position.copy(obj.position); fresh.rotation.copy(obj.rotation);
-      islandGroup.remove(obj); islandGroup.add(fresh);
-      onTile.obj=fresh; if(rec) rec.obj=fresh;
-      toast('🎨 Repainted the roof!'); beep(700,0.06); spawnRing(fresh.position.clone().setY(1.6),0xffe6a8,2.0);
-      return;
-    }
-  }
-  if(!canAfford(b)){ toast(`Need ${costStr(b)} — gather more!`); beep(180,0.08,'square'); return; }
-  const tile = nearestEmptyTile(otter.position);
-  if(!tile){ toast('🏡 No free tiles — Buy Land to expand! 🏝️'); return; }
-  pay(b.cost);
+// ----- place a crafted building/furniture item from the inventory onto a tile -----
+function doPlaceBuild(b, tile){
   tile.used=true;
   const m = makeBuilding(b.id);
-  m.position.set(tile.x, GRASS_Y, tile.z);
-  m.scale.setScalar(0.01);
-  islandGroup.add(m);
+  m.position.set(tile.x, GRASS_Y, tile.z); m.scale.setScalar(0.01); islandGroup.add(m);
   tile.obj=m; state.placed.push({ obj:m, tile, def:b, kind:'build' });
   growAnims.push({ obj:m, t:0 });
   if(b.produces) producers.push({ building:m, def:b.produces, timer:0 });
   if(b.storage){ state.chests.push({ obj:m, slots:new Array(24).fill(null) }); toast('📦 Stand on it & press E to open storage'); }
-  state.builds++;
-  state.pop += b.pop||0;
-  if(b.pop>0) addFollower();
-  gainXP(b.xp);
-  updateResHUD(); updateStatsHUD(); flashGrid();
+  state.builds++; state.pop += b.pop||0; if(b.pop>0) addFollower();
+  gainXP(b.xp); flashGrid();
   toast(`${b.icon} ${b.name} built! +${b.xp} XP`);
   beep(660,0.09); setTimeout(()=>beep(880,0.12),90);
-  confettiAt(m.position);
-  spawnRing(m.position.clone().setY(1.56), 0xffe6a8, 3.2);
+  confettiAt(m.position); spawnRing(m.position.clone().setY(1.56), 0xffe6a8, 3.2);
   spawnBurst(m.position.clone().setY(1.9), 0xfff0c0); addShake(0.25);
 }
-
-// ----- place a decoration on the nearest free tile -----
-function tryPlaceDecor(d){
-  if(state.level < d.lvl){ toast(`🔒 Reach Village Lv ${d.lvl} first!`); return; }
-  if(state.diving){ toast('🤿 Surface to decorate the island!'); return; }
-  if(!canAfford(d)){ toast(`Need ${costStr(d)} — gather more!`); beep(180,0.08,'square'); return; }
-  const tile = nearestEmptyTile(otter.position);
-  if(!tile){ toast('🌷 No free tiles — Buy Land to expand! 🏝️'); return; }
-  pay(d.cost);
+function doPlaceDecor(d, tile){
   tile.used=true;
   const m = makeDecor(d.id);
-  m.position.set(tile.x, GRASS_Y, tile.z);
-  m.rotation.y = Math.round(Math.random()*4)*Math.PI/2;
-  m.scale.setScalar(0.01);
-  islandGroup.add(m);
+  m.position.set(tile.x, GRASS_Y, tile.z); m.rotation.y=Math.round(Math.random()*4)*Math.PI/2; m.scale.setScalar(0.01); islandGroup.add(m);
   tile.obj=m; state.placed.push({ obj:m, tile, def:d, kind:'decor' });
-  growAnims.push({ obj:m, t:0 });
-  gainXP(d.xp);
-  updateResHUD(); updateStatsHUD(); flashGrid();
-  toast(`${d.icon} ${d.name} placed!`);
-  beep(560,0.07); setTimeout(()=>beep(760,0.09),70);
+  growAnims.push({ obj:m, t:0 }); gainXP(d.xp); flashGrid();
+  toast(`${d.icon} ${d.name} placed!`); beep(560,0.07); setTimeout(()=>beep(760,0.09),70);
   spawnRing(m.position.clone().setY(1.56), 0x9be86a, 2.0);
+}
+function selectedPlaceable(){ const s=state.slots[state.hotsel]; return (s && ITEMS[s.id] && ITEMS[s.id].place) ? s.id : null; }
+function repaintHouse(onTile){
+  const obj=onTile.obj, nv=(obj.userData.variant+1)%HOUSE_ROOFS.length;
+  const rec=state.placed.find(p=>p.obj===obj);
+  const fresh=makeBuilding('house', nv); fresh.position.copy(obj.position); fresh.rotation.copy(obj.rotation);
+  islandGroup.remove(obj); islandGroup.add(fresh); onTile.obj=fresh; if(rec) rec.obj=fresh;
+  toast('🎨 Repainted the roof!'); beep(700,0.06); spawnRing(fresh.position.clone().setY(1.6),0xffe6a8,2.0);
+}
+function placeSelected(){
+  if(state.diving){ toast('🤿 Surface to build on the island!'); return; }
+  const id=selectedPlaceable();
+  if(!id){
+    const onT=tileAt(otter.position.x, otter.position.z);
+    if(onT && onT.obj && onT.obj.userData.house){ repaintHouse(onT); return; }
+    toast('Craft something, then select it in your hotbar to place'); return;
+  }
+  const tile=nearestEmptyTile(otter.position);
+  if(!tile){ toast('🏡 No free tiles — craft “Buy Land” to expand! 🏝️'); return; }
+  const def=ITEMS[id].place;
+  if(def.kind==='build') doPlaceBuild(BUILD_BY_ID[def.id], tile);
+  else doPlaceDecor(DECOR_BY_ID[def.id], tile);
+  removeItem(id,1);
+  updateResHUD(); updateStatsHUD();
 }
 
 // ----- pick up whatever the otter is standing on (refunds the cost) -----
@@ -1948,9 +1982,8 @@ function pickUpHere(){
   const idx = state.placed.findIndex(p=>p.tile===tl || (p.obj===tl.obj));
   if(idx<0){ toast('That can’t be picked up.'); return; }
   const rec = state.placed[idx];
-  // refund the full cost back
-  const cost = rec.def.cost||{};
-  for(const k in cost) (k==="coins") ? state.coins+=cost[k] : addItem(k,cost[k]);
+  // return the crafted item to the bag so it can be replaced elsewhere
+  addItem(rec.kind==='build' ? 'b_'+rec.def.id : 'd_'+rec.def.id, 1);
   // undo rewards for buildings
   if(rec.kind==='build'){
     state.builds=Math.max(0,state.builds-1);
@@ -1961,7 +1994,7 @@ function pickUpHere(){
   tl.used=false; tl.obj=null;
   state.placed.splice(idx,1);
   updateResHUD(); updateStatsHUD();
-  toast(`♻️ Picked up ${rec.def.name} (cost refunded)`);
+  toast(`♻️ Picked up ${rec.def.name} → back in your bag`);
   beep(500,0.06,'triangle'); setTimeout(()=>beep(360,0.08,'triangle'),70);
 }
 
@@ -2178,7 +2211,9 @@ window.addEventListener('keydown',e=>{
   if(k===' '||k==='shift'){ if(!e.repeat) tryDash(); }
   if(k==='f'){ if(!e.repeat) toggleDive(); }
   if(k==='e'||k==='i'||k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
-  if(k==='escape'){ if(!$('#invPanel').classList.contains('hidden')) closeInv(); }
+  if(k==='c'){ if(!e.repeat){ $('#craftPanel').classList.contains('hidden') ? openCraft() : closeCraft(); } }
+  if(k==='q'||k==='enter'){ if(!e.repeat) placeSelected(); }
+  if(k==='escape'){ if(!$('#invPanel').classList.contains('hidden')) closeInv(); if(!$('#craftPanel').classList.contains('hidden')) closeCraft(); }
   if(k>='1'&&k<='8'){ state.hotsel=(+k)-1; renderHotbar(); }
   keys[k]=true;
 });
@@ -2218,8 +2253,10 @@ $('#dashBtn').addEventListener('click', tryDash);
 $('#diveBtn').addEventListener('click', toggleDive);
 $('#editBtn').addEventListener('click', toggleEdit);
 $('#pickBtn').addEventListener('click', pickUpHere);
-$('#tabBuild').addEventListener('click', ()=>setDockTab('build'));
-$('#tabDecor').addEventListener('click', ()=>setDockTab('decor'));
+$('#placeBtn').addEventListener('click', placeSelected);
+$('#craftBtn').addEventListener('click', ()=> $('#craftPanel').classList.contains('hidden') ? openCraft() : closeCraft());
+$('#craftClose').addEventListener('click', closeCraft);
+$('#craftPanel').addEventListener('click', e=>{ if(e.target.id==='craftPanel') closeCraft(); });
 
 // ----- inventory wiring -----
 function toggleInv(){
@@ -2246,7 +2283,7 @@ function toggleEdit(){
   $('#pickBtn').classList.toggle('hidden', !state.editMode);
   gridGroup.visible = state.editMode;
   tileCursor.visible = state.editMode;
-  if(state.editMode){ setDockTab('decor'); toast('🛠️ Edit mode — place décor, or stand on an item & tap ♻️'); }
+  if(state.editMode){ toast('🛠️ Edit mode — stand on a placed item & tap ♻️ to pick it up'); }
   else { tileCursor.visible=false; toast('✅ Done decorating!'); }
 }
 // double-tap the joystick zone to dash
@@ -2372,7 +2409,7 @@ function animate(){
     }
 
     // ----- tile cursor (Animal Crossing placement helper) -----
-    if(!state.diving && (state.editMode || gridFlash>0)){
+    if(!state.diving && (state.editMode || gridFlash>0 || selectedPlaceable())){
       const under = tileAt(otter.position.x, otter.position.z);
       if(state.editMode && under && under.used){
         tileCursor.visible=true; tileCursor.position.set(under.x, TILE_Y+0.03, under.z); tileCursor.material.color.setHex(0xff7e6e);
