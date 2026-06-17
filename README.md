@@ -1,11 +1,11 @@
 # 🦦 Otter Village
 
-A cute, polished 3D web game. You're an otter in a sparkling pond with **real
-Gerstner-wave physics** — swim around riding the swell, scoop up **drifting
-treasures** (driftwood, reeds, stone, shells), **hunt darting fish** with your
-tools, then **plant it all on your island** to build a cozy little village.
-Each build earns XP and attracts more otters. Level up to unlock fancier
-buildings!
+A cute, polished 3D web game. You're a chubby otter on a sparkling pond with
+**real Gerstner-wave physics**. Up top you scoop **drifting treasures** and
+build a cozy island village — then **dive into a vibrant coral reef** and hunt
+fish *Dave-the-Diver_style_* with a harpoon. Ten fish species, each with their
+own behaviour and rarity, await below. Level up to unlock fancier buildings,
+hireable crew, and rarer fish!
 
 ## Play
 
@@ -22,10 +22,12 @@ Or simply open `index.html` in a modern browser.
 ## Controls
 
 - **Move:** drag anywhere on the left side of the screen (virtual joystick), or use **WASD** / arrow keys on desktop.
-- **Gather:** swim into the floating resources to auto-scoop them.
-- **Hunt:** chase the fish — they sense you and flee! Use the tools on the right:
-  - **🥅 Net** (toggle): widens your catch radius for both fish and drift.
-  - **💨 Dash** (cooldown): a burst of speed to run fish down.
+- **Dive:** press **Space** or tap **🤿** to plunge into the coral reef (tap again to surface).
+- **Fish (underwater):** **tap a fish** to fire your **🎯 harpoon**. Fish have HP — common fish drop in one hit, but rare/legendary fish (lionfish, sea turtle, reef shark, manta ray) take several, flee faster, and behave differently. Rarer catches pay out far more.
+- **Gather (surface):** swim into the floating treasures to auto-scoop them.
+- **Tools:**
+  - **🥅 Net** (toggle): widens your scoop radius.
+  - **💨 Dash** (cooldown): a burst of speed.
 - **Hire crew:** tap **🐾** to recruit chubby pinnipeds that auto-gather while you play:
   - **🦁 Sea Lion** → hunts **fish**
   - **🦭 Spotted Seal** → forages **reeds & shells**
@@ -42,15 +44,23 @@ Or simply open `index.html` in a modern browser.
   the same swell (height + surface tilt).
 - Polished shaders: fresnel sky reflections, sun specular glints, crest & shore
   foam, a gradient sky dome, a glowing sun, and animated underwater caustics.
-- Schooling fish with flee/hunt AI, expanding wake & splash ripples, particle
-  bursts, floating reward labels, confetti, and tiny WebAudio sound effects.
-- Soft bloom post-processing (loaded async, with a safe fallback) plus a
-  cinematic vignette for that polished mobile-game look.
-- Hireable pinniped crew (sea lion, spotted seal, walrus) that swim the pond
-  and auto-gather resources for you.
+- **Dive mode** with smooth camera, fog, sky and exposure transitions into a
+  colourful **coral reef**: branching/brain/fan/tube corals, anemones, kelp,
+  starfish, animated **god-ray light shafts**, rising **bubbles**, plankton and
+  caustics on the seabed.
+- **10 fish species** (clownfish, blue/yellow tang, mackerel, angelfish,
+  pufferfish, lionfish, sea turtle, reef shark, manta ray) with per-species
+  HP, speed, size and behaviour (timid, schooling, drifting, inflating,
+  gliding, aggressive) and 5 rarity tiers with scaled rewards. A **harpoon**
+  fishing system with damage, floating HP bars, and catch popups.
+- **Chubby 4-legged creatures** with an animated walk/paddle gait — the otter,
+  follower otters, and the hireable crew (sea lion, spotted seal, walrus).
+- Soft bloom post-processing (async, with a safe fallback) plus a cinematic
+  vignette that tints blue underwater.
 - An organic, hand-shaped island with a wobbly coastline, sandy beaches,
-  scattered low-poly rocks, cattails, wildflowers and drifting clouds.
-- Procedural low-poly models throughout — all chubby, cute, and black-eyed.
+  rocks, cattails, wildflowers and drifting clouds.
+- **Perf-tuned:** capped pixel ratio, 1024 shadow map with few casters,
+  instanced grass/flowers, lighter bloom, and cached per-frame updates.
 - Mobile-first: touch joystick, on-screen tools, responsive HUD, safe-area aware.
 
 Built to run anywhere a browser does. Have fun! 🌊
