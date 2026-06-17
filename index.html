@@ -70,7 +70,7 @@
   /* ---------- Build dock ---------- */
   #buildDock {
     position: absolute; left: 50%; transform: translateX(-50%);
-    bottom: max(14px, env(safe-area-inset-bottom));
+    bottom: calc(max(14px, env(safe-area-inset-bottom)) + 86px);
     display: flex; gap: 8px; padding: 9px; pointer-events: auto;
     background: var(--panel); border-radius: 0; backdrop-filter: blur(8px);
     border: 1.5px solid rgba(255,255,255,.18);
@@ -161,7 +161,7 @@
 
   #dockTabs {
     position:absolute; left:50%; transform:translateX(-50%);
-    bottom: calc(max(14px, env(safe-area-inset-bottom)) + 92px);
+    bottom: calc(max(14px, env(safe-area-inset-bottom)) + 178px);
     display:flex; gap:6px; pointer-events:auto; z-index:6;
   }
   .dtab {
@@ -175,8 +175,74 @@
   .actBtn.hidden { display:none; }
   #pickBtn { background: linear-gradient(145deg,#bfe0ff,#7fb0e0); color:#16314a; }
 
-  .res-coins { background: linear-gradient(145deg, rgba(255,215,90,.4), rgba(210,150,40,.2)); }
-  .res-coins .ic { filter: drop-shadow(0 0 5px rgba(255,210,90,.7)); }
+  /* ---------- Inventory: money, bag button, hotbar, grid ---------- */
+  #moneyChip {
+    position:absolute; top: max(12px, env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:6px; padding:6px 14px;
+    background: linear-gradient(145deg, rgba(60,46,18,.85), rgba(40,30,12,.88));
+    border:1.5px solid rgba(255,215,120,.5); color:#ffe9a8; font-size:20px; font-weight:400;
+    box-shadow:0 6px 20px rgba(0,0,0,.3); backdrop-filter: blur(8px);
+  }
+  #moneyChip .ic { filter: drop-shadow(0 0 5px rgba(255,210,90,.8)); }
+  #moneyChip.pop { animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
+  #bagBtn {
+    position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 156px); right:12px;
+    pointer-events:auto; cursor:pointer; width:42px; height:42px; border:1.5px solid rgba(255,255,255,.2);
+    border-radius:0; background:var(--panel); color:#fff; font-size:22px; backdrop-filter:blur(8px);
+    box-shadow:0 6px 20px rgba(0,0,0,.28); transition: transform .12s cubic-bezier(.34,1.56,.64,1);
+  }
+  #bagBtn:active { transform: scale(.86); }
+
+  #hotbar {
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom: max(12px, env(safe-area-inset-bottom));
+    display:flex; gap:5px; padding:6px; pointer-events:auto; z-index:6;
+    background: var(--panel); border:1.5px solid rgba(255,255,255,.18);
+    box-shadow:0 8px 26px rgba(0,0,0,.34); backdrop-filter: blur(8px); max-width:96vw;
+  }
+  .slot {
+    position:relative; width:48px; height:48px; flex:0 0 auto;
+    background: linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+    border:2px solid rgba(255,255,255,.14); display:flex; align-items:center; justify-content:center;
+    font-size:26px; cursor:pointer; user-select:none; touch-action:none;
+  }
+  .slot.sel { border-color:#ffd16b; box-shadow:0 0 0 2px rgba(255,209,107,.5), inset 0 0 12px rgba(255,209,107,.25); }
+  .slot.rar-uncommon{ border-color:#79d77f; } .slot.rar-rare{ border-color:#5aa6ff; }
+  .slot.rar-epic{ border-color:#c07bff; } .slot.rar-legendary{ border-color:#ffc24a; box-shadow:0 0 10px rgba(255,194,74,.5); }
+  .slot .ct { position:absolute; right:2px; bottom:0; font-size:13px; font-weight:400; color:#fff; text-shadow:0 1px 2px #000,0 0 3px #000; }
+  .slot .ic { line-height:1; pointer-events:none; transition: transform .1s; }
+  .slot.bump .ic { animation: slotbump .35s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes slotbump { 0%{transform:scale(1)} 40%{transform:scale(1.4) translateY(-3px)} 100%{transform:scale(1)} }
+
+  #invPanel {
+    position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+    background: rgba(8,16,26,.5); backdrop-filter: blur(4px); padding:18px;
+  }
+  #invPanel.hidden { display:none; }
+  .invCard {
+    background: var(--panel); border:2px solid rgba(255,255,255,.22); padding:18px 18px 14px;
+    max-width:560px; width:100%; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.45);
+  }
+  .invHead { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  #invTitle { font-family:var(--hand-title); font-size:30px; font-weight:700; }
+  .invX { pointer-events:auto; cursor:pointer; border:1.5px solid rgba(255,255,255,.25); background:var(--panel-lite); color:#fff; font-size:18px; width:34px; height:34px; }
+  .invLabel { font-size:15px; opacity:.8; margin:8px 0 5px; }
+  .invGrid { display:grid; grid-template-columns: repeat(8, 1fr); gap:5px; }
+  .invGrid .slot { width:100%; aspect-ratio:1/1; height:auto; }
+  #invTip {
+    position:fixed; z-index:70; pointer-events:none; max-width:220px;
+    background: rgba(16,24,34,.96); border:1.5px solid rgba(255,255,255,.25); padding:7px 10px;
+    font-size:14px; line-height:1.35; box-shadow:0 8px 22px rgba(0,0,0,.5);
+  }
+  #invTip.hidden { display:none; }
+  #invTip .tn { font-weight:400; font-size:16px; }
+  #invTip .tr { font-size:13px; }
+  #dragGhost {
+    position:fixed; z-index:80; pointer-events:none; width:48px; height:48px;
+    display:flex; align-items:center; justify-content:center; font-size:28px;
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,.5)); transform:translate(-50%,-50%);
+  }
+  #dragGhost.hidden { display:none; }
 
   /* ---------- Action buttons (dash / dive) ---------- */
   #actBtns {
@@ -307,18 +373,11 @@
     <div id="xpWrap"><div id="xpBar"></div></div>
   </div>
 
-  <div id="resBar">
-    <div class="res" id="res-wood"><span class="ic">🪵</span><span class="n">0</span></div>
-    <div class="res" id="res-reed"><span class="ic">🌾</span><span class="n">0</span></div>
-    <div class="res" id="res-stone"><span class="ic">🪨</span><span class="n">0</span></div>
-    <div class="res" id="res-shell"><span class="ic">🐚</span><span class="n">0</span></div>
-    <div class="res res-fish" id="res-fish"><span class="ic">🐟</span><span class="n">0</span></div>
-    <div class="res res-food" id="res-food"><span class="ic">🍣</span><span class="n">0</span></div>
-    <div class="res res-coins" id="res-coins"><span class="ic">💰</span><span class="n">0</span></div>
-  </div>
+  <div id="moneyChip"><span class="ic">💰</span><span id="moneyNum">0</span></div>
 
   <button id="fishBtn" title="Fish Collection">🐠</button>
   <button id="editBtn" title="Decorate / Edit mode">🛠️</button>
+  <button id="bagBtn" title="Inventory (E)">🎒</button>
 
   <!-- Oxygen + depth (diving only) -->
   <div id="diveHud" class="hidden">
@@ -351,6 +410,22 @@
     <button id="diveBtn" class="actBtn" title="Dive / Surface">🤿</button>
   </div>
 
+  <div id="hotbar"></div>
+
+  <!-- Inventory / chest storage overlay -->
+  <div id="invPanel" class="hidden">
+    <div class="invCard">
+      <div class="invHead"><span id="invTitle">🎒 Backpack</span><button id="invClose" class="invX">✕</button></div>
+      <div id="invStorageWrap" class="hidden"><div class="invLabel">📦 Storage Chest</div><div id="invStorage" class="invGrid"></div></div>
+      <div class="invLabel">Backpack</div>
+      <div id="invBag" class="invGrid"></div>
+      <div class="invLabel">Hotbar</div>
+      <div id="invHot" class="invGrid"></div>
+    </div>
+  </div>
+  <div id="invTip" class="hidden"></div>
+  <div id="dragGhost" class="hidden"></div>
+
   <div id="joyZone">
     <div id="joyBase"></div>
     <div id="joyStick"></div>
@@ -367,6 +442,7 @@
       🕹️ <b>Move:</b> drag on the left (or <b>WASD</b>). <b>⚡ Dash:</b> button, <b>Shift</b>/<b>Space</b>, or double-tap.<br>
       🤿 <b>Dive:</b> tap the mask on open water to explore the reef (or press <b>F</b>).<br>
       💨 <b>Oxygen:</b> air drains underwater &amp; dashing costs extra — surface in time!<br>
+      🎒 <b>Inventory:</b> press <b>E</b> (or tap 🎒) for your backpack — drag to sort, 1–8 picks a hotbar slot. Build a 📦 Chest for storage.<br>
       💎 <b>Treasure:</b> grab hidden chests &amp; gems on the seabed for 💰 coins.<br>
       🏗️ <b>Build &amp; 🌷 Decorate:</b> place huts, houses &amp; décor on the tile map (Build/Decor tabs).<br>
       🛠️ <b>Edit mode:</b> stand on an item &amp; tap ♻️ to pick it up (full refund). Tap a 🏠 house to repaint it.<br>
@@ -424,6 +500,27 @@ const RES = {
 };
 const RES_KEYS = ['wood','reed','stone','shell'];        // only these drift in the water
 
+// ---------- Item registry (Stardew-style inventory) ----------
+const ITEMS = {
+  wood:    { name:'Wood',          icon:'🪵', rarity:'common',    stack:99 },
+  stone:   { name:'Stone',         icon:'🪨', rarity:'common',    stack:99 },
+  clay:    { name:'Clay',          icon:'🧱', rarity:'common',    stack:99 },
+  reed:    { name:'Fiber',         icon:'🌾', rarity:'common',    stack:99 },
+  shell:   { name:'Sea Shell',     icon:'🐚', rarity:'uncommon',  stack:99 },
+  coral:   { name:'Coral',         icon:'🪸', rarity:'uncommon',  stack:99 },
+  ore:     { name:'Ore',           icon:'🪙', rarity:'uncommon',  stack:99 },
+  mushroom:{ name:'Mushroom',      icon:'🍄', rarity:'uncommon',  stack:99 },
+  berry:   { name:'Berries',       icon:'🫐', rarity:'common',    stack:99 },
+  flower:  { name:'Flower',        icon:'🌷', rarity:'common',    stack:99 },
+  fish:    { name:'Fish',          icon:'🐟', rarity:'common',    stack:30 },
+  food:    { name:'Cooked Meal',   icon:'🍣', rarity:'uncommon',  stack:30 },
+  pearl:   { name:'Pearl',         icon:'🫧', rarity:'rare',      stack:99 },
+  relic:   { name:'Ancient Relic', icon:'🏺', rarity:'epic',      stack:99 },
+  animalprod:{ name:'Animal Product', icon:'🥚', rarity:'uncommon', stack:99 },
+};
+function itemDef(id){ return ITEMS[id] || { name:id, icon:'❓', rarity:'common', stack:99 }; }
+const RARITY_CSS = { common:'#cfd8e0', uncommon:'#79d77f', rare:'#5aa6ff', epic:'#c07bff', legendary:'#ffc24a' };
+
 // Hidden treasures found on the reef floor while diving
 const TREASURES = [
   { id:'pearl', name:'Pearl',        emoji:'🫧', coins:6,  rarity:'uncommon', col:0xeaf6ff },
@@ -471,6 +568,7 @@ const BUILDINGS = [
   { id:'fishfac', icon:'🏭', name:'Fish Factory',cost:{wood:10,stone:8},         xp:32, pop:1, lvl:3,
     produces:{ in:'fish', out:'food', every:4 } },
   { id:'aquarium',icon:'🐠', name:'Aquarium',    cost:{stone:10,shell:8,wood:4}, xp:34, pop:0, lvl:3 },
+  { id:'chest',   icon:'📦', name:'Storage Chest',cost:{wood:6},                 xp:10, pop:0, lvl:1, storage:true },
   { id:'house',   icon:'🏠', name:'Cozy House',  cost:{wood:12,stone:6},         xp:40, pop:1, lvl:2, customizable:true },
   { id:'tree',    icon:'🌳', name:'Big Tree',     cost:{reed:5,wood:5,shell:3},   xp:30, pop:0, lvl:3 },
   { id:'tower',   icon:'🏯', name:'Lantern Tower',cost:{stone:14,wood:10,shell:6},xp:60,pop:2, lvl:4 },
@@ -498,15 +596,17 @@ const DECOR_BY_ID = Object.fromEntries(DECOR.map(d=>[d.id,d]));
 const BUILD_BY_ID = Object.fromEntries(BUILDINGS.map(b=>[b.id,b]));
 
 // ---------- State ----------
+const HOTBAR_N = 8, BAG_N = 24;        // hotbar slots + backpack slots
 const state = {
-  res: { wood:0, reed:0, stone:0, shell:0, food:0 },
+  slots: new Array(HOTBAR_N + BAG_N).fill(null),  // {id,count} | null  (0..7 hotbar, 8..31 bag)
+  hotsel: 0,
   coins: 0,                // gold from sunken treasure — used to buy land
-  fish: 0,                 // raw fish on hand (feedstock for the factory)
   caught: {},              // species id -> count caught (collection / aquarium)
   treasures: {},           // treasure id -> count found
   level: 1, xp: 0, pop: 1, builds: 0,
   tiles: [],     // tile-based map cells {x,z,used,obj}
   placed: [],    // {obj, tile, def, kind}  — everything placed, for pickup/move
+  chests: [],    // {obj, slots:[]} storage buildings
   pets: 0,
   expands: 0,
   diving: false,
@@ -516,6 +616,21 @@ const state = {
   running: false,
 };
 function xpForLevel(l){ return Math.round(40 * Math.pow(1.55, l-1)); }
+
+// ---------- Inventory model ----------
+function countItem(id){ let n=0; for(const s of state.slots) if(s&&s.id===id) n+=s.count; return n; }
+function addItem(id, n=1){
+  const def=itemDef(id); let left=n;
+  for(const s of state.slots){ if(left<=0) break; if(s&&s.id===id&&s.count<def.stack){ const a=Math.min(def.stack-s.count,left); s.count+=a; left-=a; } }
+  for(let i=0;i<state.slots.length && left>0;i++){ if(!state.slots[i]){ const a=Math.min(def.stack,left); state.slots[i]={id,count:a}; left-=a; } }
+  return left; // overflow that didn't fit
+}
+function removeItem(id, n=1){
+  let left=n;
+  for(let i=state.slots.length-1;i>=0 && left>0;i--){ const s=state.slots[i]; if(s&&s.id===id){ const t=Math.min(s.count,left); s.count-=t; left-=t; if(s.count<=0) state.slots[i]=null; } }
+  return n-left;
+}
+function hasItems(cost){ for(const k in cost){ if(k==='coins'){ if(state.coins<cost[k]) return false; } else if(countItem(k)<cost[k]) return false; } return true; }
 function rollRarity(){
   const total = Object.values(RARITY).reduce((s,r)=>s+r.weight,0);
   let r = Math.random()*total;
@@ -1413,6 +1528,11 @@ function makeBuilding(id, variant=0){
       g.add(fm); tinies.push(fm);
     });
     g.userData.tank = tinies;            // animated little fish
+  } else if(id==='chest'){
+    const box=new THREE.Mesh(new THREE.BoxGeometry(0.95,0.6,0.65),new THREE.MeshStandardMaterial({color:0x9a6233,roughness:0.7})); box.position.y=0.3; g.add(box);
+    const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.95,12,1,false,0,Math.PI),new THREE.MeshStandardMaterial({color:0xb87a40})); lid.rotation.z=Math.PI/2; lid.position.y=0.6; g.add(lid);
+    for(const yy of [0.3,0.6]){ const band=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.07,0.7),new THREE.MeshStandardMaterial({color:0x5a3a22})); band.position.y=yy; g.add(band); }
+    const lock=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.18,0.05),new THREE.MeshStandardMaterial({color:0xffd24a,metalness:0.6,roughness:0.3})); lock.position.set(0,0.34,0.34); g.add(lock);
   }
   g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
   return g;
@@ -1473,19 +1593,11 @@ function makeDecor(id){
 }
 
 // ---------- HUD wiring ----------
-const HUD_KEYS = ['wood','reed','stone','shell','food'];
-function updateResHUD(flashKey){
-  for(const k of HUD_KEYS){
-    const el = $('#res-'+k);
-    el.querySelector('.n').textContent = state.res[k];
-    if(flashKey===k){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
-  }
-  // raw fish (feedstock) chip
-  const fEl = $('#res-fish'); fEl.querySelector('.n').textContent = state.fish;
-  if(flashKey==='fish'){ fEl.classList.remove('pop'); void fEl.offsetWidth; fEl.classList.add('pop'); }
-  // coins chip
-  const cEl = $('#res-coins'); cEl.querySelector('.n').textContent = state.coins;
-  if(flashKey==='coins'){ cEl.classList.remove('pop'); void cEl.offsetWidth; cEl.classList.add('pop'); }
+function updateResHUD(flash){
+  $('#moneyNum').textContent = state.coins;
+  if(flash==='coins'){ const m=$('#moneyChip'); m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); }
+  renderHotbar(flash);
+  if(!$('#invPanel').classList.contains('hidden')) renderInvPanel();
   renderDock();
 }
 function updateStatsHUD(){
@@ -1496,10 +1608,106 @@ function updateStatsHUD(){
   $('#xpBar').style.width = Math.min(100, (state.xp/need)*100) + '%';
 }
 
-const CURRENCY_IC = { coins:'💰' };
-function ic(k){ return (RES[k] && RES[k].ic) || CURRENCY_IC[k] || '?'; }
-function have(k){ return k==='coins' ? state.coins : state.res[k]; }
-function spend(k, v){ if(k==='coins') state.coins-=v; else state.res[k]-=v; }
+function ic(k){ return k==='coins' ? '💰' : itemDef(k).icon; }
+function have(k){ return k==='coins' ? state.coins : countItem(k); }
+function spend(k, v){ if(k==='coins') state.coins-=v; else removeItem(k,v); }
+
+/* ============================================================= *
+ *  INVENTORY UI — hotbar, backpack grid, tooltips, drag & drop  *
+ * ============================================================= */
+function slotInner(s){
+  if(!s) return '';
+  return `<span class="ic">${itemDef(s.id).icon}</span>` + (s.count>1?`<span class="ct">${s.count}</span>`:'');
+}
+function slotClass(s, sel){ return 'slot' + (s?(' rar-'+itemDef(s.id).rarity):'') + (sel?' sel':''); }
+
+let hotbarBuilt=false;
+function renderHotbar(flash){
+  const hb=$('#hotbar');
+  if(!hotbarBuilt){
+    hb.innerHTML='';
+    for(let i=0;i<HOTBAR_N;i++){ const el=document.createElement('div'); el.className='slot'; el.dataset.zone='inv'; el.dataset.i=i; hb.appendChild(el); }
+    hotbarBuilt=true;
+  }
+  for(let i=0;i<HOTBAR_N;i++){
+    const el=hb.children[i], s=state.slots[i];
+    el.className=slotClass(s, i===state.hotsel);
+    el.innerHTML=slotInner(s);
+    if(flash && s && s.id===flash){ el.classList.add('bump'); setTimeout(()=>el.classList.remove('bump'),360); }
+  }
+}
+
+// the chest currently open (or null = just backpack)
+let openChestRef=null;
+function zoneArr(zone){ return zone==='store' ? (openChestRef&&openChestRef.slots) : state.slots; }
+
+function fillGrid(gridEl, arr, zone, from, to){
+  gridEl.innerHTML='';
+  for(let i=from;i<to;i++){
+    const s=arr[i], el=document.createElement('div');
+    el.className=slotClass(s, zone==='inv'&&i===state.hotsel);
+    el.dataset.zone=zone; el.dataset.i=i; el.innerHTML=slotInner(s);
+    gridEl.appendChild(el);
+  }
+}
+function renderInvPanel(){
+  fillGrid($('#invHot'), state.slots, 'inv', 0, HOTBAR_N);
+  fillGrid($('#invBag'), state.slots, 'inv', HOTBAR_N, HOTBAR_N+BAG_N);
+  const sw=$('#invStorageWrap');
+  if(openChestRef){ sw.classList.remove('hidden'); fillGrid($('#invStorage'), openChestRef.slots, 'store', 0, openChestRef.slots.length); }
+  else sw.classList.add('hidden');
+  $('#invTitle').textContent = openChestRef ? '📦 Storage Chest' : '🎒 Backpack';
+}
+function openInv(chest){
+  openChestRef = chest || null;
+  $('#invPanel').classList.remove('hidden');
+  renderInvPanel();
+}
+function closeInv(){ $('#invPanel').classList.add('hidden'); openChestRef=null; $('#invTip').classList.add('hidden'); }
+
+// ----- drag & drop (pointer based, works on touch) -----
+let drag=null;
+function moveStack(a,b){
+  if(a.zone===b.zone && a.i===b.i) return;
+  const A=zoneArr(a.zone), B=zoneArr(b.zone); if(!A||!B) return;
+  const sa=A[a.i]; if(!sa) return; const sb=B[b.i];
+  if(!sb){ B[b.i]=sa; A[a.i]=null; }
+  else if(sb.id===sa.id){ const room=itemDef(sa.id).stack-sb.count; const mv=Math.min(room,sa.count); sb.count+=mv; sa.count-=mv; if(sa.count<=0) A[a.i]=null; }
+  else { A[a.i]=sb; B[b.i]=sa; }
+}
+function onSlotDown(e){
+  const el=e.target.closest('.slot'); if(!el) return;
+  const zone=el.dataset.zone, i=+el.dataset.i, arr=zoneArr(zone);
+  if(arr && arr[i]){
+    drag={zone,i};
+    const g=$('#dragGhost'); g.innerHTML=itemDef(arr[i].id).icon; g.classList.remove('hidden');
+    g.style.left=(e.clientX||0)+'px'; g.style.top=(e.clientY||0)+'px';
+    e.preventDefault();
+  }
+}
+window.addEventListener('pointermove',e=>{
+  if(!drag) return;
+  const g=$('#dragGhost'); g.style.left=e.clientX+'px'; g.style.top=e.clientY+'px';
+});
+window.addEventListener('pointerup',e=>{
+  if(!drag) return;
+  const g=$('#dragGhost'); g.classList.add('hidden');
+  const tgt=document.elementFromPoint(e.clientX,e.clientY);
+  const el=tgt && tgt.closest && tgt.closest('.slot');
+  if(el && el.dataset.zone){ moveStack(drag, {zone:el.dataset.zone, i:+el.dataset.i}); renderInvPanel(); renderHotbar(); }
+  drag=null;
+});
+// tooltips (desktop hover)
+function invHover(e){
+  const el=e.target.closest('.slot'); const tip=$('#invTip');
+  if(!el){ tip.classList.add('hidden'); return; }
+  const arr=zoneArr(el.dataset.zone), s=arr&&arr[+el.dataset.i];
+  if(!s){ tip.classList.add('hidden'); return; }
+  const d=itemDef(s.id);
+  tip.innerHTML=`<div class="tn">${d.icon} ${d.name}</div><div class="tr" style="color:${RARITY_CSS[d.rarity]}">${d.rarity} · ×${s.count}</div>`;
+  tip.style.left=Math.min(e.clientX+14, innerWidth-230)+'px'; tip.style.top=(e.clientY+14)+'px';
+  tip.classList.remove('hidden');
+}
 function expandCost(){
   // buy land with coins — price climbs each purchase
   return { coins: 30 + state.expands*25 };
@@ -1611,6 +1819,7 @@ function tryBuild(b){
   tile.obj=m; state.placed.push({ obj:m, tile, def:b, kind:'build' });
   growAnims.push({ obj:m, t:0 });
   if(b.produces) producers.push({ building:m, def:b.produces, timer:0 });
+  if(b.storage){ state.chests.push({ obj:m, slots:new Array(24).fill(null) }); toast('📦 Stand on it & press E to open storage'); }
   state.builds++;
   state.pop += b.pop||0;
   if(b.pop>0) addFollower();
@@ -1656,7 +1865,7 @@ function pickUpHere(){
   const rec = state.placed[idx];
   // refund the full cost back
   const cost = rec.def.cost||{};
-  for(const k in cost) (k==='coins') ? state.coins+=cost[k] : state.res[k]+=cost[k];
+  for(const k in cost) (k==="coins") ? state.coins+=cost[k] : addItem(k,cost[k]);
   // undo rewards for buildings
   if(rec.kind==='build'){
     state.builds=Math.max(0,state.builds-1);
@@ -1746,7 +1955,7 @@ function adoptPet(){
 // ---------- Catch a fish ----------
 function catchFish(sw){
   const sp = sw.sp, rar = RARITY[sp.rarity];
-  state.fish++;
+  addItem("fish",1);
   state.caught[sp.id] = (state.caught[sp.id]||0)+1;
   fishGroup.remove(sw.mesh);
   const idx = swimmers.indexOf(sw); if(idx>=0) swimmers.splice(idx,1);
@@ -1767,7 +1976,7 @@ function catchFish(sw){
 // catch a reef fish while diving
 function catchDeepFish(df, idx){
   const sp=df.sp, rar=RARITY[sp.rarity];
-  state.fish++;
+  addItem("fish",1);
   state.caught[sp.id]=(state.caught[sp.id]||0)+1;
   underwater.remove(df.mesh); deepFish.splice(idx,1);
   updateResHUD('fish');
@@ -1786,6 +1995,9 @@ function collectTreasure(tr, idx){
   state.coins += t.coins;
   state.treasures[t.id]=(state.treasures[t.id]||0)+1;
   state.treasuresFound=(state.treasuresFound||0)+1;
+  // some treasures also yield a collectible item
+  if(t.id==='pearl') addItem('pearl',1);
+  else if(t.id==='chest'||t.id==='crown') addItem('relic',1);
   underwater.remove(tr.mesh); treasures.splice(idx,1);
   updateResHUD('coins');
   const tEl=$('#toast'); tEl.style.color=rar.css;
@@ -1880,6 +2092,9 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(k===' '||k==='shift'){ if(!e.repeat) tryDash(); }
   if(k==='f'){ if(!e.repeat) toggleDive(); }
+  if(k==='e'||k==='i'||k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
+  if(k==='escape'){ if(!$('#invPanel').classList.contains('hidden')) closeInv(); }
+  if(k>='1'&&k<='8'){ state.hotsel=(+k)-1; renderHotbar(); }
   keys[k]=true;
 });
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
@@ -1920,6 +2135,25 @@ $('#editBtn').addEventListener('click', toggleEdit);
 $('#pickBtn').addEventListener('click', pickUpHere);
 $('#tabBuild').addEventListener('click', ()=>setDockTab('build'));
 $('#tabDecor').addEventListener('click', ()=>setDockTab('decor'));
+
+// ----- inventory wiring -----
+function toggleInv(){
+  if($('#invPanel').classList.contains('hidden')){
+    // open the chest you're standing on, otherwise the backpack
+    const tl = tileAt(otter.position.x, otter.position.z);
+    const chest = tl && tl.obj ? state.chests.find(c=>c.obj===tl.obj) : null;
+    openInv(chest);
+  } else closeInv();
+}
+$('#bagBtn').addEventListener('click', toggleInv);
+$('#invClose').addEventListener('click', closeInv);
+$('#invPanel').addEventListener('click', e=>{ if(e.target.id==='invPanel') closeInv(); });
+// drag + tooltip on the panel grids; selection on the bottom hotbar
+for(const id of ['#invHot','#invBag','#invStorage']){
+  const g=$(id); g.addEventListener('pointerdown', onSlotDown); g.addEventListener('mousemove', invHover); g.addEventListener('mouseleave',()=>$('#invTip').classList.add('hidden'));
+}
+$('#hotbar').addEventListener('pointerdown', e=>{ const el=e.target.closest('.slot'); if(el){ state.hotsel=+el.dataset.i; renderHotbar(); } });
+
 function toggleEdit(){
   if(!state.running) return;
   state.editMode = !state.editMode;
@@ -2080,7 +2314,7 @@ function animate(){
         m.scale.multiplyScalar(1 - dt*4);
         if(it.scoop>0.45){
           resGroup.remove(m); driftItems.splice(i,1);
-          state.res[it.type]++; updateResHUD(it.type);
+          if(addItem(it.type,1)>0) toast('🎒 Inventory full!'); updateResHUD(it.type);
         }
         continue;
       }
@@ -2230,15 +2464,15 @@ function animate(){
       if(pr.timer >= pr.def.every){
         pr.timer = 0;
         if(pr.def.in==='fish'){            // fish factory: fish -> food
-          if(state.fish>0){
-            state.fish--;
+          if(countItem('fish')>0){
+            removeItem('fish',1);
             const gain = 1 + Math.floor(Math.random()*2);
-            state.res.food += gain; updateResHUD('food');
+            addItem('food',gain); updateResHUD('food');
             spawnBurst(pr.building.position.clone().setY(2.4), 0xff9d4d);
           }
         } else {                            // wood cutter etc: passive output
-          state.res[pr.def.out] += pr.def.amount; updateResHUD(pr.def.out);
-          spawnBurst(pr.building.position.clone().setY(1.9), RES[pr.def.out].color);
+          addItem(pr.def.out, pr.def.amount); updateResHUD(pr.def.out);
+          spawnBurst(pr.building.position.clone().setY(1.9), (RES[pr.def.out]&&RES[pr.def.out].color)||0xffffff);
         }
       }
     }
@@ -2381,7 +2615,9 @@ function init(){
   for(let i=0;i<5;i++) spawnFish();
   for(let i=0;i<8;i++) spawnDeepFish();
   for(let i=0;i<6;i++) spawnTreasure();
-  updateResHUD(); updateStatsHUD();
+  // a small starter kit so building is possible right away
+  addItem('wood',8); addItem('reed',5); addItem('stone',5); addItem('berry',3);
+  renderHotbar(); updateResHUD(); updateStatsHUD();
 }
 init();
 
