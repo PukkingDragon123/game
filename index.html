@@ -551,12 +551,13 @@ scene.add(sun);
 scene.add(sun.target);
 
 // ---------- Water ----------
-const waterGeo = new THREE.CircleGeometry(POND_R, 96, 0, Math.PI*2);
-// add radial subdivisions for waves
+// a finely subdivided plane (clipped to a disc in the shader) so the whole
+// surface ripples with smooth, fluid, layered waves
+const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 110, 110);
 const waterUniforms = {
   uTime: { value: 0 },
-  uColorDeep:    { value: new THREE.Color(0x1f7fb0) },
-  uColorShallow: { value: new THREE.Color(0x6fd0e8) },
+  uColorDeep:    { value: new THREE.Color(0x1565a0) },
+  uColorShallow: { value: new THREE.Color(0x73e0ec) },
   uIslandR: { value: ISLAND_R },
   uPondR: { value: POND_R },
 };
@@ -567,15 +568,22 @@ const waterMat = new THREE.ShaderMaterial({
     uniform float uTime;
     varying vec2 vXZ;
     varying float vWave;
+    varying vec3 vN;
+    float wave(vec2 p){
+      return sin(p.x*0.30 + uTime*1.2)*0.13
+           + sin(p.y*0.37 - uTime*1.0)*0.10
+           + sin((p.x*0.7 + p.y*0.5) + uTime*0.85)*0.07
+           + sin((p.x*0.22 - p.y*0.9) - uTime*0.6)*0.05;
+    }
     void main(){
       vec3 p = position;
-      float d = length(p.xy);
-      float w = sin(p.x*0.35 + uTime*1.3)*0.18 + cos(p.y*0.4 - uTime*1.1)*0.16
-              + sin((p.x+p.y)*0.22 + uTime*0.7)*0.12;
-      vWave = w;
-      vXZ = p.xy;
-      vec4 mv = modelViewMatrix * vec4(p.x, p.y, w, 1.0);
-      gl_Position = projectionMatrix * mv;
+      float w = wave(p.xy);
+      float e = 0.7;                                   // finite-difference normal
+      float wx = wave(p.xy+vec2(e,0.0)) - wave(p.xy-vec2(e,0.0));
+      float wy = wave(p.xy+vec2(0.0,e)) - wave(p.xy-vec2(0.0,e));
+      vN = normalize(vec3(-wx, 2.0*e, -wy));
+      vWave = w; vXZ = p.xy;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(p.x, p.y, w, 1.0);
     }
   `,
   fragmentShader: /* glsl */`
@@ -584,19 +592,26 @@ const waterMat = new THREE.ShaderMaterial({
     uniform float uIslandR, uPondR, uTime;
     varying vec2 vXZ;
     varying float vWave;
+    varying vec3 vN;
+    float caustic(vec2 p){
+      return sin(p.x*0.8 + uTime*1.5) + sin(p.y*0.9 - uTime*1.2) + sin((p.x+p.y)*0.6 + uTime*1.05);
+    }
     void main(){
       float d = length(vXZ);
+      if(d > uPondR) discard;                          // clip the square into a disc
       float t = clamp((d - uIslandR) / (uPondR - uIslandR), 0.0, 1.0);
       vec3 col = mix(uColorShallow, uColorDeep, smoothstep(0.0,1.0,t));
-      // sparkle highlights from waves
-      float hi = smoothstep(0.18, 0.32, vWave);
-      col += hi * 0.35;
-      // shoreline foam
-      float foam = smoothstep(0.10, 0.0, abs(t-0.02)) ;
-      col = mix(col, vec3(1.0), foam*0.5);
-      // edge fade alpha near pond rim
-      float edge = smoothstep(uPondR, uPondR-2.0, d);
-      gl_FragColor = vec4(col, 0.82*edge + 0.1);
+      // soft up-facing shimmer + scrolling caustics
+      col += pow(max(vN.y,0.0), 4.0) * 0.12;
+      col += smoothstep(2.2, 3.0, caustic(vXZ)) * 0.22;
+      // bright wave crests
+      col += smoothstep(0.10, 0.20, vWave) * 0.30;
+      // animated shoreline foam
+      float foam = smoothstep(0.9, 0.0, abs(d - uIslandR - 0.4));
+      foam *= 0.55 + 0.45*sin(d*3.0 - uTime*3.2);
+      col = mix(col, vec3(1.0), clamp(foam,0.0,1.0)*0.5);
+      float edge = smoothstep(uPondR, uPondR-2.5, d);
+      gl_FragColor = vec4(col, 0.86*edge + 0.08);
     }
   `,
 });
@@ -961,19 +976,30 @@ function makeFishMesh(sp, scale=1){
   // top fin
   const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.42, 3), finMat);
   dorsal.position.set(0, 0.34*by, 0); dorsal.scale.set(1,1,0.16); g.add(dorsal);
-  // side fin
-  const pec = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.3, 3), finMat);
-  pec.position.set(0.1, -0.05, 0.22*bz+0.05); pec.rotation.set(0.4,0,-0.5); pec.scale.set(1,1,0.2); g.add(pec);
-
-  // black dot eyes (consistent with the otters)
-  const eyeMat = new THREE.MeshBasicMaterial({ color:0x0d0d0d });
-  for(const sx of [1]){
-    for(const sz of [-1,1]){
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.075,12,12), eyeMat);
-      eye.position.set(0.30*bx, 0.06, sz*0.16*bz+sz*0.03);
-      g.add(eye);
-    }
+  // side (pectoral) fins — flap to feel alive
+  const pecs=[];
+  for(const sz of [-1,1]){
+    const pec = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.32, 3), finMat);
+    pec.position.set(0.12, -0.04, sz*(0.2*bz+0.05));
+    pec.rotation.set(0.4, 0, -0.5*sz); pec.scale.set(1,1,0.2);
+    g.add(pec); pecs.push(pec);
   }
+  grp.pecs = pecs;
+
+  // cute big black-dot eyes with a tiny shine
+  const eyeMat = new THREE.MeshBasicMaterial({ color:0x111111 });
+  const shineMat = new THREE.MeshBasicMaterial({ color:0xffffff });
+  for(const sz of [-1,1]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1,14,14), eyeMat);
+    eye.position.set(0.30*bx, 0.08, sz*0.16*bz+sz*0.03); eye.scale.set(1,1,0.7);
+    g.add(eye);
+    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.032,8,8), shineMat);
+    shine.position.set(0.34*bx, 0.12, sz*0.16*bz+sz*0.05); g.add(shine);
+  }
+  // little smile
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.07,0.018,6,10,Math.PI),
+    new THREE.MeshBasicMaterial({color:0x7a3b3b}));
+  mouth.position.set(0.40*bx, -0.06, 0); mouth.rotation.set(Math.PI,0,Math.PI*0.5); g.add(mouth);
   // stripe / spot accents for flashy species
   if(sp.stripe){
     for(let i=-1;i<=1;i++){
@@ -991,6 +1017,7 @@ function makeFishMesh(sp, scale=1){
   g.traverse(o=>{ if(o.isMesh && o.material!==eyeMat) o.castShadow=true; });
   g.scale.setScalar(scale);
   g.userData.parts = grp;
+  g.userData.s0 = scale;
 
   // rarity sparkle halo for rare+ fish
   if(rar.glow>=0.25){
@@ -1012,9 +1039,21 @@ function spawnFish(sp){
     mesh, sp,
     heading: Math.random()*Math.PI*2,
     speed: rand(2.2, 4.2) * (RARITY[sp.rarity].glow>0?0.85:1),  // rarer = a touch slower/elusive handled by spawn rate
-    turn: 0, bob: Math.random()*Math.PI*2,
+    turn: 0, bob: Math.random()*Math.PI*2, wig: Math.random()*Math.PI*2,
     flee: 0, caught:false, t:0,
   });
+}
+// shared fish liveliness — wiggle, fin flap, breathing, gentle bank
+function animateFish(o, sw, dt, speedFactor){
+  const p = o.userData.parts; if(!p) return;
+  const fast = 8 + speedFactor*8;
+  sw.wig += dt*fast;
+  if(p.tail) p.tail.rotation.y = Math.sin(sw.wig)*0.5;
+  if(p.body) p.body.rotation.z = Math.sin(sw.wig*0.5)*0.05;     // body waggle
+  if(p.pecs){ const f=Math.sin(sw.wig*1.3)*0.5; p.pecs[0].rotation.z=-0.5 + f; p.pecs[1].rotation.z=0.5 - f; }
+  // breathing pulse
+  const br = 1 + Math.sin(sw.t*2.4 + sw.bob)*0.04;
+  o.scale.set(o.userData.s0*(1/br), o.userData.s0*br, o.userData.s0*br);
 }
 
 /* ============================================================= *
@@ -1028,7 +1067,7 @@ scene.add(underwater);
 // --- seabed: a big sandy disc with darker rim ---
 const seabed = new THREE.Mesh(
   new THREE.CircleGeometry(POND_R+2, 72),
-  new THREE.MeshStandardMaterial({ color:0x255a6b, roughness:1 })
+  new THREE.MeshStandardMaterial({ color:0x3a8294, roughness:1 })
 );
 seabed.rotation.x = -Math.PI/2; seabed.position.y = SEABED_Y; seabed.receiveShadow = true;
 underwater.add(seabed);
@@ -1065,36 +1104,96 @@ function makeCoral(){
     const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.12,0.9,6),mat); stem.position.y=0.45; g.add(stem);
   }
   g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
-  g.scale.setScalar(rand(0.8,1.7));
+  const s=rand(0.8,1.7); g.scale.setScalar(s);
+  g.userData.s0=s; g.userData.phase=Math.random()*Math.PI*2;
   return g;
 }
-// --- swaying kelp ---
+// --- swaying kelp (per-blade flow) ---
 const kelps=[];
 function makeKelp(){
   const g=new THREE.Group();
   const mat=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(0.33,0.5,rand(0.3,0.45)),roughness:0.8,side:THREE.DoubleSide});
-  const h=rand(3,6), seg=6;
+  const h=rand(3,6), seg=7, blades=[];
   for(let i=0;i<seg;i++){
-    const blade=new THREE.Mesh(new THREE.PlaneGeometry(0.5, h/seg*1.1), mat);
-    blade.position.y = (i+0.5)*(h/seg); g.add(blade);
+    const blade=new THREE.Mesh(new THREE.PlaneGeometry(0.5, h/seg*1.15), mat);
+    blade.position.y = (i+0.5)*(h/seg); g.add(blade); blades.push(blade);
   }
-  g.userData.h=h; g.userData.phase=Math.random()*Math.PI*2;
+  g.userData.h=h; g.userData.phase=Math.random()*Math.PI*2; g.userData.blades=blades;
+  return g;
+}
+// --- sea anemone with waving tentacles ---
+const anemones=[];
+function makeAnemone(){
+  const g=new THREE.Group();
+  const hue=rand(0.85,1.0); // pinks/magentas
+  const baseM=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(hue%1,0.6,0.55),roughness:0.6});
+  const base=new THREE.Mesh(new THREE.SphereGeometry(0.4,12,10,0,Math.PI*2,0,Math.PI*0.6),baseM); base.position.y=0.15; g.add(base);
+  const tipM=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(hue%1,0.7,0.7),roughness:0.5,emissive:new THREE.Color().setHSL(hue%1,0.7,0.3),emissiveIntensity:0.25});
+  const tents=[];
+  for(let i=0;i<14;i++){
+    const a=Math.random()*Math.PI*2, r=rand(0.05,0.3);
+    const tent=new THREE.Mesh(new THREE.CapsuleGeometry(0.04,rand(0.4,0.8),3,5),tipM);
+    tent.position.set(Math.cos(a)*r,0.45,Math.sin(a)*r);
+    tent.userData.bx=tent.rotation.x; tent.userData.ph=Math.random()*Math.PI*2; g.add(tent); tents.push(tent);
+  }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.scale.setScalar(rand(0.7,1.2)); g.userData.tents=tents;
+  return g;
+}
+// --- starfish resting on the sand ---
+function makeStarfish(){
+  const g=new THREE.Group();
+  const m=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(rand(0.02,0.09),0.7,0.6),roughness:0.8});
+  const c=new THREE.Mesh(new THREE.SphereGeometry(0.18,10,8),m); c.scale.set(1,0.4,1); g.add(c);
+  for(let i=0;i<5;i++){ const a=i/5*Math.PI*2; const arm=new THREE.Mesh(new THREE.ConeGeometry(0.13,0.5,6),m); arm.rotation.z=-Math.PI/2; arm.rotation.y=a; arm.position.set(Math.cos(a)*0.28,0.04,Math.sin(a)*0.28); arm.scale.set(1,1,0.5); g.add(arm); }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.rotation.y=Math.random()*Math.PI*2;
   return g;
 }
 
-// scatter coral + kelp around the floor (off the island footprint)
+// scatter coral + kelp + critters around the floor (off the island footprint)
 const corals=[];
 function populateReef(){
-  for(let i=0;i<34;i++){
+  for(let i=0;i<38;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-2, POND_R-3);
-    const c=makeCoral(); c.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(c); corals.push(c);
+    const c=makeCoral(); c.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); c.rotation.y=Math.random()*Math.PI*2; underwater.add(c); corals.push(c);
   }
-  for(let i=0;i<22;i++){
+  for(let i=0;i<24;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-1, POND_R-3);
     const k=makeKelp(); k.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(k); kelps.push(k);
   }
+  for(let i=0;i<10;i++){
+    const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, POND_R-4);
+    const an=makeAnemone(); an.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(an); anemones.push(an);
+  }
+  for(let i=0;i<14;i++){
+    const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, POND_R-4);
+    const sf=makeStarfish(); sf.position.set(Math.cos(a)*r, SEABED_Y+0.04, Math.sin(a)*r); underwater.add(sf);
+  }
 }
 populateReef();
+
+// --- ambient: marine snow + sunbeam light shafts (alive, dreamy water) ---
+let marineSnow=null;
+(function buildMarineSnow(){
+  const n=260; const geo=new THREE.BufferGeometry(); const arr=new Float32Array(n*3);
+  for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, r=Math.random()*(POND_R-2);
+    arr[i*3]=Math.cos(a)*r; arr[i*3+1]=SEABED_Y+Math.random()*9; arr[i*3+2]=Math.sin(a)*r; }
+  geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
+  const mat=new THREE.PointsMaterial({ color:0xcdeefc, size:0.12, transparent:true, opacity:0.5, depthWrite:false });
+  marineSnow=new THREE.Points(geo,mat); underwater.add(marineSnow);
+})();
+const lightShafts=[];
+(function buildShafts(){
+  const mat=new THREE.MeshBasicMaterial({ color:0xbfeeff, transparent:true, opacity:0.06, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide });
+  for(let i=0;i<7;i++){
+    const shaft=new THREE.Mesh(new THREE.ConeGeometry(rand(2,3.5), 12, 10, 1, true), mat);
+    const a=Math.random()*Math.PI*2, r=rand(4, POND_R-8);
+    shaft.position.set(Math.cos(a)*r, SEABED_Y+8, Math.sin(a)*r);
+    shaft.rotation.z = rand(-0.2,0.2); shaft.userData.ph=Math.random()*Math.PI*2;
+    underwater.add(shaft); lightShafts.push(shaft);
+  }
+})();
 
 // --- hidden treasure ---
 const treasures=[];
@@ -1147,7 +1246,7 @@ function spawnDeepFish(sp){
   const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, POND_R-3);
   mesh.position.set(Math.cos(a)*r, SEABED_Y+rand(1.0,3.2), Math.sin(a)*r);
   underwater.add(mesh);
-  deepFish.push({ mesh, sp, heading:Math.random()*Math.PI*2, speed:rand(1.8,3.6), bob:Math.random()*Math.PI*2, flee:0, depth:mesh.position.y, t:0 });
+  deepFish.push({ mesh, sp, heading:Math.random()*Math.PI*2, speed:rand(1.8,3.6), bob:Math.random()*Math.PI*2, wig:Math.random()*Math.PI*2, flee:0, depth:mesh.position.y, t:0 });
 }
 
 // ---------- Boat (surface home / dive station) ----------
@@ -1734,7 +1833,7 @@ function beep(freq=440, dur=0.1, type='sine', vol=0.06){
 
 // ---------- Diving (Dave-the-Diver style) ----------
 const SKY_BG = new THREE.Color(0xbfeaff);
-const SEA_BG = new THREE.Color(0x0a3b52);
+const SEA_BG = new THREE.Color(0x0e5a78);
 function setDiving(on){
   if(on===state.diving) return;
   state.diving = on;
@@ -1744,14 +1843,14 @@ function setDiving(on){
   $('#diveBtn').textContent = on ? '🌊' : '🤿';
   if(on){
     scene.background = SEA_BG;
-    scene.fog.color.copy(SEA_BG); scene.fog.near = 14; scene.fog.far = 48;
-    hemi.intensity = 0.55; sun.intensity = 0.6;
+    scene.fog.color.copy(SEA_BG); scene.fog.near = 16; scene.fog.far = 62;
+    hemi.intensity = 0.75; sun.intensity = 0.85; hemi.groundColor.set(0x0d5570);
     toast('🤿 Diving! Watch your oxygen — surface before it runs out!');
     beep(330,0.12,'sine'); setTimeout(()=>beep(247,0.16,'sine'),120);
   } else {
     scene.background = SKY_BG;
     scene.fog.color.copy(SKY_BG); scene.fog.near = 60; scene.fog.far = 130;
-    hemi.intensity = 0.85; sun.intensity = 1.25;
+    hemi.intensity = 0.85; sun.intensity = 1.25; hemi.groundColor.set(0x6fa8c7);
     state.oxygen = MAX_OXYGEN;
     toast('🌊 Surfaced! Air refilled. Treasure banked.');
     beep(523,0.1); setTimeout(()=>beep(784,0.14),110);
@@ -1875,17 +1974,20 @@ function animate(){
     const inLen=Math.hypot(dx,dz);
     let moving=false;
     const maxSpeed = state.diving ? DIVE_SPEED : OTTER_SPEED;
+    // smoother ramp + more glide underwater for a fluid, weighty feel
+    const accelK = state.diving ? 6 : 8.5;
+    const fricK  = state.diving ? 2.0 : 5;
     if(inLen>0.05){
       dx/=Math.max(inLen,1); dz/=Math.max(inLen,1);
       const want = maxSpeed*Math.min(1,inLen);
-      otterVel.x += (dx*want - otterVel.x)*Math.min(1,dt*8);
-      otterVel.z += (dz*want - otterVel.z)*Math.min(1,dt*8);
+      otterVel.x += (dx*want - otterVel.x)*Math.min(1,dt*accelK);
+      otterVel.z += (dz*want - otterVel.z)*Math.min(1,dt*accelK);
       facing.set(dx,0,dz);
       moving=true;
     } else {
-      otterVel.x -= otterVel.x*Math.min(1,dt*5);
-      otterVel.z -= otterVel.z*Math.min(1,dt*5);
-      if(otterVel.lengthSq()>0.4) moving=true;
+      otterVel.x -= otterVel.x*Math.min(1,dt*fricK);
+      otterVel.z -= otterVel.z*Math.min(1,dt*fricK);
+      if(otterVel.lengthSq()>0.5) moving=true;
     }
     // integrate + clamp to pond
     let nx = otter.position.x + otterVel.x*dt;
@@ -1894,11 +1996,17 @@ function animate(){
     const lim = POND_R-1.1;
     if(dist>lim){ const s=lim/dist; nx*=s; nz*=s; otterVel.multiplyScalar(0.5); }
     otter.position.x=nx; otter.position.z=nz;
+    // smooth heading + bank into turns
     const vlen=Math.hypot(otterVel.x,otterVel.z);
+    let turnRate=0;
     if(vlen>0.3){
       const targetRot=Math.atan2(otterVel.x,otterVel.z);
-      otter.rotation.y += ((targetRot-otter.rotation.y+Math.PI*3)%(Math.PI*2)-Math.PI)*Math.min(1,dt*12);
+      const dRot = ((targetRot-otter.rotation.y+Math.PI*3)%(Math.PI*2)-Math.PI);
+      const apply = dRot*Math.min(1,dt*(state.diving?7:12));
+      otter.rotation.y += apply; turnRate = apply/Math.max(dt,1e-4);
     }
+    const bankTarget = THREE.MathUtils.clamp(-turnRate*0.16, -0.5, 0.5) * (moving?1:0);
+    otter.userData.bank = (otter.userData.bank||0) + (bankTarget-(otter.userData.bank||0))*Math.min(1,dt*6);
 
     // ----- height: land / surface / diving depth -----
     const distC = Math.hypot(otter.position.x, otter.position.z);
@@ -1908,15 +2016,15 @@ function animate(){
     else baseY = onLand ? 1.55 : 0.15;
     otter.position.y += (baseY - otter.position.y)*Math.min(1,dt*(state.diving?2.5:8));
 
-    // ----- otter anim -----
+    // ----- otter anim (banking + gentle sway) -----
     const swim = Math.sin(t*9);
     if(state.diving){
-      otter.rotation.z = Math.sin(t*2.2)*0.06;
-      otter.rotation.x = -0.25 + Math.sin(t*2)*0.05;   // nose-down diving pose
+      otter.rotation.z = otter.userData.bank + Math.sin(t*2.2)*0.04;
+      otter.rotation.x = -0.22 + Math.sin(t*2)*0.05;   // nose-down gliding pose
     } else {
       otter.rotation.x *= 0.85;
-      if(!onLand){ otter.position.y += Math.sin(t*3)*0.04; otter.rotation.z = Math.sin(t*3)*0.05; }
-      else otter.rotation.z *= 0.9;
+      if(!onLand){ otter.position.y += Math.sin(t*3)*0.04; otter.rotation.z = otter.userData.bank + Math.sin(t*3)*0.05; }
+      else otter.rotation.z = otter.userData.bank*0.5;
     }
     if(otter.userData.tail) otter.userData.tail.rotation.z = swim*(moving?0.5:0.2);
     if(otter.userData.head) otter.userData.head.rotation.z = swim*0.06;
@@ -2041,8 +2149,7 @@ function animate(){
       if(d<ISLAND_R+1.5){ const nx=m.position.x/d, nz=m.position.z/d; sw.heading = Math.atan2(nz,nx); }
       m.position.y = 0.0 + Math.sin(sw.t*3 + sw.bob)*0.1;
       m.rotation.y = -sw.heading + Math.PI/2;
-      m.rotation.z = Math.sin(sw.t*8)*0.12;               // wiggle
-      if(m.userData.parts && m.userData.parts.tail) m.userData.parts.tail.rotation.y = Math.sin(sw.t*12)*0.5;
+      animateFish(m, sw, dt, sw.flee);                    // wiggle, fins, breathing
       // catch (surface only)
       if(od<1.5 && collectCooldown<=0 && !state.diving){ collectCooldown=0.05; catchFish(sw); }
     }
@@ -2050,9 +2157,20 @@ function animate(){
     const fishTarget = 5 + Math.min(7, state.level);
     if(swimmers.length < fishTarget && Math.random()<0.04) spawnFish();
 
-    // ----- DEEP DIVE: reef fish, kelp sway & hidden treasure -----
+    // ----- DEEP DIVE: living reef — fish, kelp, coral, anemones, snow & shafts -----
     if(state.diving){
-      for(const kp of kelps){ kp.userData.phase += dt*1.4; kp.rotation.z = Math.sin(kp.userData.phase)*0.18; }
+      // flowing kelp (per-blade wave) + gentle coral sway
+      for(const kp of kelps){
+        kp.userData.phase += dt*1.4;
+        const bl=kp.userData.blades;
+        for(let bi=0;bi<bl.length;bi++){ const k=(bi+1)/bl.length; bl[bi].position.x = Math.sin(kp.userData.phase + bi*0.6)*0.28*k; bl[bi].rotation.z = Math.cos(kp.userData.phase + bi*0.6)*0.22*k; }
+      }
+      for(const c of corals){ c.userData.phase += dt*0.8; const s=c.userData.s0; const b=1+Math.sin(c.userData.phase)*0.025; c.scale.set(s*b,s*(2-b),s*b); c.rotation.z = Math.sin(c.userData.phase*0.7)*0.04; }
+      for(const an of anemones){ for(const tn of an.userData.tents){ tn.userData.ph += dt*2.2; tn.rotation.x = Math.sin(tn.userData.ph)*0.4; tn.rotation.z = Math.cos(tn.userData.ph*0.8)*0.3; } }
+      // marine snow drifts upward & loops
+      if(marineSnow){ const pa=marineSnow.geometry.attributes.position; for(let i=0;i<pa.count;i++){ let y=pa.getY(i)+dt*0.4; if(y>SEABED_Y+9.5) y=SEABED_Y; pa.setY(i,y); } pa.needsUpdate=true; marineSnow.rotation.y += dt*0.02; }
+      // light shafts shimmer
+      for(const sh of lightShafts){ sh.userData.ph += dt; sh.material.opacity = 0.05 + (Math.sin(sh.userData.ph*0.8)*0.5+0.5)*0.05; sh.rotation.z = Math.sin(sh.userData.ph*0.3)*0.18; }
       // reef fish
       for(let i=deepFish.length-1;i>=0;i--){
         const df=deepFish[i], m=df.mesh; df.t+=dt;
@@ -2069,8 +2187,7 @@ function animate(){
         if(d<ISLAND_R-1){ const nx=m.position.x/d,nz=m.position.z/d; df.heading=Math.atan2(nz,nx); }
         m.position.y = df.depth + Math.sin(df.t*2+df.bob)*0.3;
         m.rotation.y = -df.heading + Math.PI/2;
-        m.rotation.z = Math.sin(df.t*8)*0.12;
-        if(m.userData.parts && m.userData.parts.tail) m.userData.parts.tail.rotation.y=Math.sin(df.t*12)*0.5;
+        animateFish(m, df, dt, df.flee);
         const dy=Math.abs(otter.position.y-m.position.y);
         if(od<1.8 && dy<1.8 && collectCooldown<=0){ collectCooldown=0.05; catchDeepFish(df,i); }
       }
@@ -2225,7 +2342,9 @@ function animate(){
   const kk = diveCamK;
   const camH = (1-kk)*18 + kk*(camTarget.y+5.5);
   const camD = (1-kk)*23 + kk*11;
-  const desired = new THREE.Vector3(camTarget.x, camH, camTarget.z + camD);
+  // gentle underwater sway so the world feels alive & buoyant
+  const swayX = kk*Math.sin(t*0.6)*0.7, swayY = kk*Math.sin(t*0.9+1.3)*0.4;
+  const desired = new THREE.Vector3(camTarget.x+swayX, camH+swayY, camTarget.z + camD);
   camera.position.lerp(desired, Math.min(1,dt*3.2));
   camera.lookAt(camTarget.x, camTarget.y + (1-kk)*1.5 + kk*0.3, camTarget.z);
   // sun follows for shadow coverage
