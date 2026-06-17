@@ -9,8 +9,11 @@
 <style>
   :root {
     --wood:#b07a45; --stone:#9aa6b2; --reed:#7bbf6a; --shell:#ef9bc0; --fish:#ff9d4d;
-    --panel: rgba(28, 40, 56, 0.78);
+    --panel: linear-gradient(160deg, rgba(40,56,76,0.82), rgba(20,30,44,0.82));
+    --panel-solid: rgba(28, 40, 56, 0.80);
     --panel-lite: rgba(255,255,255,0.14);
+    --stroke: 1px solid rgba(255,255,255,0.14);
+    --hi: inset 0 1px 0 rgba(255,255,255,0.18);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -30,14 +33,16 @@
     position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%;
     transform: translateX(-50%);
     display: flex; gap: 7px; padding: 8px 10px;
-    background: var(--panel); border-radius: 18px;
-    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    background: var(--panel); border-radius: 18px; border: var(--stroke);
+    backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgba(0,0,0,.3), var(--hi);
   }
   .res {
     display: flex; align-items: center; gap: 5px;
-    padding: 4px 9px; border-radius: 12px; background: var(--panel-lite);
-    font-weight: 700; font-size: 15px; min-width: 52px; justify-content: center;
-    transition: transform .12s ease;
+    padding: 5px 10px; border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+    border: 1px solid rgba(255,255,255,0.08);
+    font-weight: 800; font-size: 15px; min-width: 54px; justify-content: center;
+    transition: transform .12s ease; text-shadow: 0 1px 2px rgba(0,0,0,.35);
   }
   .res .ic { font-size: 18px; }
   .res.pop { animation: pop .35s ease; }
@@ -45,11 +50,15 @@
 
   #topLeft {
     position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px;
-    background: var(--panel); border-radius: 16px; padding: 8px 12px;
-    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    background: var(--panel); border-radius: 16px; padding: 9px 13px; border: var(--stroke);
+    backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgba(0,0,0,.3), var(--hi);
     text-align: left; line-height: 1.25;
   }
-  #topLeft .lvl { font-size: 20px; font-weight: 800; }
+  #topLeft .lvl {
+    font-size: 21px; font-weight: 900; letter-spacing:.3px;
+    background: linear-gradient(90deg,#fff,#ffe9b8); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent;
+  }
   #topLeft .pop { font-size: 12px; opacity: .85; }
   #xpWrap { width: 120px; height: 7px; background: rgba(0,0,0,.3); border-radius: 6px; margin-top:5px; overflow:hidden; }
   #xpBar { height: 100%; width: 0%; background: linear-gradient(90deg,#ffe07a,#ffb347); transition: width .35s ease; }
@@ -58,23 +67,25 @@
   #buildDock {
     position: absolute; left: 50%; transform: translateX(-50%);
     bottom: max(14px, env(safe-area-inset-bottom));
-    display: flex; gap: 8px; padding: 9px; pointer-events: auto;
-    background: var(--panel); border-radius: 20px; backdrop-filter: blur(8px);
-    box-shadow: 0 8px 26px rgba(0,0,0,.3); max-width: 96vw; overflow-x: auto;
+    display: flex; gap: 8px; padding: 10px; pointer-events: auto;
+    background: var(--panel); border-radius: 22px; border: var(--stroke); backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,.34), var(--hi); max-width: 96vw; overflow-x: auto;
   }
   .build {
-    pointer-events: auto; cursor: pointer; border: none; outline: none;
-    background: var(--panel-lite); border-radius: 14px; padding: 8px 8px 6px;
+    pointer-events: auto; cursor: pointer; outline: none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.04));
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 15px; padding: 8px 9px 6px;
     display: flex; flex-direction: column; align-items: center; gap: 2px;
-    min-width: 66px; color: #fff; transition: transform .1s ease, background .15s;
+    min-width: 66px; color: #fff; transition: transform .1s ease, background .15s, box-shadow .15s;
     position: relative;
   }
   .build:active { transform: scale(.93); }
   .build .bIcon { font-size: 26px; line-height: 1; }
   .build .bName { font-size: 11px; font-weight: 700; }
   .build .bCost { font-size: 10.5px; opacity: .9; white-space: nowrap; }
-  .build.afford { background: rgba(123,191,106,.32); }
-  .build.afford:hover { background: rgba(123,191,106,.5); }
+  .build.afford { background: linear-gradient(180deg, rgba(140,210,118,.5), rgba(95,165,80,.42)); box-shadow: 0 0 0 1px rgba(170,240,150,.4), 0 4px 14px rgba(80,160,70,.35); }
+  .build.afford:hover { background: linear-gradient(180deg, rgba(150,220,128,.62), rgba(105,175,90,.52)); }
   .build.locked { opacity: .45; filter: grayscale(.6); }
   .build .lockTag {
     position:absolute; top:-7px; right:-6px; background:#e8674f; color:#fff;
@@ -171,6 +182,62 @@
   #loader .b { width: 180px; height: 8px; background: rgba(255,255,255,.35); border-radius:6px; overflow:hidden; }
   #loader .bf { height:100%; width: 30%; background:#fff; border-radius:6px; animation: load 1.3s ease-in-out infinite; }
   @keyframes load { 0%{margin-left:-30%} 100%{margin-left:100%} }
+
+  /* ---------- Cinematic vignette + warm grade ---------- */
+  #vignette {
+    position: fixed; inset: 0; z-index: 9; pointer-events: none;
+    background:
+      radial-gradient(120% 90% at 50% 38%, rgba(0,0,0,0) 52%, rgba(12,30,48,0.34) 100%),
+      radial-gradient(140% 120% at 50% -10%, rgba(255,246,214,0.16), rgba(255,246,214,0) 45%);
+    mix-blend-mode: normal;
+  }
+
+  /* ---------- Crew button + panel ---------- */
+  #crewBtn {
+    position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 50px); right: 12px;
+    pointer-events:auto; cursor:pointer; width: 40px; height: 40px; border:none;
+    border-radius: 50%; background: var(--panel); color:#fff; font-size:20px;
+    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  }
+  #crewBtn .badge {
+    position:absolute; top:-5px; right:-5px; min-width:18px; height:18px; padding:0 4px;
+    background:#ffb347; color:#5a3210; font-size:11px; font-weight:900; line-height:18px;
+    border-radius:9px; box-shadow:0 2px 6px rgba(0,0,0,.3);
+  }
+  #crewPanel {
+    position: fixed; inset: 0; z-index: 45; display:flex; align-items:center; justify-content:center;
+    padding: 20px; pointer-events:auto; background: rgba(8,18,30,0.5); backdrop-filter: blur(4px);
+  }
+  #crewPanel.hidden { display:none; }
+  #crewPanel .crewCard {
+    background: var(--panel); border-radius: 24px; padding: 18px 16px 16px; width: 100%; max-width: 380px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.45); backdrop-filter: blur(12px); position: relative;
+  }
+  #crewPanel h2 { margin: 2px 0 2px; font-size: 22px; text-align:center; }
+  #crewPanel .csub { text-align:center; font-size: 12.5px; opacity:.85; margin: 0 0 12px; }
+  #crewClose {
+    position:absolute; top:10px; right:12px; width:30px; height:30px; border:none; cursor:pointer;
+    border-radius:50%; background: var(--panel-lite); color:#fff; font-size:16px; font-weight:800;
+  }
+  .crewRow {
+    display:flex; align-items:center; gap:11px; padding:10px; margin-bottom:9px;
+    background: var(--panel-lite); border-radius:16px;
+  }
+  .crewRow .cIcon { font-size:30px; width:40px; text-align:center; flex:0 0 auto; }
+  .crewRow .cInfo { flex:1 1 auto; min-width:0; }
+  .crewRow .cName { font-weight:800; font-size:14.5px; }
+  .crewRow .cDesc { font-size:11.5px; opacity:.82; }
+  .crewRow .cCount { font-size:11px; opacity:.95; margin-top:2px; font-weight:700; }
+  .crewRow .hireBtn {
+    flex:0 0 auto; border:none; cursor:pointer; border-radius:13px; padding:9px 12px;
+    background: linear-gradient(90deg,#ffd16b,#ff9d4d); color:#5a3210; font-weight:900; font-size:12px;
+    display:flex; flex-direction:column; align-items:center; gap:1px; min-width:70px; transition:transform .1s, filter .15s;
+  }
+  .crewRow .hireBtn:active { transform: scale(.94); }
+  .crewRow .hireBtn .hcost { font-size:11px; white-space:nowrap; }
+  .crewRow.cantAfford .hireBtn { filter: grayscale(.7) brightness(.85); }
+  .crewRow.cLocked { opacity:.5; }
+  .crewRow .hireBtn.locked { background: var(--panel-lite); color:#fff; }
 </style>
 </head>
 <body>
@@ -180,6 +247,7 @@
 
 <!-- HUD -->
 <div id="hud">
+  <div id="vignette"></div>
   <div id="topLeft">
     <div class="lvl">Village Lv <span id="lvlNum">1</span></div>
     <div class="pop">🦦 Pop <span id="popNum">1</span> · 🏠 <span id="bldNum">0</span></div>
@@ -195,6 +263,7 @@
   </div>
 
   <button id="hintBtn">?</button>
+  <button id="crewBtn">🐾<span class="badge" id="crewBadge">0</span></button>
 
   <div id="toast"></div>
 
@@ -211,6 +280,16 @@
   </div>
 </div>
 
+<!-- Crew / hire panel -->
+<div id="crewPanel" class="hidden">
+  <div class="crewCard">
+    <button id="crewClose">✕</button>
+    <h2>🐾 Hire Crew</h2>
+    <p class="csub">Hire pinnipeds to auto-gather resources while you play!</p>
+    <div id="crewList"></div>
+  </div>
+</div>
+
 <!-- Start overlay -->
 <div id="start" class="overlay hidden">
   <div class="card">
@@ -221,6 +300,7 @@
       🕹️ <b>Move:</b> drag anywhere on the left (or use <b>WASD</b> / arrow keys).<br>
       💧 <b>Gather:</b> swim into floating treasures to scoop them up.<br>
       🐟 <b>Hunt:</b> chase the darting fish — they flee, so use <b>🥅 Net</b> &amp; <b>💨 Dash</b>!<br>
+      🐾 <b>Hire:</b> tap 🐾 to recruit <b>sea lions, seals &amp; walruses</b> that auto-gather for you.<br>
       🏗️ <b>Build:</b> tap a building in the dock to plant it on the island.<br>
       ⭐ <b>Grow:</b> everything earns XP — level up your village!
     </div>
@@ -230,7 +310,10 @@
 </body>
 
 <script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+{ "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
 </script>
 
 <script type="module">
@@ -280,6 +363,14 @@ const state = {
 function xpForLevel(l){ return Math.round(40 * Math.pow(1.55, l-1)); }
 function rand(a,b){ return a + Math.random()*(b-a); }
 
+// organic, wobbly coastline radius (so the island isn't a boring circle)
+function islandRadiusAt(angle){
+  return ISLAND_R
+    + Math.sin(angle*3.0 + 0.4)*1.25
+    + Math.sin(angle*5.0 - 1.1)*0.65
+    + Math.sin(angle*2.0 + 2.3)*0.85;
+}
+
 /* ============================================================= *
  *  GERSTNER WAVES  — shared between the GPU shader and gameplay  *
  *  physics so the otter, fish & drift truly ride the same swell. *
@@ -321,8 +412,9 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.08;
+renderer.toneMappingExposure = 1.12;
 $('#app').appendChild(renderer.domElement);
+let composer = null;  // optional bloom post-processing (set up after scene/camera)
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xcdeeff, 70, 150);
@@ -492,35 +584,90 @@ scene.add(caustics);
 const islandGroup = new THREE.Group();
 scene.add(islandGroup);
 
-// grassy mound
-const moundGeo = new THREE.CylinderGeometry(ISLAND_R, ISLAND_R+1.6, 3.0, 48, 1);
+// low-poly rock factory (jittered icosahedron, flat-shaded)
+function makeRock(s){
+  const geo=new THREE.IcosahedronGeometry(s,0);
+  const pos=geo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    pos.setXYZ(i, pos.getX(i)*(1+rand(-0.18,0.18)), pos.getY(i)*(1+rand(-0.28,0.06)), pos.getZ(i)*(1+rand(-0.18,0.18)));
+  }
+  geo.computeVertexNormals();
+  const col=new THREE.Color().setHSL(rand(0.07,0.11), rand(0.05,0.14), rand(0.42,0.62));
+  const m=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color:col, roughness:1, flatShading:true }));
+  m.castShadow=true; m.receiveShadow=true; return m;
+}
+
+// grassy mound — organic wobbly coastline + domed top
+const moundGeo = new THREE.CylinderGeometry(ISLAND_R, ISLAND_R+1.6, 3.2, 110, 3);
 const mpos = moundGeo.attributes.position;
 for(let i=0;i<mpos.count;i++){
   const x=mpos.getX(i), y=mpos.getY(i), z=mpos.getZ(i);
-  if(y>0){ const r=Math.sqrt(x*x+z*z)/ISLAND_R; mpos.setY(i, y + (1-r*r)*0.9); }
+  const ang=Math.atan2(z,x);
+  const f=islandRadiusAt(ang)/ISLAND_R;
+  const rr=Math.sqrt(x*x+z*z)/ISLAND_R;
+  mpos.setX(i, x*f); mpos.setZ(i, z*f);
+  if(y>0) mpos.setY(i, y + (1-rr*rr)*1.05 + Math.sin(ang*4.0)*0.18);   // gentle hilly top
 }
 moundGeo.computeVertexNormals();
-const island = new THREE.Mesh(moundGeo, new THREE.MeshStandardMaterial({ color:0x86c46a, roughness:0.95 }));
-island.position.y = 0.1; island.castShadow = true; island.receiveShadow = true;
+const island = new THREE.Mesh(moundGeo, new THREE.MeshStandardMaterial({ color:0x84c95f, roughness:0.95 }));
+island.position.y = 0.0; island.castShadow = true; island.receiveShadow = true;
 islandGroup.add(island);
 
-// sandy ring
-const sand = new THREE.Mesh(
-  new THREE.CylinderGeometry(ISLAND_R+1.7, ISLAND_R+2.4, 0.5, 48),
-  new THREE.MeshStandardMaterial({ color:0xf2dca6, roughness:1 })
-);
-sand.position.y = -0.55; sand.receiveShadow = true;
+// organic sandy shore ring (follows the coastline)
+const sandGeo = new THREE.CylinderGeometry(ISLAND_R+1.7, ISLAND_R+2.6, 0.6, 110, 1);
+const spos = sandGeo.attributes.position;
+for(let i=0;i<spos.count;i++){
+  const x=spos.getX(i), z=spos.getZ(i); const ang=Math.atan2(z,x);
+  const f=(islandRadiusAt(ang)+1.7)/(ISLAND_R+1.7);
+  spos.setX(i, x*f); spos.setZ(i, z*f);
+}
+sandGeo.computeVertexNormals();
+const sand = new THREE.Mesh(sandGeo, new THREE.MeshStandardMaterial({ color:0xf3dca0, roughness:1 }));
+sand.position.y = -0.5; sand.receiveShadow = true;
 islandGroup.add(sand);
+
+// soft sandy beach patches nestled in the coves
+for(let i=0;i<7;i++){
+  const a=rand(0,Math.PI*2), r=islandRadiusAt(a)-rand(0.6,1.8);
+  const beach=new THREE.Mesh(new THREE.CircleGeometry(rand(1.6,2.8),16),
+    new THREE.MeshStandardMaterial({color:0xf6e3b0, roughness:1}));
+  beach.rotation.x=-Math.PI/2; beach.position.set(Math.cos(a)*r, 1.42, Math.sin(a)*r);
+  beach.scale.set(1, 1, rand(0.7,1.1)); beach.receiveShadow=true;
+  islandGroup.add(beach);
+}
+
+// rocks: scattered on the island, clustered on the beach, and half-submerged in the shallows
+for(let i=0;i<11;i++){
+  const a=rand(0,Math.PI*2), r=rand(1.0, ISLAND_R-3.5);
+  const rk=makeRock(rand(0.35,0.95)); rk.position.set(Math.cos(a)*r, 1.5, Math.sin(a)*r);
+  rk.rotation.y=rand(0,6.28); islandGroup.add(rk);
+}
+for(let i=0;i<16;i++){
+  const a=rand(0,Math.PI*2), r=islandRadiusAt(a)+rand(-0.4,1.1);
+  const rk=makeRock(rand(0.4,1.2)); rk.position.set(Math.cos(a)*r, rand(0.0,0.7), Math.sin(a)*r);
+  rk.rotation.y=rand(0,6.28); islandGroup.add(rk);
+  if(Math.random()<0.5){ const rk2=makeRock(rand(0.25,0.6)); rk2.position.set(rk.position.x+rand(-0.8,0.8), rk.position.y+0.1, rk.position.z+rand(-0.8,0.8)); islandGroup.add(rk2); }
+}
 
 // scatter decorative grass tufts on island
 const tuftGeo = new THREE.ConeGeometry(0.25, 0.8, 5);
-for(let i=0;i<46;i++){
-  const a = Math.random()*Math.PI*2, r = Math.random()*(ISLAND_R-1.5);
+for(let i=0;i<54;i++){
+  const a = Math.random()*Math.PI*2, r = Math.random()*(ISLAND_R-3.0);
   const x=Math.cos(a)*r, z=Math.sin(a)*r;
-  const m = new THREE.Mesh(tuftGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(0.28, 0.5, rand(0.4,0.55)), roughness:1 }));
-  m.position.set(x, 1.55, z); m.scale.setScalar(rand(0.6,1.3));
+  const m = new THREE.Mesh(tuftGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(0.28, 0.55, rand(0.4,0.56)), roughness:1 }));
+  m.position.set(x, 1.6, z); m.scale.setScalar(rand(0.6,1.3));
   m.rotation.y = Math.random()*Math.PI; m.castShadow = true;
   islandGroup.add(m);
+}
+// little wildflowers for pops of colour
+const flowerCols=[0xff6b9d,0xffd166,0xff9d4d,0xb892ff,0xffffff];
+for(let i=0;i<24;i++){
+  const a=Math.random()*Math.PI*2, r=Math.random()*(ISLAND_R-3.5);
+  const fg=new THREE.Group();
+  const st=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,0.4,5), new THREE.MeshStandardMaterial({color:0x4a8f3f})); st.position.y=0.2; fg.add(st);
+  const fl=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8), new THREE.MeshStandardMaterial({color:flowerCols[(Math.random()*flowerCols.length)|0],roughness:0.6})); fl.position.y=0.42; fl.scale.set(1,0.7,1); fg.add(fl);
+  fg.position.set(Math.cos(a)*r, 1.55, Math.sin(a)*r); fg.castShadow=true;
+  islandGroup.add(fg);
 }
 
 // Build plots arranged in rings on the island
@@ -542,56 +689,59 @@ function makeOtter(scaleScale=1, furColor=0x9b6a43){
   const fur = new THREE.MeshStandardMaterial({ color:furColor, roughness:0.7 });
   const belly = new THREE.MeshStandardMaterial({ color:0xe8c79a, roughness:0.7 });
   const dark = new THREE.MeshStandardMaterial({ color:0x2a1c12, roughness:0.5 });
+  const eyeBlack = new THREE.MeshStandardMaterial({ color:0x0a0a0a, roughness:0.45 });
   const pink = new THREE.MeshStandardMaterial({ color:0xd76e7e, roughness:0.6 });
 
-  // body
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 0.7, 6, 14), fur);
-  body.rotation.z = Math.PI/2; body.position.y = 0.62; body.castShadow = true;
-  body.scale.set(1,1,1.15);
+  // chubby round body
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.68, 0.5, 8, 18), fur);
+  body.rotation.z = Math.PI/2; body.position.y = 0.6; body.castShadow = true;
+  body.scale.set(1.05,1.05,1.18);
   g.add(body);
-  const bel = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14,12), belly);
-  bel.position.set(0.0,0.5,0.42); bel.scale.set(0.8,0.9,0.7);
+  // big squishy belly
+  const bel = new THREE.Mesh(new THREE.SphereGeometry(0.56, 18,14), belly);
+  bel.position.set(0.0,0.46,0.46); bel.scale.set(0.92,0.92,0.78);
   g.add(bel);
 
-  // head
+  // big round head
   const head = new THREE.Group();
-  head.position.set(0, 1.05, 0.62);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.46, 18,16), fur);
-  skull.castShadow = true; head.add(skull);
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14,12), belly);
-  snout.position.set(0,-0.08,0.33); snout.scale.set(1,0.8,0.9); head.add(snout);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8), dark);
-  nose.position.set(0,-0.04,0.6); head.add(nose);
+  head.position.set(0, 1.08, 0.62);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.54, 20,18), fur);
+  skull.castShadow = true; skull.scale.set(1.06,1.0,1.0); head.add(skull);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14,12), belly);
+  snout.position.set(0,-0.12,0.36); snout.scale.set(1.05,0.78,0.85); head.add(snout);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.115,12,10), dark);
+  nose.position.set(0,-0.06,0.66); head.add(nose);
   for(const sx of [-1,1]){
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8), dark);
-    eye.position.set(0.18*sx, 0.12, 0.4); head.add(eye);
-    const sp = new THREE.Mesh(new THREE.SphereGeometry(0.035,6,6), new THREE.MeshBasicMaterial({color:0xffffff}));
-    sp.position.set(0.2*sx, 0.16, 0.47); head.add(sp);
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.13,10,8), fur);
-    ear.position.set(0.3*sx, 0.38, -0.02); ear.scale.set(1,0.7,0.6); head.add(ear);
+    // big round black-dot eyes
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15,14,12), eyeBlack);
+    eye.position.set(0.21*sx, 0.14, 0.42); eye.scale.set(0.92,1.05,0.9); head.add(eye);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.15,12,10), fur);
+    ear.position.set(0.36*sx, 0.42, -0.02); ear.scale.set(1,0.7,0.55); head.add(ear);
   }
+  // big rosy cheeks
   for(const sx of [-1,1]){
-    const ch = new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), pink);
-    ch.position.set(0.26*sx,-0.02,0.34); head.add(ch);
+    const ch = new THREE.Mesh(new THREE.SphereGeometry(0.13,10,10), pink);
+    ch.position.set(0.31*sx,-0.04,0.34); ch.scale.set(1,0.8,0.7); head.add(ch);
   }
   g.add(head);
   g.userData.head = head;
 
-  // arms
+  // stubby little arms
   const arms=[];
   for(const sx of [-1,1]){
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.13,0.3,4,8), fur);
-    arm.position.set(0.45*sx, 0.55, 0.45); arm.castShadow=true;
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.16,0.22,5,10), fur);
+    arm.position.set(0.52*sx, 0.5, 0.46); arm.castShadow=true;
     g.add(arm); arms.push(arm);
   }
   g.userData.arms = arms;
   for(const sx of [-1,1]){
-    const ft = new THREE.Mesh(new THREE.SphereGeometry(0.18,10,8), dark);
-    ft.position.set(0.28*sx,0.18,-0.3); ft.scale.set(1,0.5,1.3); g.add(ft);
+    const ft = new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10), dark);
+    ft.position.set(0.3*sx,0.16,-0.34); ft.scale.set(1,0.5,1.35); g.add(ft);
   }
-  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.22,0.9,5,10), fur);
-  tail.position.set(0,0.4,-0.85); tail.rotation.x = -0.5; tail.castShadow=true;
-  tail.scale.set(1,1,1.2);
+  // thick tail
+  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.26,0.85,6,12), fur);
+  tail.position.set(0,0.4,-0.9); tail.rotation.x = -0.5; tail.castShadow=true;
+  tail.scale.set(1,1,1.25);
   g.add(tail);
   g.userData.tail = tail;
 
@@ -793,6 +943,249 @@ function makeBuilding(id){
   return g;
 }
 
+/* ============================================================= *
+ *  CREW  — hireable pinnipeds that auto-gather resources         *
+ * ============================================================= */
+const WORKERS = {
+  sealion: { icon:'🦁', name:'Sea Lion',     desc:'Hunts the open water',  res:[{k:'fish',n:1}],                cost:{wood:8, shell:3}, every:6.5, lvl:1, color:0x9c7a45 },
+  seal:    { icon:'🦭', name:'Spotted Seal', desc:'Forages reeds & shells',res:[{k:'shell',n:1},{k:'reed',n:1}], cost:{wood:6, stone:4}, every:8.0, lvl:2, color:0xb3bcc6 },
+  walrus:  { icon:'🦣', name:'Walrus',       desc:'Hauls stone & driftwood',res:[{k:'stone',n:1},{k:'wood',n:1}],cost:{reed:6, fish:4},  every:9.5, lvl:3, color:0x8a6a4a },
+};
+state.crew = { sealion:0, seal:0, walrus:0 };
+const workers = [];
+
+function makePinniped(type){
+  const def = WORKERS[type];
+  const g = new THREE.Group();
+  const skin  = new THREE.MeshStandardMaterial({ color:def.color, roughness:0.55 });
+  const belly = new THREE.MeshStandardMaterial({ color:new THREE.Color(def.color).offsetHSL(0,-0.08,0.18), roughness:0.6 });
+  const dark  = new THREE.MeshStandardMaterial({ color:0x1c140d, roughness:0.4 });
+  const eyeBlack = new THREE.MeshStandardMaterial({ color:0x0a0a0a, roughness:0.45 });
+  const white = new THREE.MeshStandardMaterial({ color:0xfff7e8, roughness:0.5 });
+  const pink  = new THREE.MeshStandardMaterial({ color:0xd76e7e, roughness:0.6 });
+  const big = type==='walrus' ? 1.18 : 1.0;
+
+  // fat blubbery body
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.66,0.72,8,16), skin);
+  body.rotation.z=Math.PI/2; body.position.y=0.58; body.scale.set(1.05,1.05,1.28); body.castShadow=true; g.add(body);
+  const bel = new THREE.Mesh(new THREE.SphereGeometry(0.52,16,12), belly);
+  bel.position.set(0,0.4,0.5); bel.scale.set(0.9,0.82,0.78); g.add(bel);
+
+  // raised round head
+  const head = new THREE.Group(); head.position.set(0,1.02,0.72);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.5,18,16), skin); skull.castShadow=true; head.add(skull);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.34,14,12), skin);
+  snout.position.set(0,-0.1,0.34); snout.scale.set(0.95,0.78, type==='sealion'?1.25:1.0); head.add(snout);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.12,12,10), dark); nose.position.set(0,-0.07,0.62); head.add(nose);
+  for(const sx of[-1,1]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(0.14,14,12),eyeBlack); eye.position.set(0.21*sx,0.13,0.37); head.add(eye);
+    const ch=new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10),pink); ch.position.set(0.32*sx,-0.05,0.3); ch.scale.set(1,0.7,0.6); head.add(ch);
+  }
+  // whiskers
+  for(const sx of[-1,1]) for(let i=0;i<3;i++){
+    const wk=new THREE.Mesh(new THREE.CylinderGeometry(0.006,0.006,0.34,4),white);
+    wk.position.set(0.22*sx,-0.05-i*0.05,0.5); wk.rotation.z=Math.PI/2; wk.rotation.y=sx*(0.35+i*0.18); head.add(wk);
+  }
+  if(type==='sealion'){
+    for(const sx of[-1,1]){ const ear=new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8),skin); ear.position.set(0.36*sx,0.34,-0.05); ear.scale.set(0.55,1,0.4); head.add(ear); }
+  }
+  if(type==='walrus'){
+    for(const sx of[-1,1]){ const tusk=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.075,0.55,8),white); tusk.position.set(0.12*sx,-0.42,0.46); tusk.rotation.x=0.22; head.add(tusk); }
+    const mu=new THREE.Mesh(new THREE.SphereGeometry(0.24,12,10),new THREE.MeshStandardMaterial({color:0xe8d9b8,roughness:0.85}));
+    mu.position.set(0,-0.16,0.5); mu.scale.set(1.4,0.5,0.6); head.add(mu);
+  }
+  g.add(head); g.userData.head=head;
+
+  // fore flippers
+  const flippers=[];
+  for(const sx of[-1,1]){
+    const fl=new THREE.Mesh(new THREE.CapsuleGeometry(0.1,0.46,4,8), skin);
+    fl.position.set(0.52*sx,0.3,0.42); fl.rotation.z=sx*0.6; fl.rotation.x=0.5; fl.castShadow=true; g.add(fl); flippers.push(fl);
+  }
+  g.userData.flippers=flippers;
+  // rear flipper fan
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(0.5,0.55,3), skin);
+  tail.rotation.x=-Math.PI/2; tail.position.set(0,0.45,-1.0); tail.scale.set(1,1,0.42); tail.castShadow=true; g.add(tail);
+  g.userData.tail=tail;
+
+  // seal spots
+  if(type==='seal'){
+    for(let i=0;i<16;i++){
+      const dot=new THREE.Mesh(new THREE.SphereGeometry(0.045,6,6),new THREE.MeshStandardMaterial({color:0x5a6470,roughness:0.7}));
+      const a=rand(-1.0,1.0), zz=rand(-0.9,0.6);
+      dot.position.set(a*0.55, 0.95+rand(-0.1,0.15), zz); g.add(dot);
+    }
+  }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.scale.setScalar(big);
+  return g;
+}
+
+function workerCost(type){
+  const owned = state.crew[type], base = WORKERS[type].cost, o = {};
+  for(const k in base) o[k] = Math.round(base[k]*Math.pow(1.6, owned));
+  return o;
+}
+function costStrObj(o){ return Object.entries(o).map(([k,v])=>`${RES[k].ic}${v}`).join(' '); }
+
+function spawnWorker(type){
+  const m = makePinniped(type);
+  const wk = {
+    type, mesh:m,
+    ang: rand(0,Math.PI*2), rad: rand(ISLAND_R+4, POND_R-5),
+    spd: rand(0.25,0.5)*(Math.random()<0.5?-1:1), bob: rand(0,6.28),
+    timer: rand(2, WORKERS[type].every),
+  };
+  workers.push(wk); scene.add(m);
+}
+
+function hire(type){
+  const def = WORKERS[type];
+  if(state.level < def.lvl){ toast(`🔒 Reach Village Lv ${def.lvl} first!`); beep(180,0.08,'square'); return; }
+  const cost = workerCost(type);
+  for(const k in cost){ if(state.res[k] < cost[k]){ toast(`Need ${costStrObj(cost)} — gather more!`); beep(180,0.08,'square'); return; } }
+  for(const k in cost) state.res[k]-=cost[k];
+  state.crew[type]++;
+  state.pop++;
+  spawnWorker(type);
+  updateResHUD(); updateStatsHUD(); renderCrew(); updateCrewBadge();
+  toast(`${def.icon} ${def.name} hired! Auto-gathering ${def.res.map(r=>RES[r.k].ic).join('')}`);
+  beep(550,0.08); setTimeout(()=>beep(740,0.12),90);
+  confettiAt(workers[workers.length-1].mesh.position.clone().setY(1.4), 16);
+}
+
+// floating "+resource" labels
+const floats = [];
+function floatLabel(pos, text){
+  const c=document.createElement('canvas'); c.width=256; c.height=128;
+  const x=c.getContext('2d');
+  x.font='bold 70px Segoe UI, sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.lineWidth=10; x.strokeStyle='rgba(0,0,0,0.55)'; x.strokeText(text,128,64);
+  x.fillStyle='#fff'; x.fillText(text,128,64);
+  const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthWrite:false, depthTest:false }));
+  sp.scale.set(2.1,1.05,1); sp.position.copy(pos); sp.renderOrder=12; scene.add(sp);
+  floats.push({ sp, life:0, max:1.4 });
+}
+
+function renderCrew(){
+  const list = $('#crewList');
+  if(list.children.length !== Object.keys(WORKERS).length){
+    list.innerHTML='';
+    for(const type in WORKERS){
+      const def=WORKERS[type];
+      const row=document.createElement('div'); row.className='crewRow'; row.dataset.type=type;
+      row.innerHTML =
+        `<div class="cIcon">${def.icon}</div>`+
+        `<div class="cInfo"><div class="cName">${def.name}</div>`+
+        `<div class="cDesc">${def.desc} → ${def.res.map(r=>RES[r.k].ic).join('')} every ${def.every|0}s</div>`+
+        `<div class="cCount">Owned: <span class="cn">0</span></div></div>`+
+        `<button class="hireBtn"><span>HIRE</span><span class="hcost"></span></button>`;
+      row.querySelector('.hireBtn').addEventListener('click',()=>hire(type));
+      list.appendChild(row);
+    }
+  }
+  for(const type in WORKERS){
+    const def=WORKERS[type];
+    const row=list.querySelector(`[data-type="${type}"]`);
+    row.querySelector('.cn').textContent = state.crew[type];
+    const btn=row.querySelector('.hireBtn');
+    const locked = state.level < def.lvl;
+    row.classList.toggle('cLocked', locked);
+    if(locked){
+      btn.classList.add('locked');
+      btn.querySelector('span').textContent='🔒 Lv'+def.lvl;
+      btn.querySelector('.hcost').textContent='';
+      row.classList.remove('cantAfford');
+    } else {
+      btn.classList.remove('locked');
+      btn.querySelector('span').textContent='HIRE';
+      const cost=workerCost(type);
+      btn.querySelector('.hcost').textContent=costStrObj(cost);
+      let afford=true; for(const k in cost) if(state.res[k]<cost[k]) afford=false;
+      row.classList.toggle('cantAfford', !afford);
+    }
+  }
+}
+function updateCrewBadge(){
+  const n = state.crew.sealion + state.crew.seal + state.crew.walrus;
+  $('#crewBadge').textContent = n;
+  $('#crewBadge').style.display = n>0 ? 'block' : 'none';
+}
+
+/* ============================================================= *
+ *  AMBIENT DECOR  — clouds, lily pads & shoreline cattails       *
+ * ============================================================= */
+const clouds = [];
+function makeCloud(){
+  const g=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({ color:0xffffff, roughness:1, emissive:0xdfeeff, emissiveIntensity:0.25 });
+  const n=3+(Math.random()*3|0);
+  for(let i=0;i<n;i++){
+    const s=new THREE.Mesh(new THREE.SphereGeometry(rand(2.4,4.0),10,8), mat);
+    s.position.set(rand(-4,4), rand(-0.6,0.6), rand(-2,2)); s.scale.y=0.6; g.add(s);
+  }
+  return g;
+}
+for(let i=0;i<7;i++){
+  const c=makeCloud();
+  const a=Math.random()*Math.PI*2, r=rand(POND_R+10, POND_R+55);
+  c.position.set(Math.cos(a)*r, rand(28,42), Math.sin(a)*r);
+  c.userData.spd = rand(0.15,0.4);
+  clouds.push(c); scene.add(c);
+}
+
+const lilies = [];
+function makeLily(){
+  const g=new THREE.Group();
+  const pad=new THREE.Mesh(new THREE.CircleGeometry(rand(0.6,1.0),16),
+    new THREE.MeshStandardMaterial({color:0x2f8f4f, roughness:0.9, side:THREE.DoubleSide}));
+  pad.rotation.x=-Math.PI/2; g.add(pad);
+  // notch + lighter veins via a smaller darker disc
+  const v=new THREE.Mesh(new THREE.CircleGeometry(pad.geometry.parameters.radius*0.55,14),
+    new THREE.MeshStandardMaterial({color:0x3fae63, roughness:0.9}));
+  v.rotation.x=-Math.PI/2; v.position.y=0.012; g.add(v);
+  if(Math.random()<0.5){
+    const cols=[0xff9ec7,0xfff1a8,0xffffff];
+    const fl=new THREE.Group();
+    for(let i=0;i<6;i++){
+      const pe=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6),new THREE.MeshStandardMaterial({color:cols[(Math.random()*cols.length)|0],roughness:0.6}));
+      pe.position.set(Math.cos(i/6*Math.PI*2)*0.16,0.12,Math.sin(i/6*Math.PI*2)*0.16); pe.scale.set(1,0.7,1.6); pe.lookAt(0,0.4,0); fl.add(pe);
+    }
+    const cen=new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8),new THREE.MeshStandardMaterial({color:0xffd45e,emissive:0xffb347,emissiveIntensity:0.4}));
+    cen.position.y=0.14; fl.add(cen); g.add(fl);
+  }
+  g.traverse(o=>{ if(o.isMesh) o.receiveShadow=true; });
+  return g;
+}
+for(let i=0;i<16;i++){
+  const l=makeLily();
+  const a=Math.random()*Math.PI*2, r=rand(ISLAND_R+2.5, POND_R-3);
+  l.userData.x=Math.cos(a)*r; l.userData.z=Math.sin(a)*r; l.userData.ph=rand(0,6.28);
+  l.position.set(l.userData.x, 0.05, l.userData.z);
+  lilies.push(l); scene.add(l);
+}
+
+// shoreline cattails
+const cattailMat=new THREE.MeshStandardMaterial({color:0x5fa84a,roughness:0.9});
+const headMat=new THREE.MeshStandardMaterial({color:0x7a4a23,roughness:0.9});
+for(let c=0;c<24;c++){
+  const a=Math.random()*Math.PI*2, r=islandRadiusAt(a)+rand(0.3,1.6);
+  const cl=new THREE.Group();
+  const n=2+(Math.random()*3|0);
+  for(let i=0;i<n;i++){
+    const h=rand(1.4,2.4);
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.06,h,5),cattailMat);
+    st.position.set(rand(-0.3,0.3),h/2,rand(-0.3,0.3)); st.castShadow=true; cl.add(st);
+    if(Math.random()<0.7){
+      const hd=new THREE.Mesh(new THREE.CapsuleGeometry(0.1,0.35,4,8),headMat);
+      hd.position.set(st.position.x,h-0.1,st.position.z); hd.castShadow=true; cl.add(hd);
+    }
+  }
+  cl.position.set(Math.cos(a)*r, 0.2, Math.sin(a)*r);
+  islandGroup.add(cl);
+}
+
 // ---------- HUD wiring ----------
 function updateResHUD(flashKey){
   for(const k of RES_KEYS){
@@ -801,6 +1194,7 @@ function updateResHUD(flashKey){
     if(flashKey===k){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
   }
   renderDock();
+  renderCrew();
 }
 function updateStatsHUD(){
   $('#lvlNum').textContent = state.level;
@@ -1161,6 +1555,49 @@ function animate(){
       f.rotation.y = f.userData.angle + (f.userData.speed>0?Math.PI:0) + Math.PI/2;
       if(f.userData.tail) f.userData.tail.rotation.z = Math.sin(t*8+f.userData.bob)*0.4;
     }
+
+    // ----- hired crew (auto-gather) -----
+    for(const wk of workers){
+      wk.ang += wk.spd*dt;
+      const x=Math.cos(wk.ang)*wk.rad, z=Math.sin(wk.ang)*wk.rad;
+      const wi=waveInfo(x,z,t); const sf=shoreFactor(x,z);
+      wk.mesh.position.set(x, 0.18 + wi.h*sf + Math.sin(t*2+wk.bob)*0.05, z);
+      wk.mesh.rotation.y = -wk.ang + (wk.spd>0 ? -Math.PI/2 : Math.PI/2);
+      wk.mesh.rotation.z = wi.nz*0.4*sf;
+      const fl=wk.mesh.userData.flippers;
+      if(fl){ fl[0].rotation.x=0.5+Math.sin(t*6+wk.bob)*0.45; fl[1].rotation.x=0.5-Math.sin(t*6+wk.bob)*0.45; }
+      if(wk.mesh.userData.tail) wk.mesh.userData.tail.rotation.z=Math.sin(t*4+wk.bob)*0.18;
+      wk.timer -= dt;
+      if(wk.timer<=0){
+        const def=WORKERS[wk.type]; wk.timer=def.every*rand(0.85,1.15);
+        let label='';
+        for(const r of def.res){ state.res[r.k]+=r.n; label+=RES[r.k].ic; }
+        updateResHUD();
+        spawnBurst(wk.mesh.position.clone().setY(0.7), RES[def.res[0].k].color);
+        spawnRipple(x, z, 0xffffff, 1.5);
+        floatLabel(wk.mesh.position.clone().setY(1.5), '+'+label);
+        beep(620+Math.random()*100, 0.06, 'sine', 0.04);
+      }
+    }
+  }
+
+  // ----- floating labels -----
+  for(let i=floats.length-1;i>=0;i--){
+    const f=floats[i]; f.life+=dt; const kk=f.life/f.max;
+    f.sp.position.y += dt*1.1;
+    f.sp.material.opacity = kk<0.2 ? kk/0.2 : 1-(kk-0.2)/0.8;
+    if(kk>=1){ scene.remove(f.sp); f.sp.material.map.dispose(); f.sp.material.dispose(); floats.splice(i,1); }
+  }
+  // ----- drifting clouds -----
+  for(const c of clouds){
+    c.position.x += c.userData.spd*dt;
+    if(c.position.x > POND_R+60) c.position.x = -(POND_R+60);
+  }
+  // ----- lily pads ride the swell -----
+  for(const l of lilies){
+    const wi=waveInfo(l.userData.x, l.userData.z, t); const sf=shoreFactor(l.userData.x,l.userData.z);
+    l.position.y = 0.04 + wi.h*sf;
+    l.rotation.z = wi.nz*0.5*sf; l.rotation.x = -wi.nx*0.5*sf;
   }
 
   // ----- bursts -----
@@ -1212,21 +1649,42 @@ function animate(){
   camera.lookAt(camTarget.x, camTarget.y+1.5, camTarget.z);
   sun.target.position.copy(otter.position);
 
-  renderer.render(scene, camera);
+  if(composer) composer.render(); else renderer.render(scene, camera);
 }
+
+// ---------- Post-processing (soft bloom) — optional, loaded async, never blocks ----------
+(async()=>{
+  try{
+    const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
+      import('three/addons/postprocessing/EffectComposer.js'),
+      import('three/addons/postprocessing/RenderPass.js'),
+      import('three/addons/postprocessing/UnrealBloomPass.js'),
+      import('three/addons/postprocessing/OutputPass.js'),
+    ]);
+    const comp = new EffectComposer(renderer);
+    comp.addPass(new RenderPass(scene, camera));
+    comp.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.55, 0.82));
+    comp.addPass(new OutputPass());
+    comp.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    comp.setSize(window.innerWidth, window.innerHeight);
+    composer = comp;  // animate() picks this up automatically next frame
+  }catch(e){ composer = null; /* fall back to direct render */ }
+})();
+
 animate();
 
 // ---------- Resize ----------
 window.addEventListener('resize',()=>{
   camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if(composer) composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // ---------- Boot ----------
 function init(){
   for(let i=0;i<10;i++) spawnDrift();
   for(let i=0;i<7;i++) spawnFish();
-  updateResHUD(); updateStatsHUD();
+  updateResHUD(); updateStatsHUD(); renderCrew(); updateCrewBadge();
 }
 init();
 
@@ -1241,10 +1699,18 @@ $('#startBtn').addEventListener('click',()=>{
 });
 
 $('#hintBtn').addEventListener('click',()=>{
-  toast('Gather 🪵🌾🪨🐚, hunt 🐟 with 🥅/💨, then build on your island!');
+  toast('Gather 🪵🌾🪨🐚, hunt 🐟 with 🥅/💨, hire 🐾 crew, then build!');
 });
 
+// crew panel open/close
+function openCrew(){ renderCrew(); $('#crewPanel').classList.remove('hidden'); if(audioCtx&&audioCtx.state==='suspended') audioCtx.resume(); }
+function closeCrew(){ $('#crewPanel').classList.add('hidden'); }
+$('#crewBtn').addEventListener('click', openCrew);
+$('#crewClose').addEventListener('click', closeCrew);
+$('#crewPanel').addEventListener('click', e=>{ if(e.target.id==='crewPanel') closeCrew(); });
+
 // expose for debugging
-window.__otter = { state, scene, spawnDrift, spawnFish, waveInfo };
+window.__otter = { state, scene, otter, camera, spawnDrift, spawnFish, waveInfo,
+  hire, tryBuild, BUILDINGS, workers, updateResHUD, updateStatsHUD, renderCrew, updateCrewBadge };
 </script>
 </html>

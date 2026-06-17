@@ -26,8 +26,13 @@ Or simply open `index.html` in a modern browser.
 - **Hunt:** chase the fish — they sense you and flee! Use the tools on the right:
   - **🥅 Net** (toggle): widens your catch radius for both fish and drift.
   - **💨 Dash** (cooldown): a burst of speed to run fish down.
+- **Hire crew:** tap **🐾** to recruit chubby pinnipeds that auto-gather while you play:
+  - **🦁 Sea Lion** → hunts **fish**
+  - **🦭 Spotted Seal** → forages **reeds & shells**
+  - **🦣 Walrus** → hauls **stone & driftwood**
+  - Each hire costs more than the last and unlocks at higher Village Levels.
 - **Build:** tap a building in the bottom dock — it plants on the nearest empty plot on your island.
-- **Grow:** every catch and build gives XP and pop; reach higher Village Levels to unlock the fish pond, docks, wells, big trees and a lantern tower.
+- **Grow:** every catch, hire and build gives XP and pop; reach higher Village Levels to unlock the fish pond, docks, wells, big trees and a lantern tower.
 
 ## Tech
 
@@ -38,8 +43,14 @@ Or simply open `index.html` in a modern browser.
 - Polished shaders: fresnel sky reflections, sun specular glints, crest & shore
   foam, a gradient sky dome, a glowing sun, and animated underwater caustics.
 - Schooling fish with flee/hunt AI, expanding wake & splash ripples, particle
-  bursts, confetti, and tiny WebAudio sound effects.
-- Procedural low-poly models throughout.
+  bursts, floating reward labels, confetti, and tiny WebAudio sound effects.
+- Soft bloom post-processing (loaded async, with a safe fallback) plus a
+  cinematic vignette for that polished mobile-game look.
+- Hireable pinniped crew (sea lion, spotted seal, walrus) that swim the pond
+  and auto-gather resources for you.
+- An organic, hand-shaped island with a wobbly coastline, sandy beaches,
+  scattered low-poly rocks, cattails, wildflowers and drifting clouds.
+- Procedural low-poly models throughout — all chubby, cute, and black-eyed.
 - Mobile-first: touch joystick, on-screen tools, responsive HUD, safe-area aware.
 
 Built to run anywhere a browser does. Have fun! 🌊
