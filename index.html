@@ -12,75 +12,105 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      "three": "./lib/three.module.js"
     }
   }
   </script>
 </head>
 <body>
-  <!-- Loading screen -->
   <div id="loader">
     <div class="otter-spin">🦦</div>
     <div class="loader-title">Otter Village</div>
     <div class="loader-sub">paddling in…</div>
   </div>
 
-  <!-- Game canvas mount -->
   <div id="app"></div>
 
-  <!-- HUD -->
   <div id="hud" class="hidden">
     <div id="resource-bar">
       <div class="res" data-res="wood"><span class="ico">🪵</span><span class="count" id="count-wood">0</span></div>
       <div class="res" data-res="reed"><span class="ico">🌿</span><span class="count" id="count-reed">0</span></div>
       <div class="res" data-res="shell"><span class="ico">🐚</span><span class="count" id="count-shell">0</span></div>
       <div class="res" data-res="berry"><span class="ico">🫐</span><span class="count" id="count-berry">0</span></div>
+      <div class="res" data-res="fish"><span class="ico">🐟</span><span class="count" id="count-fish">0</span></div>
+      <div class="res" data-res="ore"><span class="ico">🪨</span><span class="count" id="count-ore">0</span></div>
     </div>
 
-    <div id="village-level">
-      <span class="ico">🏡</span><span id="village-count">0</span>
-      <span class="vl-label">village</span>
+    <div id="pouch">
+      <span class="ico">🎒</span>
+      <div class="pouch-bar"><div id="pouch-fill"></div></div>
+      <span id="pouch-text">0/12</span>
     </div>
 
-    <button id="build-toggle" aria-label="Build menu">🔨</button>
+    <div id="stats">
+      <div class="stat pearl"><span class="ico">🦪</span><span id="pearl-count">0</span></div>
+      <div class="stat"><span class="ico">🏡</span><span id="village-count">0</span></div>
+      <div class="stat"><span class="ico">🦦</span><span id="otter-count">0</span></div>
+    </div>
 
-    <!-- Build menu -->
-    <div id="build-menu" class="closed">
-      <div class="bm-header">
-        <span>Build your village</span>
-        <button id="build-close">✕</button>
+    <button id="sheet-toggle" aria-label="Open menu">🦦</button>
+
+    <div id="sheet" class="closed">
+      <div class="sheet-grab"></div>
+      <div class="sheet-tabs">
+        <button class="tab active" data-tab="otters">👷 Otters</button>
+        <button class="tab" data-tab="pets">🐾 Pets</button>
+        <button class="tab" data-tab="style">✨ Style</button>
+        <button id="sheet-close">✕</button>
       </div>
-      <div id="build-list"></div>
-      <p class="bm-hint">Tap a building, then tap the grassy island to place it.</p>
+      <div id="tab-otters" class="tab-panel">
+        <div id="otter-summary"></div>
+        <div id="carry-upgrade"></div>
+        <div class="section-label">Jobs</div>
+        <div id="job-list"></div>
+        <p class="hint">Assign idle otters to jobs — they gather resources for you over time.</p>
+      </div>
+      <div id="tab-pets" class="tab-panel hidden">
+        <div id="pet-list"></div>
+        <p class="hint">Adopt a pet for a permanent bonus. They love to roam the pond.</p>
+      </div>
+      <div id="tab-style" class="tab-panel hidden">
+        <div id="style-balance"></div>
+        <div class="section-label">Fur Skins</div>
+        <div id="skin-list" class="cosmetic-grid"></div>
+        <div class="section-label">Hats</div>
+        <div id="hat-list" class="cosmetic-grid"></div>
+        <p class="hint">Earn pearls 🦪 from treasure, the whirlpool and shiny drifters!</p>
+      </div>
     </div>
 
-    <!-- Placement banner -->
-    <div id="place-banner" class="hidden">
-      <span id="place-text">Tap the island to place</span>
-      <button id="place-cancel">cancel</button>
+    <!-- Plot build / upgrade popup -->
+    <div id="plot-popup" class="hidden">
+      <div class="popup-card">
+        <div class="popup-header">
+          <span id="popup-title">Build here</span>
+          <button id="popup-close">✕</button>
+        </div>
+        <div id="popup-content"></div>
+      </div>
     </div>
 
-    <!-- Toast messages -->
+    <div id="hint-banner" class="hidden"></div>
     <div id="toast"></div>
   </div>
 
-  <!-- Touch joystick -->
+  <div id="hit-flash"></div>
+
   <div id="joystick" class="hidden">
     <div id="joystick-knob"></div>
   </div>
 
-  <!-- Intro / start panel -->
   <div id="intro">
     <div class="intro-card">
       <div class="intro-otter">🦦</div>
       <h1>Otter Village</h1>
-      <p>Paddle around the pond and gather <b>drifting treasures</b> —
-         driftwood, reeds, shells and berries float by on the current.</p>
-      <p>Bring them back and <b>build a cozy village</b> for your otter family. 🏡</p>
+      <p>Paddle the pond and gather <b>drifting treasures</b> — driftwood, reeds,
+         shells, berries, fish 🐟 and shiny ore 🪨 — into your pouch 🎒.</p>
+      <p>Tap the glowing <b>＋ plots</b> on the island to build & upgrade. Welcome
+         <b>otter villagers</b>, give them jobs, and adopt a dolphin 🐬 or turtle 🐢!</p>
       <div class="controls-hint">
         <div><b>Move:</b> drag anywhere (mobile) &nbsp;·&nbsp; WASD / arrows (desktop)</div>
-        <div><b>Gather:</b> just paddle into floating items</div>
+        <div><b>Gather:</b> paddle into items, then return near the island to bank them</div>
       </div>
       <button id="start-btn">Start paddling 🌊</button>
     </div>

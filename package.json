@@ -1,0 +1,16 @@
+{
+  "name": "otter-village",
+  "version": "1.0.0",
+  "description": "A cute stylized 3D otter village web game (Three.js, no build step).",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "serve": "npx serve ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@fontsource/baloo-2": "^5.0.0",
+    "playwright": "^1.61.0",
+    "three": "^0.160.0"
+  }
+}
