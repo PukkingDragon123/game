@@ -290,6 +290,21 @@
   }
   .actBtn:active { transform: scale(.86); }
   .actBtn.big { width:84px; height:84px; font-size:40px; background: linear-gradient(145deg,#9be86a,#52bf52); color:#13360f; box-shadow:0 8px 24px rgba(90,200,80,.5); }
+  #carryHud {
+    position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 104px); right:12px;
+    display:flex; align-items:center; gap:6px; background:var(--panel); border:1.5px solid rgba(255,255,255,.18);
+    padding:5px 9px; z-index:6;
+  }
+  #carryHud .cLabel { font-size:18px; }
+  #carrySlots { display:flex; gap:5px; }
+  #carrySlots .cSlot {
+    width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-size:19px;
+    border:1.5px dashed rgba(255,255,255,.3); background:rgba(0,0,0,.18);
+  }
+  #carrySlots .cSlot.full { border-style:solid; border-color:rgba(255,255,255,.5); background:rgba(255,255,255,.12); }
+  #bpPanel { position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); backdrop-filter:blur(4px); padding:18px; }
+  #bpPanel.hidden { display:none; }
+  #bpList { display:flex; flex-direction:column; gap:6px; }
   #miniMap {
     position:absolute; left:12px; top: calc(max(12px, env(safe-area-inset-top)) + 74px);
     width:128px; height:128px; border:2px solid rgba(255,255,255,.4); border-radius:50%;
@@ -442,16 +457,17 @@
 <!-- HUD -->
 <div id="hud">
   <div id="topLeft">
-    <div class="lvl">Village Lv <span id="lvlNum">1</span></div>
+    <div class="lvl">Village Lv <span id="lvlNum">1</span> · 🌅 Day <span id="dayNum">1</span></div>
     <div class="pop">🦦 Pop <span id="popNum">1</span> · 🏠 <span id="bldNum">0</span></div>
     <div id="xpWrap"><div id="xpBar"></div></div>
   </div>
 
-  <div id="moneyChip"><span class="ic">💰</span><span id="moneyNum">0</span></div>
+  <div id="moneyChip"><span class="ic">🦪</span><span id="moneyNum">0</span></div>
+
+  <!-- carried resources (max 3) -->
+  <div id="carryHud"><span class="cLabel">🤲</span><div id="carrySlots"></div></div>
 
   <button id="fishBtn" title="Fish Collection">🐠</button>
-  <button id="editBtn" title="Decorate / Edit mode">🛠️</button>
-  <button id="bagBtn" title="Inventory (E)">🎒</button>
 
   <!-- Oxygen + depth (diving only) -->
   <div id="diveHud" class="hidden">
@@ -470,6 +486,15 @@
   </div>
 
   <div id="toast"></div>
+
+  <!-- Build-plot blueprint picker -->
+  <div id="bpPanel" class="hidden">
+    <div class="craftCard">
+      <div class="invHead"><span id="craftTitle">🏗️ Choose a Blueprint</span><button id="bpClose" class="invX">✕</button></div>
+      <div id="bpList"></div>
+      <p class="craftHint">Gather 🌳 wood &amp; 🪨 rock (carry 3 max) and deliver them to the site with 🤚.</p>
+    </div>
+  </div>
 
   <!-- Workbench crafting -->
   <button id="craftBtn" title="Craft (C)">🔨 Craft</button>
@@ -539,12 +564,11 @@
       <summary>📖 How to play</summary>
       <div class="howto">
         🕹️ <b>Move:</b> drag on the left (or <b>WASD</b>). <b>⚡ Dash:</b> button, <b>Shift</b>/<b>Space</b>, or double-tap.<br>
-        🤚 <b>Collect (E):</b> tap the green button (or press <b>E</b>) to catch fish, gather 🌳🪨🌿 nodes, grab 💎 treasure, open chests, read 📬 mail &amp; recruit villagers.<br>
+        🤚 <b>Do (E):</b> tap the green button (or press <b>E</b>) for everything — chop 🌳 trees &amp; mine 🪨 rocks, build, fish, read 📬 mail, recruit villagers.<br>
+        🤲 <b>Carry &amp; build:</b> you can hold <b>3</b> resources at once. Stand on an empty plot → pick a <b>blueprint</b> → carry 🪵 wood &amp; 🪨 rock to the 🚧 site to build it!<br>
+        🦪 <b>Pearls</b> are your money — earn them from fishing &amp; treasure, then Buy Land to grow the island.<br>
         🎣 <b>Fishing:</b> hook a fish, then tap <b>REEL!</b> fast — the bar drains as it fights back. Fill it to land the catch!<br>
-        ⛵ <b>Sail:</b> walk to your boat &amp; press 🤚 to sail the ocean. Tap 🤚 near a shore to dock.<br>
-        🗺️ <b>Map:</b> the minimap shows 🏘️ Village Isle (recruit) &amp; 🏴‍☠️ Treasure Isle.<br>
-        🤿 <b>Dive:</b> tap the mask on open water to explore the reef (or press <b>F</b>).<br>
-        🔨 <b>Craft (C):</b> the Workbench crafts items into your bag; select one &amp; tap 📍 to place it.<br>
+        ⛵ <b>Sail</b> to 🏘️ Village Isle (recruit villagers) &amp; 🏴‍☠️ Treasure Isle. <b>Dive</b> (🤿/F) for reef fish &amp; treasure.<br>
       </div>
     </details>
     <button class="btn" id="startBtn">▶  Play</button>
@@ -1659,7 +1683,7 @@ function openChestPickup(cp){
   cp.ready=false; cp.regrow=45;
   const coins=40+((Math.random()*70)|0); state.coins+=coins;
   const gem=['pearl','coral','relic'][(Math.random()*3)|0]; addItem(gem,1);
-  toast(`🏴‍☠️ Treasure! +${coins}💰 and a ${itemDef(gem).name}`);
+  toast(`🏴‍☠️ Treasure! +🦪${coins} pearls!`);
   spawnBurst(cp.mesh.position.clone().setY(GRASS_Y+0.7), 0xffd35a); confettiAt(cp.mesh.position, 18);
   beep(660,0.08); setTimeout(()=>beep(990,0.12),90); addShake(0.2);
   updateResHUD(); updateStatsHUD();
@@ -1699,7 +1723,7 @@ const MAIL_MSGS = [
 const DAY_LEN = 150;   // seconds per in-game day
 let dayTimer = 0;
 function advanceDay(){
-  state.day = (state.day||1) + 1;
+  state.day = (state.day||1) + 1; updateEconomyHUD();
   const t=$('#toast'); t.style.color='#ffe07a'; toast(`🌅 Day ${state.day} — a fresh morning in the village!`); setTimeout(()=>{ t.style.color=''; },1900);
   beep(523,0.12,'sine'); setTimeout(()=>beep(659,0.14,'sine'),130);
   if(Math.random()<0.55){
@@ -1752,12 +1776,8 @@ function spawnDrop(id, pos, count=1){
 // ---------- Foraging / harvest nodes on the island ----------
 const forageNodes=[];
 const FORAGE = {
-  tree:    { yield:'wood',     n:[2,3], regrow:30, build:'tree' },
-  rock:    { yield:'stone',    n:[2,3], regrow:35, build:'rock', bonus:{id:'ore', chance:0.3} },
-  berry:   { yield:'berry',    n:[2,3], regrow:24, build:'berry' },
-  mushroom:{ yield:'mushroom', n:[1,2], regrow:24, build:'mushroom' },
-  flower:  { yield:'flower',   n:[1,2], regrow:20, build:'flower' },
-  grass:   { yield:'reed',     n:[1,2], regrow:14, build:'grass' },   // tall grass → fiber
+  tree: { yield:'wood', n:[1,1], regrow:18, build:'tree' },
+  rock: { yield:'rock', n:[1,1], regrow:22, build:'rock' },
 };
 function makeForageMesh(type){
   const g=new THREE.Group();
@@ -1790,22 +1810,19 @@ function spawnForageNode(type, x, z){
   forageNodes.push({ mesh, type, def:FORAGE[type], ready:true, regrow:0, shake:0, baseY:GRASS_Y });
 }
 function scatterForage(){
-  const types=['tree','tree','rock','grass','grass','berry','mushroom','flower'];
-  for(let i=0;i<22;i++){
+  const types=['tree','tree','tree','rock','rock'];
+  for(let i=0;i<20;i++){
     const a=Math.random()*Math.PI*2, r=rand(2, ISLAND_R-2.5);
     spawnForageNode(types[(Math.random()*types.length)|0], Math.cos(a)*r, Math.sin(a)*r);
   }
 }
 function harvestNode(nd){
   if(!nd.ready) return;
+  if(!canCarryMore()){ toast('🙌 Hands full (3) — deliver to a plot first!'); beep(180,0.08,'square'); return; }
   nd.ready=false; nd.regrow=nd.def.regrow; nd.shake=0.45;
-  const [a,b]=nd.def.n, cnt=a+((Math.random()*(b-a+1))|0);
+  pickUpRes(nd.def.yield);
   const p=nd.mesh.position.clone().setY(GRASS_Y+0.6);
-  for(let i=0;i<cnt;i++) spawnDrop(nd.def.yield, p.clone(), 1);
-  if(nd.def.bonus && Math.random()<nd.def.bonus.chance) spawnDrop(nd.def.bonus.id, p.clone(), 1);
-  // FX: chips/leaves + shake + sound
-  spawnBurst(p, ITEM_COL[nd.def.yield]||0xffffff);
-  addShake(0.18);
+  spawnBurst(p, RES3[nd.def.yield].col); addShake(0.16);
   beep(nd.type==='rock'?180:300, 0.07, nd.type==='rock'?'square':'triangle', 0.05);
 }
 
@@ -2347,8 +2364,8 @@ function adoptPet(){
 // ---------- Catch a fish ----------
 function catchFish(sw){
   const sp = sw.sp, rar = RARITY[sp.rarity];
-  addItem("fish",1);
   state.caught[sp.id] = (state.caught[sp.id]||0)+1;
+  addPearls(2 + Math.round(rar.glow*8));
   fishGroup.remove(sw.mesh);
   const idx = swimmers.indexOf(sw); if(idx>=0) swimmers.splice(idx,1);
   updateResHUD('fish');
@@ -2368,8 +2385,8 @@ function catchFish(sw){
 // catch a reef fish while diving
 function catchDeepFish(df, idx){
   const sp=df.sp, rar=RARITY[sp.rarity];
-  addItem("fish",1);
   state.caught[sp.id]=(state.caught[sp.id]||0)+1;
+  addPearls(3 + Math.round(rar.glow*10));
   underwater.remove(df.mesh); deepFish.splice(idx,1);
   updateResHUD('fish');
   const tEl=$('#toast'); tEl.style.color=rar.css;
@@ -2439,7 +2456,7 @@ function collectTreasure(tr, idx){
   underwater.remove(tr.mesh); treasures.splice(idx,1);
   updateResHUD('coins');
   const tEl=$('#toast'); tEl.style.color=rar.css;
-  toast(`${t.emoji} ${t.name}! +💰${t.coins}`);
+  toast(`${t.emoji} ${t.name}! +🦪${t.coins}`);
   setTimeout(()=>{ tEl.style.color=''; }, 1900);
   spawnBurst(tr.mesh.position.clone().setY(tr.mesh.position.y+0.4), t.col);
   spawnRing(tr.mesh.position.clone().setY(SEABED_Y+0.1), t.col, 2+rar.glow*2.5);
@@ -2613,14 +2630,15 @@ function contextHint(){
   if(!state.running) return '🤚';
   if(!state.diving && boatNear()) return '⛵';
   if(mailboxNear()) return '📬';
-  const tl=tileAt(otter.position.x,otter.position.z);
-  if(tl&&tl.obj&&state.chests.find(c=>c.obj===tl.obj)) return '📦';
   if(nearestNPCInRange()) return '🧑';
   if(nearestChestPickup()) return '🏴‍☠️';
-  if(nearestForageReady()) return '🌿';
+  if(nearestForageReady()) return '🪓';
+  if(!state.diving){
+    const tl=tileAt(otter.position.x,otter.position.z);
+    if(tl){ if(sites.find(s=>s.tile===tl)) return '🔨'; if(!tl.used) return '🏗️'; }
+  }
   if(state.diving){ if(nearestTreasureIdx()>=0) return '💎'; if(nearestDeepFishIdx()>=0) return '🎣'; return '🤚'; }
   if(nearestFishInRange()) return '🎣';
-  if(nearestDriftInRange()) return '🫳';
   return '🤚';
 }
 function interact(){
@@ -2628,21 +2646,27 @@ function interact(){
   if(state.sailing){ disembark(); return; }
   if(!state.diving && boatNear()){ boardBoat(); return; }
   if(mailboxNear()){ readMail(); return; }
-  const tl=tileAt(otter.position.x,otter.position.z);
-  const chest = tl&&tl.obj ? state.chests.find(c=>c.obj===tl.obj) : null;
-  if(chest){ openInv(chest); return; }
   const npc=nearestNPCInRange(); if(npc){ recruitNPC(npc); return; }
   const cp=nearestChestPickup(); if(cp){ openChestPickup(cp); return; }
+  // delivering to a construction site takes priority when standing on one
+  if(!state.diving){
+    const tl=tileAt(otter.position.x, otter.position.z);
+    const site = tl ? sites.find(s=>s.tile===tl) : null;
+    if(site){ deliverToSite(site); return; }
+  }
   const nd=nearestForageReady(); if(nd){ harvestNode(nd); return; }
+  // otherwise standing on an empty plot opens the blueprint picker
+  if(!state.diving){
+    const tl=tileAt(otter.position.x, otter.position.z);
+    if(tl && !tl.used){ openBlueprintPicker(tl); return; }
+  }
   if(state.diving){
     const ti=nearestTreasureIdx(); if(ti>=0){ collectTreasure(treasures[ti], ti); return; }
     const di=nearestDeepFishIdx(); if(di>=0){ startFishing({kind:'deep', df:deepFish[di], sp:deepFish[di].sp}); return; }
     toast('Swim closer to grab treasure or fish 💎'); return;
   }
   const fi=nearestFishInRange(); if(fi){ startFishing({kind:'surface', sw:fi, sp:fi.sp}); return; }
-  const dr=nearestDriftInRange();
-  if(dr){ dr.collecting=true; dr.scoop=0; spawnBurst(dr.mesh.position.clone().setY(dr.mesh.position.y+0.4), RES[dr.type].color); beep(520+Math.random()*120,0.07,'triangle',0.05); return; }
-  toast('Nothing to collect nearby 🤚');
+  toast('Nothing here — gather 🌳🪨, fish, or stand on a plot to build 🏗️');
 }
 
 // ---------- Input ----------
@@ -2702,6 +2726,8 @@ $('#collectBtn').addEventListener('click', interact);
 $('#craftBtn').addEventListener('click', ()=> $('#craftPanel').classList.contains('hidden') ? openCraft() : closeCraft());
 $('#craftClose').addEventListener('click', closeCraft);
 $('#craftPanel').addEventListener('click', e=>{ if(e.target.id==='craftPanel') closeCraft(); });
+$('#bpClose').addEventListener('click', closeBlueprint);
+$('#bpPanel').addEventListener('click', e=>{ if(e.target.id==='bpPanel') closeBlueprint(); });
 
 // ----- inventory wiring -----
 function toggleInv(){
@@ -2875,16 +2901,14 @@ function animate(){
       }
     }
 
-    // ----- tile cursor (Animal Crossing placement helper) -----
-    if(!state.diving && !state.sailing && (state.editMode || gridFlash>0 || selectedPlaceable())){
+    // ----- build-plot cursor: highlight the empty plot you're standing on -----
+    if(!state.diving && !state.sailing){
       const under = tileAt(otter.position.x, otter.position.z);
-      if(state.editMode && under && under.used){
-        tileCursor.visible=true; tileCursor.position.set(under.x, TILE_Y+0.03, under.z); tileCursor.material.color.setHex(0xff7e6e);
-      } else {
-        const tgt = nearestEmptyTile(otter.position);
-        if(tgt){ tileCursor.visible=true; tileCursor.position.set(tgt.x, TILE_Y+0.03, tgt.z); tileCursor.material.color.setHex(0x9be86a); }
-        else tileCursor.visible=false;
-      }
+      if(under && !under.used){
+        tileCursor.visible=true; tileCursor.position.set(under.x, TILE_Y+0.03, under.z); tileCursor.material.color.setHex(0x9be86a);
+      } else if(under && sites.find(s=>s.tile===under)){
+        tileCursor.visible=true; tileCursor.position.set(under.x, TILE_Y+0.03, under.z); tileCursor.material.color.setHex(0xffd166);
+      } else tileCursor.visible=false;
     } else tileCursor.visible=false;
     if(gridFlash>0){ gridFlash-=dt; if(gridFlash<=0 && !state.editMode) gridGroup.visible=false; }
 
@@ -2930,9 +2954,7 @@ function animate(){
       if(Math.random()<0.01){ it.vel.x+=rand(-0.2,0.2); it.vel.z+=rand(-0.2,0.2); }
       // (collection now happens via the 🤚 / E action — see interact())
     }
-    // maintain drift population
-    const target = 9 + Math.min(8, state.level*1);
-    while(driftItems.length < target) spawnDrift();
+    // (floating drift removed — wood & rock now come from trees & rocks on land)
 
     // ----- forage nodes: harvest on contact, regrow, idle wobble -----
     for(const nd of forageNodes){
@@ -3110,6 +3132,16 @@ function animate(){
 
     // ----- idle boat bob (when not being sailed) -----
     if(!state.sailing){ boat.position.y = 0.25 + Math.sin(t*1.4)*0.06; boat.rotation.z = Math.sin(t*0.9)*0.03; if(boat.userData.flag) boat.userData.flag.rotation.y = Math.sin(t*3)*0.3; }
+
+    // ----- carried resources float at the otter's hands (+ holding pose) -----
+    if(carry.length && !state.diving && !state.sailing){
+      carryVis.visible=true;
+      const fwd=new THREE.Vector3(Math.sin(otter.rotation.y),0,Math.cos(otter.rotation.y));
+      carryVis.position.set(otter.position.x+fwd.x*0.55, otter.position.y+0.92 + Math.max(0,carryLift)*0.35, otter.position.z+fwd.z*0.55);
+      carryVis.rotation.y = otter.rotation.y;
+      const A=otter.userData.arms; if(A){ A[0].rotation.set(-1.15,0,-0.12); A[1].rotation.set(-1.15,0,0.12); }   // hold out in front
+    } else carryVis.visible=false;
+    if(carryLift>0) carryLift-=dt;
 
     // ----- daily time: a new day brings a visitor or a letter -----
     dayTimer += dt;
@@ -3316,18 +3348,118 @@ function drawMiniMap(){
   g.beginPath(); g.moveTo(pm.x+fx*7, pm.y+fy*7); g.lineTo(pm.x-fx*4+rxx*4, pm.y-fy*4+ryy*4); g.lineTo(pm.x-fx*4-rxx*4, pm.y-fy*4-ryy*4); g.closePath(); g.fill();
 }
 
+// ===================== Simple economy: carry & build-plots =====================
+const RES3 = { wood:{icon:'🪵', col:0xb07a45}, rock:{icon:'🪨', col:0x9aa6b2} };
+const CARRY_MAX = 3;
+const carry = [];                       // up to 3 of 'wood' | 'rock'
+const carryVis = new THREE.Group(); scene.add(carryVis);
+let carryLift = 0;
+function canCarryMore(){ return carry.length < CARRY_MAX; }
+function pickUpRes(kind){
+  if(!canCarryMore()){ toast('🙌 Hands full (3) — deliver to a plot first!'); beep(180,0.08,'square'); return false; }
+  carry.push(kind); carryLift=0.35; rebuildCarryVis(); updateEconomyHUD();
+  return true;
+}
+function rebuildCarryVis(){
+  while(carryVis.children.length) carryVis.remove(carryVis.children[0]);
+  carry.forEach((k,i)=>{
+    let m;
+    if(k==='wood'){ m=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.5,8), new THREE.MeshStandardMaterial({color:0xb07a45,roughness:0.85})); m.rotation.z=Math.PI/2; }
+    else m=new THREE.Mesh(new THREE.DodecahedronGeometry(0.2,0), new THREE.MeshStandardMaterial({color:0x9aa6b2,roughness:1}));
+    m.position.y=i*0.26; m.castShadow=true; carryVis.add(m);
+  });
+}
+function addPearls(n){ state.coins+=n; updateEconomyHUD('pearl'); }
+
+// blueprints reuse the existing building meshes; costs are wood/rock only
+const BLUEPRINTS = [
+  { bid:'hut',    icon:'🛖', name:'Otter Hut',    need:{wood:4},        lvl:1 },
+  { bid:'garden', icon:'🌷', name:'Garden',       need:{wood:2,rock:1}, lvl:1 },
+  { bid:'house',  icon:'🏠', name:'Cozy House',   need:{wood:6,rock:3}, lvl:1 },
+  { bid:'well',   icon:'⛲', name:'Stone Well',    need:{rock:6,wood:2}, lvl:2 },
+  { bid:'dock',   icon:'⛵', name:'Little Dock',   need:{wood:6,rock:2}, lvl:2 },
+  { bid:'tree',   icon:'🌳', name:'Big Tree',      need:{wood:5},        lvl:2 },
+  { bid:'tower',  icon:'🏯', name:'Lantern Tower', need:{rock:8,wood:6}, lvl:3 },
+];
+const sites = [];
+function needStr(need){ return Object.entries(need).map(([k,v])=>RES3[k].icon+v).join(' '); }
+function makeSiteFrame(){
+  const g=new THREE.Group(); const w=new THREE.MeshStandardMaterial({color:0xcaa472,roughness:0.9});
+  for(const [x,z] of [[-0.6,-0.6],[0.6,-0.6],[-0.6,0.6],[0.6,0.6]]){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.12,1.0,0.12),w); p.position.set(x,0.5,z); p.castShadow=true; g.add(p); }
+  const top=new THREE.Mesh(new THREE.BoxGeometry(1.45,0.1,1.45), new THREE.MeshStandardMaterial({color:0xcaa472,transparent:true,opacity:0.45})); top.position.y=1.0; g.add(top);
+  return g;
+}
+function makeLabelSprite(text){
+  const c=document.createElement('canvas'); c.width=256; c.height=64;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false }));
+  sp.scale.set(2.8,0.7,1); sp.userData.canvas=c; setLabel(sp,text); return sp;
+}
+function setLabel(sp,text){
+  const c=sp.userData.canvas, x=c.getContext('2d'); x.clearRect(0,0,256,64);
+  x.font='bold 34px sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.lineWidth=5; x.strokeStyle='rgba(0,0,0,.6)'; x.strokeText(text,128,34);
+  x.fillStyle='#fff'; x.fillText(text,128,34); sp.material.map.needsUpdate=true;
+}
+function remaining(s){ const r={}; for(const k in s.bp.need) r[k]=s.bp.need[k]-(s.delivered[k]||0); return r; }
+function siteDone(s){ for(const k in s.bp.need){ if((s.delivered[k]||0) < s.bp.need[k]) return false; } return true; }
+function updateSiteLabel(s){ const r=remaining(s); const txt=Object.entries(r).filter(([k,v])=>v>0).map(([k,v])=>RES3[k].icon+v).join(' ')||'✅'; setLabel(s.label, txt); }
+function startSite(tile, bp){
+  tile.used=true;
+  const frame=makeSiteFrame(); frame.position.set(tile.x, GRASS_Y, tile.z); islandGroup.add(frame);
+  const label=makeLabelSprite(needStr(bp.need)); label.position.set(tile.x, GRASS_Y+1.7, tile.z); scene.add(label);
+  const s={ tile, bp, delivered:{}, frame, label }; tile.obj=frame; sites.push(s); updateSiteLabel(s);
+  toast(`🚧 ${bp.name} started — carry ${needStr(bp.need)} here to build it!`);
+  beep(440,0.08); flashGrid();
+}
+function deliverToSite(s){
+  if(carry.length===0){ toast('🌳 Gather wood & 🪨 rock, then deliver it here!'); beep(200,0.07,'square'); return; }
+  let any=false;
+  for(let i=carry.length-1;i>=0;i--){ const k=carry[i]; if((s.delivered[k]||0) < (s.bp.need[k]||0)){ s.delivered[k]=(s.delivered[k]||0)+1; carry.splice(i,1); any=true; } }
+  rebuildCarryVis(); updateEconomyHUD();
+  if(any){ beep(520,0.06); setTimeout(()=>beep(680,0.07),60); spawnBurst(s.frame.position.clone().setY(GRASS_Y+0.7), 0xffe6a8); updateSiteLabel(s); addShake(0.08); }
+  else toast('This site doesn’t need what you’re carrying.');
+  if(siteDone(s)) completeSite(s);
+}
+function completeSite(s){
+  const i=sites.indexOf(s); if(i>=0) sites.splice(i,1);
+  islandGroup.remove(s.frame); scene.remove(s.label);
+  s.tile.used=false; s.tile.obj=null;       // doPlaceBuild re-claims it cleanly
+  doPlaceBuild(BUILD_BY_ID[s.bp.bid], s.tile);
+}
+// blueprint picker overlay
+function openBlueprintPicker(tile){
+  const list=$('#bpList'); list.innerHTML='';
+  BLUEPRINTS.forEach(bp=>{
+    const locked=state.level<bp.lvl;
+    const row=document.createElement('button'); row.className='recipe'+(locked?' locked':' ok');
+    row.innerHTML=`<span class="rIcon">${bp.icon}</span><span class="rMid"><span class="rName">${bp.name}</span><span class="rCost">${needStr(bp.need)}</span></span>`+(locked?`<span class="rLock">Lv${bp.lvl}</span>`:'');
+    row.addEventListener('click',()=>{ if(locked){ toast(`🔒 Reach Village Lv ${bp.lvl}`); return; } closeBlueprint(); startSite(tile, bp); });
+    list.appendChild(row);
+  });
+  $('#bpPanel').classList.remove('hidden');
+}
+function closeBlueprint(){ $('#bpPanel').classList.add('hidden'); }
+
+// HUD: pearls (currency), carried items, day
+function updateEconomyHUD(flash){
+  const pn=$('#moneyNum'); if(pn) pn.textContent=state.coins;
+  if(flash==='pearl'){ const m=$('#moneyChip'); if(m){ m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); } }
+  const dn=$('#dayNum'); if(dn) dn.textContent=state.day;
+  const slots=$('#carrySlots');
+  if(slots){ for(let i=0;i<CARRY_MAX;i++){ let el=slots.children[i]; if(!el){ el=document.createElement('div'); el.className='cSlot'; slots.appendChild(el); } el.textContent = carry[i] ? RES3[carry[i]].icon : ''; el.classList.toggle('full', !!carry[i]); } }
+}
+
 // ---------- Boot ----------
 function init(){
   buildExtraIslands();       // village isle (recruit villagers) + treasure isle (sail to them)
   buildHomeDockAndMail();    // pier by the boat + a mailbox for daily letters
-  for(let i=0;i<10;i++) spawnDrift();
   for(let i=0;i<6;i++) spawnFish();
   for(let i=0;i<8;i++) spawnDeepFish();
   for(let i=0;i<6;i++) spawnTreasure();
-  scatterForage();           // berry bushes, trees, rocks, mushrooms & flowers to harvest
-  // a small starter kit so building is possible right away
-  addItem('wood',8); addItem('reed',5); addItem('stone',5); addItem('berry',3);
-  renderHotbar(); updateResHUD(); updateStatsHUD(); drawMiniMap();
+  scatterForage();           // 🌳 trees (wood) & 🪨 rocks (rock) to gather
+  // hide the old crafting/inventory UI — the game now uses carry + build-plots
+  ['#craftBtn','#placeBtn','#pickBtn','#editBtn','#bagBtn','#hotbar'].forEach(s=>{ const e=$(s); if(e) e.style.display='none'; });
+  updateResHUD(); updateStatsHUD(); updateEconomyHUD(); drawMiniMap();
   startTitleScene();         // cinematic sunset title until the player taps Play
 }
 init();
