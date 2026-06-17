@@ -43,11 +43,12 @@
     border: 1.5px solid rgba(255,255,255,.18);
     backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.28);
   }
+  #resBar { flex-wrap: wrap; justify-content: center; max-width: 96vw; }
   .res {
-    display: flex; align-items: center; gap: 5px;
-    padding: 4px 9px; border-radius: 0; background: var(--panel-lite);
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: 0; background: var(--panel-lite);
     border: 1px solid rgba(255,255,255,.12);
-    font-weight: 400; font-size: 19px; min-width: 56px; justify-content: center;
+    font-weight: 400; font-size: 18px; min-width: 50px; justify-content: center;
     transition: transform .12s ease;
   }
   .res .ic { font-size: 18px; }
@@ -137,6 +138,44 @@
   }
   #hintBtn:active { transform: scale(.86) rotate(-8deg); }
 
+  #fishBtn {
+    position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 52px); right: 12px;
+    pointer-events:auto; cursor:pointer; width: 42px; height: 42px;
+    border:1.5px solid rgba(255,255,255,.2);
+    border-radius: 0; background: var(--panel); color:#fff; font-size:22px;
+    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.28);
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1);
+  }
+  #fishBtn:active { transform: scale(.86) rotate(8deg); }
+
+  .res-fish .ic, .res-food .ic { filter: drop-shadow(0 0 4px rgba(120,200,255,.6)); }
+  .res-food { background: linear-gradient(145deg, rgba(255,180,90,.34), rgba(220,120,60,.18)); }
+
+  /* ---------- Fish collection panel ---------- */
+  #fishDex {
+    position: fixed; inset: 0; z-index: 60; display:flex; align-items:center; justify-content:center;
+    background: rgba(10,20,32,.55); backdrop-filter: blur(4px); padding: 20px;
+  }
+  #fishDex.hidden { display:none; }
+  .dexCard {
+    background: var(--panel); border: 2px solid rgba(255,255,255,.22); border-radius:0;
+    padding: 22px 22px 18px; max-width: 460px; width:100%; max-height: 84vh; overflow-y:auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45); text-align:center;
+  }
+  .dexCard h2 { font-family: var(--hand-title); font-size: 36px; margin:0 0 2px; font-weight:700; }
+  .dexSub { font-size: 16px; opacity:.85; margin: 0 0 14px; }
+  #dexGrid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
+  .dexItem {
+    display:flex; align-items:center; gap:9px; padding: 8px 10px; text-align:left;
+    background: linear-gradient(145deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+    border-left: 4px solid #888; border:1px solid rgba(255,255,255,.1);
+  }
+  .dexItem.locked { opacity:.4; filter: grayscale(.7); }
+  .dexItem .dx { font-size: 28px; line-height:1; }
+  .dexItem .dn { font-size: 17px; font-weight:400; line-height:1.05; }
+  .dexItem .dr { font-size: 13px; opacity:.9; }
+  .dexItem .dc { margin-left:auto; font-size: 18px; font-weight:400; }
+
   /* ---------- Overlays ---------- */
   .overlay {
     position: fixed; inset: 0; z-index: 50; display: flex; align-items: center;
@@ -203,9 +242,21 @@
     <div class="res" id="res-reed"><span class="ic">🌾</span><span class="n">0</span></div>
     <div class="res" id="res-stone"><span class="ic">🪨</span><span class="n">0</span></div>
     <div class="res" id="res-shell"><span class="ic">🐚</span><span class="n">0</span></div>
+    <div class="res res-fish" id="res-fish"><span class="ic">🐟</span><span class="n">0</span></div>
+    <div class="res res-food" id="res-food"><span class="ic">🍣</span><span class="n">0</span></div>
   </div>
 
-  <button id="hintBtn">?</button>
+  <button id="fishBtn" title="Fish Collection">🐠</button>
+
+  <!-- Fish collection / Aquarium log -->
+  <div id="fishDex" class="hidden">
+    <div class="dexCard">
+      <h2>🐠 Fish Collection</h2>
+      <p class="dexSub">Swim into fish to catch them — rarer fish make more food!</p>
+      <div id="dexGrid"></div>
+      <button class="btn dexClose" id="fishClose">Close</button>
+    </div>
+  </div>
 
   <div id="toast"></div>
 
@@ -222,12 +273,14 @@
   <div class="card">
     <div class="otterTitle">🦦</div>
     <h1>Otter Village</h1>
-    <p class="sub">Gather drifting treasures &amp; grow your cozy village</p>
+    <p class="sub">Gather treasures, catch fish &amp; grow your cozy village</p>
     <div class="howto">
       🕹️ <b>Move:</b> drag anywhere on the left (or use <b>WASD</b> / arrow keys).<br>
-      💧 <b>Gather:</b> swim into the floating resources to scoop them up.<br>
-      🏗️ <b>Build:</b> tap a building in the bottom dock to plant it on the island.<br>
-      ⭐ <b>Grow:</b> each build adds otters &amp; XP — level up your village!
+      💧 <b>Gather:</b> swim into floating resources &amp; 🐟 fish to scoop them up.<br>
+      🐠 <b>Rarity:</b> rarer fish are jumpier — but worth far more food!<br>
+      🏭 <b>Make:</b> a Fish Factory turns fish into 🍣 food; a Wood Cutter makes wood.<br>
+      🐾 <b>Pets &amp; 🏝️ Island:</b> spend food on pets, expand the isle for more room.<br>
+      🏗️ <b>Build &amp; grow:</b> each build adds otters &amp; XP — level up your village!
     </div>
     <button class="btn" id="startBtn">Start Splashing 🌊</button>
   </div>
@@ -249,36 +302,82 @@ const $ = (s) => document.querySelector(s);
 
 // ---------- Config ----------
 const POND_R = 34;          // water radius
-const ISLAND_R = 13;        // central grassy island radius
+let   ISLAND_R = 13;        // central grassy island radius (grows on expansion)
+const ISLAND_MAX = 22;      // expansion cap
 const OTTER_SPEED = 11;
 
-// Resource types
+// Resource types (drifting collectibles) + processed goods
 const RES = {
   wood:  { ic:'🪵', name:'Driftwood', color:0xb07a45 },
   reed:  { ic:'🌾', name:'Reeds',     color:0x7bbf6a },
   stone: { ic:'🪨', name:'Stone',     color:0x9aa6b2 },
   shell: { ic:'🐚', name:'Shells',    color:0xef9bc0 },
+  food:  { ic:'🍣', name:'Food',      color:0xff9d4d },  // processed from fish
 };
-const RES_KEYS = Object.keys(RES);
+const RES_KEYS = ['wood','reed','stone','shell'];        // only these drift in the water
 
-// Buildings: cost, xp, pop, minLevel, builder fn
+// ---------- Fish: rarity tiers + species ----------
+const RARITY = {
+  common:    { name:'Common',    css:'#b9c6d2', col:0xb9c6d2, weight:54, food:1,  glow:0.0 },
+  uncommon:  { name:'Uncommon',  css:'#73d68a', col:0x73d68a, weight:27, food:2,  glow:0.0 },
+  rare:      { name:'Rare',      css:'#5aa6ff', col:0x5aa6ff, weight:12, food:4,  glow:0.25 },
+  epic:      { name:'Epic',      css:'#c07bff', col:0xc07bff, weight:5,  food:9,  glow:0.5 },
+  legendary: { name:'Legendary', css:'#ffc24a', col:0xffc24a, weight:2,  food:22, glow:0.9 },
+};
+// Each species: id, name, emoji, body color, rarity, optional fin color & shape flag
+const FISH = [
+  { id:'minnow',  name:'Minnow',          emoji:'🐟', rarity:'common',    body:0x8fb0c4, fin:0x6f95ad },
+  { id:'carp',    name:'River Carp',      emoji:'🐡', rarity:'common',    body:0xcf8a5a, fin:0xb06a3a },
+  { id:'perch',   name:'Spotted Perch',   emoji:'🐠', rarity:'common',    body:0x8fc46a, fin:0x5f9a44, spots:true },
+  { id:'trout',   name:'Rainbow Trout',   emoji:'🌈', rarity:'uncommon',  body:0x7fd6c0, fin:0xff9bc0, stripe:true },
+  { id:'puffer',  name:'Puffer',          emoji:'🐡', rarity:'uncommon',  body:0xe6c24a, fin:0xc79a2a, puff:true },
+  { id:'angel',   name:'Crystal Angel',   emoji:'🪼', rarity:'rare',      body:0x6fd0ff, fin:0xa8e6ff, tall:true },
+  { id:'koi',     name:'Rainbow Koi',     emoji:'🎏', rarity:'epic',      body:0xff7ea8, fin:0xfff0a8, stripe:true },
+  { id:'arowana', name:'Golden Arowana',  emoji:'🐉', rarity:'legendary', body:0xffd24a, fin:0xfff2b0, long:true },
+];
+const FISH_BY_ID = Object.fromEntries(FISH.map(f=>[f.id,f]));
+
+// Buildings: cost, xp, pop, minLevel. `produces` = manufacture facility; `special` = action.
 const BUILDINGS = [
-  { id:'hut',    icon:'🛖', name:'Otter Hut',  cost:{wood:5,reed:3},          xp:18, pop:1, lvl:1 },
-  { id:'garden', icon:'🌷', name:'Garden',     cost:{reed:6,shell:2},         xp:14, pop:0, lvl:1 },
-  { id:'dock',   icon:'⛵', name:'Little Dock', cost:{wood:8,stone:3},         xp:24, pop:1, lvl:2 },
-  { id:'well',   icon:'⛲', name:'Stone Well',  cost:{stone:8,wood:2},         xp:28, pop:0, lvl:2 },
-  { id:'tree',   icon:'🌳', name:'Big Tree',    cost:{reed:5,wood:5,shell:3},  xp:30, pop:0, lvl:3 },
-  { id:'tower',  icon:'🏯', name:'Lantern Tower',cost:{stone:14,wood:10,shell:6},xp:60,pop:2, lvl:4 },
+  { id:'hut',     icon:'🛖', name:'Otter Hut',   cost:{wood:5,reed:3},           xp:18, pop:1, lvl:1 },
+  { id:'garden',  icon:'🌷', name:'Garden',      cost:{reed:6,shell:2},          xp:14, pop:0, lvl:1 },
+  { id:'woodcut', icon:'🪚', name:'Wood Cutter', cost:{wood:4,stone:5},          xp:22, pop:0, lvl:2,
+    produces:{ out:'wood', amount:1, every:6 } },
+  { id:'dock',    icon:'⛵', name:'Little Dock',  cost:{wood:8,stone:3},          xp:24, pop:1, lvl:2 },
+  { id:'well',    icon:'⛲', name:'Stone Well',   cost:{stone:8,wood:2},          xp:28, pop:0, lvl:2 },
+  { id:'fishfac', icon:'🏭', name:'Fish Factory',cost:{wood:10,stone:8},         xp:32, pop:1, lvl:3,
+    produces:{ in:'fish', out:'food', every:4 } },
+  { id:'aquarium',icon:'🐠', name:'Aquarium',    cost:{stone:10,shell:8,wood:4}, xp:34, pop:0, lvl:3 },
+  { id:'tree',    icon:'🌳', name:'Big Tree',     cost:{reed:5,wood:5,shell:3},   xp:30, pop:0, lvl:3 },
+  { id:'tower',   icon:'🏯', name:'Lantern Tower',cost:{stone:14,wood:10,shell:6},xp:60,pop:2, lvl:4 },
+  // --- special actions (not placed on a plot) ---
+  { id:'pet',     icon:'🐾', name:'Adopt Pet',   cost:{food:6},                  xp:20, lvl:2, special:'pet' },
+  { id:'expand',  icon:'🏝️', name:'Expand Isle', cost:{stone:10,reed:8},         xp:25, lvl:2, special:'expand' },
 ];
 
 // ---------- State ----------
 const state = {
-  res: { wood:0, reed:0, stone:0, shell:0 },
+  res: { wood:0, reed:0, stone:0, shell:0, food:0 },
+  fish: 0,                 // raw fish on hand (feedstock for the factory)
+  caught: {},              // species id -> count caught (collection / aquarium)
   level: 1, xp: 0, pop: 1, builds: 0,
   plots: [],     // {pos, used}
+  pets: 0,
+  expands: 0,
   running: false,
 };
 function xpForLevel(l){ return Math.round(40 * Math.pow(1.55, l-1)); }
+function rollRarity(){
+  const total = Object.values(RARITY).reduce((s,r)=>s+r.weight,0);
+  let r = Math.random()*total;
+  for(const k in RARITY){ r-=RARITY[k].weight; if(r<=0) return k; }
+  return 'common';
+}
+function pickFishSpecies(){
+  const rar = rollRarity();
+  const pool = FISH.filter(f=>f.rarity===rar);
+  return pool[(Math.random()*pool.length)|0] || FISH[0];
+}
 
 // ---------- Renderer / Scene ----------
 const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
@@ -379,51 +478,72 @@ scene.add(bed);
 const islandGroup = new THREE.Group();
 scene.add(islandGroup);
 
-// grassy mound
-const moundGeo = new THREE.CylinderGeometry(ISLAND_R, ISLAND_R+1.6, 3.0, 48, 1);
-// dome the top a bit
-const mpos = moundGeo.attributes.position;
-for(let i=0;i<mpos.count;i++){
-  const x=mpos.getX(i), y=mpos.getY(i), z=mpos.getZ(i);
-  if(y>0){ const r=Math.sqrt(x*x+z*z)/ISLAND_R; mpos.setY(i, y + (1-r*r)*0.9); }
-}
-moundGeo.computeVertexNormals();
-const island = new THREE.Mesh(moundGeo, new THREE.MeshStandardMaterial({ color:0x86c46a, roughness:0.95 }));
+function rand(a,b){ return a + Math.random()*(b-a); }
+
+// grassy mound + sandy ring — rebuilt when the island expands
+const islandMat = new THREE.MeshStandardMaterial({ color:0x86c46a, roughness:0.95 });
+const sandMat   = new THREE.MeshStandardMaterial({ color:0xf2dca6, roughness:1 });
+let island = new THREE.Mesh(new THREE.BufferGeometry(), islandMat);
 island.position.y = 0.1; island.castShadow = true; island.receiveShadow = true;
 islandGroup.add(island);
-
-// sandy ring
-const sand = new THREE.Mesh(
-  new THREE.CylinderGeometry(ISLAND_R+1.7, ISLAND_R+2.4, 0.5, 48),
-  new THREE.MeshStandardMaterial({ color:0xf2dca6, roughness:1 })
-);
+let sand = new THREE.Mesh(new THREE.BufferGeometry(), sandMat);
 sand.position.y = -0.55; sand.receiveShadow = true;
 islandGroup.add(sand);
 
-// scatter some decorative grass tufts & pebbles on island
-function rand(a,b){ return a + Math.random()*(b-a); }
-const tuftGeo = new THREE.ConeGeometry(0.25, 0.8, 5);
-for(let i=0;i<46;i++){
-  const a = Math.random()*Math.PI*2, r = Math.random()*(ISLAND_R-1.5);
-  const x=Math.cos(a)*r, z=Math.sin(a)*r;
-  const m = new THREE.Mesh(tuftGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(0.28, 0.5, rand(0.4,0.55)), roughness:1 }));
-  m.position.set(x, 1.55, z); m.scale.setScalar(rand(0.6,1.3));
-  m.rotation.y = Math.random()*Math.PI; m.castShadow = true;
-  islandGroup.add(m);
+function buildIslandGeo(r){
+  const moundGeo = new THREE.CylinderGeometry(r, r+1.6, 3.0, 56, 1);
+  const mpos = moundGeo.attributes.position;
+  for(let i=0;i<mpos.count;i++){
+    const x=mpos.getX(i), y=mpos.getY(i), z=mpos.getZ(i);
+    if(y>0){ const rr=Math.sqrt(x*x+z*z)/r; mpos.setY(i, y + (1-rr*rr)*0.9); }
+  }
+  moundGeo.computeVertexNormals();
+  island.geometry.dispose(); island.geometry = moundGeo;
+  sand.geometry.dispose();
+  sand.geometry = new THREE.CylinderGeometry(r+1.7, r+2.4, 0.5, 56);
 }
+buildIslandGeo(ISLAND_R);
+
+// decorative grass tufts — sprinkled, and topped up after each expansion
+const tuftGeo = new THREE.ConeGeometry(0.25, 0.8, 5);
+function scatterTufts(count, rMin, rMax){
+  for(let i=0;i<count;i++){
+    const a = Math.random()*Math.PI*2, r = rand(rMin, rMax);
+    const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    const m = new THREE.Mesh(tuftGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(0.28, 0.5, rand(0.4,0.55)), roughness:1 }));
+    m.position.set(x, 1.55, z); m.scale.setScalar(rand(0.6,1.3));
+    m.rotation.y = Math.random()*Math.PI; m.castShadow = true;
+    islandGroup.add(m);
+  }
+}
+scatterTufts(46, 0, ISLAND_R-1.5);
 
 // Build plots arranged in rings on the island
+function addPlotRing(r, n){
+  for(let i=0;i<n;i++){
+    const a = (i/n)*Math.PI*2 + (r*0.3);
+    state.plots.push({ pos:new THREE.Vector3(Math.cos(a)*r, 1.5, Math.sin(a)*r), used:false });
+  }
+}
 function makePlots(){
-  const rings = [ {r:0, n:1}, {r:5.5, n:6}, {r:9.5, n:9} ];
-  rings.forEach(ring=>{
-    for(let i=0;i<ring.n;i++){
-      const a = (i/ring.n)*Math.PI*2 + (ring.r*0.3);
-      const x = Math.cos(a)*ring.r, z = Math.sin(a)*ring.r;
-      state.plots.push({ pos:new THREE.Vector3(x, 1.5, z), used:false });
-    }
-  });
+  addPlotRing(0,1); addPlotRing(5.5,6); addPlotRing(9.5,9);
 }
 makePlots();
+
+// Expand the island: grow geometry, push the water shoreline out, add a fresh plot ring.
+function expandIsland(){
+  if(ISLAND_R >= ISLAND_MAX) return false;
+  ISLAND_R = Math.min(ISLAND_MAX, ISLAND_R + 3);
+  buildIslandGeo(ISLAND_R);
+  waterUniforms.uIslandR.value = ISLAND_R;
+  scatterTufts(16, ISLAND_R-3.5, ISLAND_R-1.0);
+  addPlotRing(ISLAND_R-2.2, 10 + state.expands*2);
+  state.expands++;
+  // satisfying grow pop on the whole island
+  islandPop = 0.0;
+  return true;
+}
+let islandPop = 1.0; // 0..1 scrub used for a quick squash when expanding
 
 // ---------- Otter ----------
 function makeOtter(scaleScale=1, furColor=0x9b6a43){
@@ -574,6 +694,93 @@ function spawnDrift(type){
   });
 }
 
+// ---------- Fish (swimming, catchable, with rarity) ----------
+const fishGroup = new THREE.Group();
+scene.add(fishGroup);
+const swimmers = [];
+
+// A good-looking low-poly fish, tinted by species + rarity glow.
+function makeFishMesh(sp, scale=1){
+  const rar = RARITY[sp.rarity];
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: sp.body, roughness:0.35, metalness: rar.glow>0?0.35:0.1,
+    emissive: rar.glow>0 ? new THREE.Color(sp.body) : 0x000000,
+    emissiveIntensity: rar.glow*0.6,
+  });
+  const finMat = new THREE.MeshStandardMaterial({ color: sp.fin, roughness:0.5, side:THREE.DoubleSide,
+    transparent:true, opacity:0.92 });
+
+  // body — flattened ellipsoid (sphere scaled)
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), bodyMat);
+  let bx = sp.long ? 1.7 : 1.25, by = sp.tall ? 1.25 : 0.9, bz = sp.puff ? 1.05 : 0.6;
+  body.scale.set(bx, by, bz);
+  g.add(body);
+  const grp = { body };
+
+  // tail fin (triangle fan)
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.5, 4), finMat);
+  tail.rotation.z = Math.PI/2; tail.position.x = -0.42*bx; tail.scale.set(1, sp.tall?1.5:1.1, 0.18);
+  g.add(tail); grp.tail = tail;
+  // top fin
+  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.42, 3), finMat);
+  dorsal.position.set(0, 0.34*by, 0); dorsal.scale.set(1,1,0.16); g.add(dorsal);
+  // side fin
+  const pec = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.3, 3), finMat);
+  pec.position.set(0.1, -0.05, 0.22*bz+0.05); pec.rotation.set(0.4,0,-0.5); pec.scale.set(1,1,0.2); g.add(pec);
+
+  // black dot eyes (consistent with the otters)
+  const eyeMat = new THREE.MeshBasicMaterial({ color:0x0d0d0d });
+  for(const sx of [1]){
+    for(const sz of [-1,1]){
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.075,12,12), eyeMat);
+      eye.position.set(0.30*bx, 0.06, sz*0.16*bz+sz*0.03);
+      g.add(eye);
+    }
+  }
+  // stripe / spot accents for flashy species
+  if(sp.stripe){
+    for(let i=-1;i<=1;i++){
+      const st=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.5*by,0.62*bz), new THREE.MeshStandardMaterial({color: sp.fin, roughness:0.4}));
+      st.position.set(i*0.18, 0, 0); g.add(st);
+    }
+  }
+  if(sp.spots){
+    for(let i=0;i<5;i++){
+      const dt=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color: sp.fin}));
+      dt.position.set(rand(-0.2,0.3), rand(-0.1,0.2), (Math.random()<0.5?1:-1)*0.27*bz); g.add(dt);
+    }
+  }
+
+  g.traverse(o=>{ if(o.isMesh && o.material!==eyeMat) o.castShadow=true; });
+  g.scale.setScalar(scale);
+  g.userData.parts = grp;
+
+  // rarity sparkle halo for rare+ fish
+  if(rar.glow>=0.25){
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.62,12,10),
+      new THREE.MeshBasicMaterial({ color: rar.col, transparent:true, opacity:0.16*rar.glow, blending:THREE.AdditiveBlending, depthWrite:false }));
+    halo.scale.set(bx,by,bz); g.add(halo);
+  }
+  return g;
+}
+
+function spawnFish(sp){
+  sp = sp || pickFishSpecies();
+  const mesh = makeFishMesh(sp, rand(0.85,1.15));
+  const a = Math.random()*Math.PI*2;
+  const r = rand(ISLAND_R+3, POND_R-3);
+  mesh.position.set(Math.cos(a)*r, -0.02, Math.sin(a)*r);
+  fishGroup.add(mesh);
+  swimmers.push({
+    mesh, sp,
+    heading: Math.random()*Math.PI*2,
+    speed: rand(2.2, 4.2) * (RARITY[sp.rarity].glow>0?0.85:1),  // rarer = a touch slower/elusive handled by spawn rate
+    turn: 0, bob: Math.random()*Math.PI*2,
+    flee: 0, caught:false, t:0,
+  });
+}
+
 // ---------- Particles (collection burst) ----------
 const burstPool = [];
 function spawnBurst(pos, color){
@@ -675,18 +882,59 @@ function makeBuilding(id){
     const lant=new THREE.Mesh(new THREE.SphereGeometry(0.5,12,10),new THREE.MeshStandardMaterial({color:0xffe07a,emissive:0xffae3b,emissiveIntensity:0.8})); lant.position.y=4.0; g.add(lant);
     const pl=new THREE.PointLight(0xffd27a,1.2,14); pl.position.y=4.0; g.add(pl);
     const rf=new THREE.Mesh(new THREE.ConeGeometry(0.8,0.8,8),new THREE.MeshStandardMaterial({color:0x8a3a2c})); rf.position.y=4.7; g.add(rf);
+  } else if(id==='woodcut'){
+    // little timber cabin with a spinning saw blade
+    const base=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.9,1.2),wood); base.position.y=0.45; g.add(base);
+    const rf=new THREE.Mesh(new THREE.CylinderGeometry(0.02,1.15,0.6,4),roof); rf.rotation.y=Math.PI/4; rf.position.y=1.2; g.add(rf);
+    // log on a stand
+    const log=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,1.0,10),new THREE.MeshStandardMaterial({color:0xc99a66,roughness:0.8}));
+    log.rotation.z=Math.PI/2; log.position.set(0.2,0.5,0.85); g.add(log);
+    const blade=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,0.04,16),new THREE.MeshStandardMaterial({color:0xd8dde2,metalness:0.7,roughness:0.3}));
+    blade.rotation.x=Math.PI/2; blade.position.set(-0.2,0.62,0.85); g.add(blade);
+    g.userData.spin = blade;            // animated saw
+  } else if(id==='fishfac'){
+    // industrial hut: tank, chimney puffing, conveyor
+    const base=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.1,1.3),new THREE.MeshStandardMaterial({color:0x6f7d8c,roughness:0.9})); base.position.y=0.55; g.add(base);
+    const rf=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.18,1.4),stoneM); rf.position.y=1.15; g.add(rf);
+    const tank=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.9,14),new THREE.MeshStandardMaterial({color:0x4ea2c4,roughness:0.25,metalness:0.2,transparent:true,opacity:0.85}));
+    tank.position.set(0.55,1.0,0); g.add(tank);
+    const chimney=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.2,0.7,10),new THREE.MeshStandardMaterial({color:0xb0463a})); chimney.position.set(-0.5,1.5,0); g.add(chimney);
+    const fishSign=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10),new THREE.MeshStandardMaterial({color:0xff9d4d,emissive:0xff7d2a,emissiveIntensity:0.4}));
+    fishSign.scale.set(1.3,0.8,0.5); fishSign.position.set(0,0.6,0.7); g.add(fishSign);
+    g.userData.chimney = new THREE.Vector3(-0.5,1.9,0);  // smoke origin
+  } else if(id==='aquarium'){
+    // glass tank with water + tiny swimming fish from your collection
+    const sandB=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.2,1.1),new THREE.MeshStandardMaterial({color:0xe6d29a})); sandB.position.y=0.6; g.add(sandB);
+    const frame=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.2,1.2),new THREE.MeshStandardMaterial({color:0x9fe6ff,roughness:0.05,metalness:0.1,transparent:true,opacity:0.32}));
+    frame.position.y=1.1; g.add(frame);
+    const baseB=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.4,1.3),wood); baseB.position.y=0.3; g.add(baseB);
+    // populate with up to 3 of your caught species (or defaults)
+    const owned = Object.keys(state.caught).filter(k=>state.caught[k]>0);
+    const show = (owned.length?owned:['minnow','perch']).slice(-3);
+    const tinies=[];
+    show.forEach((id2,i)=>{
+      const fm=makeFishMesh(FISH_BY_ID[id2]||FISH[0], 0.42);
+      fm.position.set(rand(-0.5,0.5), 1.0+rand(-0.2,0.3), rand(-0.25,0.25));
+      fm.userData.aqPhase=Math.random()*Math.PI*2; fm.userData.aqR=rand(0.4,0.7);
+      g.add(fm); tinies.push(fm);
+    });
+    g.userData.tank = tinies;            // animated little fish
   }
   g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
   return g;
 }
 
 // ---------- HUD wiring ----------
+const HUD_KEYS = ['wood','reed','stone','shell','food'];
 function updateResHUD(flashKey){
-  for(const k of RES_KEYS){
+  for(const k of HUD_KEYS){
     const el = $('#res-'+k);
     el.querySelector('.n').textContent = state.res[k];
     if(flashKey===k){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
   }
+  // raw fish (feedstock) chip
+  const fEl = $('#res-fish'); fEl.querySelector('.n').textContent = state.fish;
+  if(flashKey==='fish'){ fEl.classList.remove('pop'); void fEl.offsetWidth; fEl.classList.add('pop'); }
   renderDock();
 }
 function updateStatsHUD(){
@@ -697,12 +945,20 @@ function updateStatsHUD(){
   $('#xpBar').style.width = Math.min(100, (state.xp/need)*100) + '%';
 }
 
+function expandCost(){
+  // scales up with each expansion
+  const m = 1 + state.expands;
+  return { stone: 10*m, reed: 8*m };
+}
+function effectiveCost(b){ return b.special==='expand' ? expandCost() : b.cost; }
 function canAfford(b){
-  for(const k in b.cost){ if(state.res[k] < b.cost[k]) return false; }
+  const cost = effectiveCost(b);
+  for(const k in cost){ if(state.res[k] < cost[k]) return false; }
   return true;
 }
 function costStr(b){
-  return Object.entries(b.cost).map(([k,v])=>`${RES[k].ic}${v}`).join(' ');
+  if(b.special==='expand' && ISLAND_R>=ISLAND_MAX) return 'MAX';
+  return Object.entries(effectiveCost(b)).map(([k,v])=>`${RES[k].ic}${v}`).join(' ');
 }
 function renderDock(){
   const dock = $('#buildDock');
@@ -735,13 +991,38 @@ function toast(msg){
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1800);
 }
 
+const producers = [];   // { building, def, timer } for manufacture facilities
+function pay(cost){ for(const k in cost) state.res[k]-=cost[k]; }
+
 function tryBuild(b){
   if(state.level < b.lvl){ toast(`🔒 Reach Village Lv ${b.lvl} first!`); return; }
+
+  // ----- special actions: expand island / adopt pet -----
+  if(b.special==='expand'){
+    if(ISLAND_R>=ISLAND_MAX){ toast('🏝️ Island is fully expanded!'); return; }
+    if(!canAfford(b)){ toast(`Need ${costStr(b)} to expand!`); beep(180,0.08,'square'); return; }
+    pay(expandCost());
+    expandIsland();
+    gainXP(b.xp); updateResHUD(); updateStatsHUD();
+    toast('🏝️ Island expanded — more room to build!');
+    beep(440,0.1); setTimeout(()=>beep(660,0.14),100);
+    spawnRing(new THREE.Vector3(0,1.6,0), 0x9be86a, ISLAND_R);
+    return;
+  }
+  if(b.special==='pet'){
+    if(!canAfford(b)){ toast(`Need ${costStr(b)} food — run the Fish Factory!`); beep(180,0.08,'square'); return; }
+    pay(b.cost);
+    adoptPet();
+    gainXP(b.xp); updateResHUD(); updateStatsHUD();
+    beep(700,0.08); setTimeout(()=>beep(900,0.1),80); setTimeout(()=>beep(1100,0.12),160);
+    return;
+  }
+
+  // ----- normal placed buildings -----
   if(!canAfford(b)){ toast(`Need ${costStr(b)} — gather more!`); beep(180,0.08,'square'); return; }
   const plot = nearestEmptyPlot();
-  if(!plot){ toast('🏡 Village is full — amazing work!'); return; }
-  // pay
-  for(const k in b.cost) state.res[k]-=b.cost[k];
+  if(!plot){ toast('🏡 No empty plots — Expand the Isle! 🏝️'); return; }
+  pay(b.cost);
   plot.used=true;
   // place
   const m = makeBuilding(b.id);
@@ -749,6 +1030,8 @@ function tryBuild(b){
   m.scale.setScalar(0.01);
   islandGroup.add(m);
   growAnims.push({ obj:m, t:0 });
+  // register manufacture facility
+  if(b.produces) producers.push({ building:m, def:b.produces, timer:0 });
   // rewards
   state.builds++;
   state.pop += b.pop;
@@ -788,6 +1071,67 @@ function addFollower(){
   // place on island
   scene.add(f);
   followers.push(f);
+}
+
+// ---------- Pets (follow the player around, bouncy) ----------
+const pets = [];
+const PET_KINDS = [
+  { name:'Duckling', body:0xffe07a, beak:0xff9d3b, kind:'duck' },
+  { name:'Froggy',   body:0x77cf5a, beak:0xfff2a8, kind:'frog' },
+  { name:'Crab',     body:0xff6b5e, beak:0xffd0b0, kind:'crab' },
+];
+function makePet(kind){
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({ color:kind.body, roughness:0.6 });
+  const accMat  = new THREE.MeshStandardMaterial({ color:kind.beak, roughness:0.6 });
+  const eyeMat  = new THREE.MeshBasicMaterial({ color:0x0d0d0d });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.34,16,14), bodyMat);
+  body.scale.set(1, kind.kind==='crab'?0.7:0.95, 1); body.position.y=0.34; g.add(body);
+  if(kind.kind!=='crab'){
+    const head=new THREE.Mesh(new THREE.SphereGeometry(0.24,14,12),bodyMat); head.position.set(0,0.62,0.12); g.add(head);
+    if(kind.kind==='duck'){
+      const beak=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.22,8),accMat); beak.rotation.x=Math.PI/2; beak.position.set(0,0.6,0.34); g.add(beak);
+    }
+    for(const sx of [-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.05,10,10),eyeMat); e.position.set(0.09*sx,0.66,0.30); g.add(e); }
+  } else {
+    for(const sx of [-1,1]){ const c=new THREE.Mesh(new THREE.SphereGeometry(0.08,10,8),accMat); c.position.set(0.28*sx,0.42,0.18); g.add(c);
+      const e=new THREE.Mesh(new THREE.SphereGeometry(0.05,10,10),eyeMat); e.position.set(0.12*sx,0.5,0.28); g.add(e); }
+  }
+  g.traverse(o=>{ if(o.isMesh && o.material!==eyeMat) o.castShadow=true; });
+  g.userData.baseScale=1; g.userData.bouncePhase=Math.random()*Math.PI*2;
+  return g;
+}
+function adoptPet(){
+  const kind = PET_KINDS[state.pets % PET_KINDS.length];
+  const p = makePet(kind);
+  p.position.copy(otter.position);
+  p.userData.kind = kind;
+  p.userData.followIdx = pets.length;
+  scene.add(p); pets.push(p);
+  state.pets++;
+  toast(`🐾 You adopted a ${kind.name}! It follows you now.`);
+  confettiAt(otter.position, 18);
+}
+
+// ---------- Catch a fish ----------
+function catchFish(sw){
+  const sp = sw.sp, rar = RARITY[sp.rarity];
+  state.fish++;
+  state.caught[sp.id] = (state.caught[sp.id]||0)+1;
+  fishGroup.remove(sw.mesh);
+  const idx = swimmers.indexOf(sw); if(idx>=0) swimmers.splice(idx,1);
+  updateResHUD('fish');
+  // rarity-flavoured feedback
+  const t=$('#toast');
+  t.style.color = rar.css;
+  toast(`${sp.emoji} ${rar.name} ${sp.name} caught!`);
+  setTimeout(()=>{ t.style.color=''; }, 1900);
+  // VFX scaled by rarity
+  spawnBurst(sw.mesh.position.clone().setY(0.5), rar.col);
+  spawnRing(new THREE.Vector3(sw.mesh.position.x,0.1,sw.mesh.position.z), rar.col, 1.6+rar.glow*2);
+  if(rar.glow>=0.5){ confettiAt(sw.mesh.position.clone().setY(0.6), 16); }
+  const f0 = rar.glow>=0.5?560:rar.glow>=0.25?500:440;
+  beep(f0,0.07,'triangle',0.06); setTimeout(()=>beep(f0*1.5,0.09,'triangle',0.05),70);
 }
 
 // ---------- Confetti ----------
@@ -987,6 +1331,96 @@ function animate(){
       f.userData.bouncePhase = t*4 + f.userData.bob;
       applyBounce(f, Math.cos(f.userData.bouncePhase)*0.9, 0.8);
     }
+
+    // ----- fish: swim, wander, flee & get caught -----
+    for(let i=swimmers.length-1;i>=0;i--){
+      const sw=swimmers[i], m=sw.mesh; sw.t+=dt;
+      const toOtX=otter.position.x-m.position.x, toOtZ=otter.position.z-m.position.z;
+      const od=Math.hypot(toOtX,toOtZ);
+      // dart away when the otter gets close (rarer fish are jumpier)
+      const fleeR = 3.2 + RARITY[sw.sp.rarity].glow*1.5;
+      if(od<fleeR){ sw.heading = Math.atan2(-toOtZ,-toOtX); sw.flee = 1; }
+      else sw.flee *= 0.96;
+      sw.heading += Math.sin(sw.t*1.3 + sw.bob)*dt*1.2;   // gentle wander
+      const spd = sw.speed*(1+sw.flee*1.1);
+      m.position.x += Math.cos(sw.heading)*spd*dt;
+      m.position.z += Math.sin(sw.heading)*spd*dt;
+      // stay in the water ring
+      const d=Math.hypot(m.position.x,m.position.z);
+      if(d>POND_R-2){ sw.heading += Math.PI*0.6; }
+      if(d<ISLAND_R+1.5){ const nx=m.position.x/d, nz=m.position.z/d; sw.heading = Math.atan2(nz,nx); }
+      m.position.y = 0.0 + Math.sin(sw.t*3 + sw.bob)*0.1;
+      m.rotation.y = -sw.heading + Math.PI/2;
+      m.rotation.z = Math.sin(sw.t*8)*0.12;               // wiggle
+      if(m.userData.parts && m.userData.parts.tail) m.userData.parts.tail.rotation.y = Math.sin(sw.t*12)*0.5;
+      // catch
+      if(od<1.5 && collectCooldown<=0){ collectCooldown=0.05; catchFish(sw); }
+    }
+    // maintain fish population (scaled by level)
+    const fishTarget = 5 + Math.min(7, state.level);
+    if(swimmers.length < fishTarget && Math.random()<0.04) spawnFish();
+
+    // ----- pets follow the player in a bouncy conga line -----
+    for(let pi=0; pi<pets.length; pi++){
+      const p=pets[pi];
+      const lead = pi===0 ? otter.position : pets[pi-1].position;
+      const tx = lead.x - Math.sin(otter.rotation.y)*1.5;
+      const tz = lead.z - Math.cos(otter.rotation.y)*1.5;
+      p.position.x += (tx - p.position.x)*Math.min(1,dt*(5 - pi*0.4));
+      p.position.z += (tz - p.position.z)*Math.min(1,dt*(5 - pi*0.4));
+      const pd = Math.hypot(p.position.x, p.position.z);
+      const pOnLand = pd < ISLAND_R+1.5;
+      const pBase = pOnLand ? 1.55 : 0.2;
+      p.userData.bouncePhase += dt*9;
+      const hop = Math.max(0, Math.sin(p.userData.bouncePhase));
+      p.position.y += (pBase + hop*0.35 - p.position.y)*Math.min(1,dt*9);
+      const face = Math.atan2(tx-p.position.x, tz-p.position.z);
+      if(Math.hypot(tx-p.position.x,tz-p.position.z)>0.05) p.rotation.y += ((face-p.rotation.y+Math.PI*3)%(Math.PI*2)-Math.PI)*Math.min(1,dt*10);
+      applyBounce(p, Math.sin(p.userData.bouncePhase), 0.9);
+    }
+
+    // ----- manufacture facilities tick -----
+    for(const pr of producers){
+      pr.timer += dt;
+      if(pr.timer >= pr.def.every){
+        pr.timer = 0;
+        if(pr.def.in==='fish'){            // fish factory: fish -> food
+          if(state.fish>0){
+            state.fish--;
+            const gain = 1 + Math.floor(Math.random()*2);
+            state.res.food += gain; updateResHUD('food');
+            spawnBurst(pr.building.position.clone().setY(2.4), 0xff9d4d);
+          }
+        } else {                            // wood cutter etc: passive output
+          state.res[pr.def.out] += pr.def.amount; updateResHUD(pr.def.out);
+          spawnBurst(pr.building.position.clone().setY(1.9), RES[pr.def.out].color);
+        }
+      }
+    }
+
+    // ----- building animations (saw spin, smoke, aquarium fish) -----
+    islandGroup.children.forEach(ch=>{
+      if(ch.userData.spin) ch.userData.spin.rotation.y += dt*14;
+      if(ch.userData.chimney && Math.random()<0.04){
+        spawnBurst(ch.localToWorld(ch.userData.chimney.clone()), 0xd9d9d9);
+      }
+      if(ch.userData.tank){
+        ch.userData.tank.forEach(fm=>{
+          fm.userData.aqPhase += dt*1.6;
+          const r=fm.userData.aqR;
+          fm.position.x = Math.cos(fm.userData.aqPhase)*r;
+          fm.position.z = Math.sin(fm.userData.aqPhase)*r*0.5;
+          fm.rotation.y = -fm.userData.aqPhase;
+        });
+      }
+    });
+
+    // ----- island expansion squash pop -----
+    if(islandPop < 1){
+      islandPop = Math.min(1, islandPop + dt*2.2);
+      const e = 1 - Math.pow(2,-9*islandPop)*Math.cos(islandPop*16);
+      islandGroup.scale.set(1, Math.max(0.2, e), 1);
+    } else islandGroup.scale.set(1,1,1);
   }
 
   // ----- bursts -----
@@ -1054,9 +1488,26 @@ window.addEventListener('resize',()=>{
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// ---------- Fish collection panel ----------
+function renderFishDex(){
+  const grid = $('#dexGrid'); grid.innerHTML='';
+  FISH.forEach(sp=>{
+    const rar=RARITY[sp.rarity]; const n=state.caught[sp.id]||0; const found=n>0;
+    const it=document.createElement('div');
+    it.className='dexItem'+(found?'':' locked');
+    it.style.borderLeftColor = rar.css;
+    it.innerHTML = `<span class="dx">${found?sp.emoji:'❔'}</span>
+      <span><span class="dn">${found?sp.name:'???'}</span><br><span class="dr" style="color:${rar.css}">${rar.name} · 🍣${rar.food}</span></span>
+      <span class="dc">${found?'×'+n:''}</span>`;
+    grid.appendChild(it);
+  });
+}
+function openFishDex(){ renderFishDex(); $('#fishDex').classList.remove('hidden'); }
+
 // ---------- Boot ----------
 function init(){
   for(let i=0;i<10;i++) spawnDrift();
+  for(let i=0;i<5;i++) spawnFish();
   updateResHUD(); updateStatsHUD();
 }
 init();
@@ -1069,14 +1520,17 @@ $('#startBtn').addEventListener('click',()=>{
   state.running=true;
   try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume(); }catch(e){}
   beep(523,0.1); setTimeout(()=>beep(784,0.14),110);
-  toast('Swim out and gather some treasures! 🌊');
+  toast('Swim out — gather treasures & catch fish! 🐟');
 });
 
 $('#hintBtn').addEventListener('click',()=>{
-  toast('Gather 🪵🌾🪨🐚 from the water, then tap a building to plant it!');
+  toast('Catch 🐟 fish → 🏭 Fish Factory makes 🍣 food → 🐾 adopt pets & 🏝️ expand!');
 });
+$('#fishBtn').addEventListener('click', openFishDex);
+$('#fishClose').addEventListener('click',()=> $('#fishDex').classList.add('hidden'));
+$('#fishDex').addEventListener('click',(e)=>{ if(e.target.id==='fishDex') $('#fishDex').classList.add('hidden'); });
 
 // expose for debugging
-window.__otter = { state, scene, spawnDrift };
+window.__otter = { state, scene, spawnDrift, spawnFish };
 </script>
 </html>
