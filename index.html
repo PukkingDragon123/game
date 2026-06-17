@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#7ec8e3" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Otter Village 🦦</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🦦</text></svg>" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- Loading screen -->
+  <div id="loader">
+    <div class="otter-spin">🦦</div>
+    <div class="loader-title">Otter Village</div>
+    <div class="loader-sub">paddling in…</div>
+  </div>
+
+  <!-- Game canvas mount -->
+  <div id="app"></div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="resource-bar">
+      <div class="res" data-res="wood"><span class="ico">🪵</span><span class="count" id="count-wood">0</span></div>
+      <div class="res" data-res="reed"><span class="ico">🌿</span><span class="count" id="count-reed">0</span></div>
+      <div class="res" data-res="shell"><span class="ico">🐚</span><span class="count" id="count-shell">0</span></div>
+      <div class="res" data-res="berry"><span class="ico">🫐</span><span class="count" id="count-berry">0</span></div>
+    </div>
+
+    <div id="village-level">
+      <span class="ico">🏡</span><span id="village-count">0</span>
+      <span class="vl-label">village</span>
+    </div>
+
+    <button id="build-toggle" aria-label="Build menu">🔨</button>
+
+    <!-- Build menu -->
+    <div id="build-menu" class="closed">
+      <div class="bm-header">
+        <span>Build your village</span>
+        <button id="build-close">✕</button>
+      </div>
+      <div id="build-list"></div>
+      <p class="bm-hint">Tap a building, then tap the grassy island to place it.</p>
+    </div>
+
+    <!-- Placement banner -->
+    <div id="place-banner" class="hidden">
+      <span id="place-text">Tap the island to place</span>
+      <button id="place-cancel">cancel</button>
+    </div>
+
+    <!-- Toast messages -->
+    <div id="toast"></div>
+  </div>
+
+  <!-- Touch joystick -->
+  <div id="joystick" class="hidden">
+    <div id="joystick-knob"></div>
+  </div>
+
+  <!-- Intro / start panel -->
+  <div id="intro">
+    <div class="intro-card">
+      <div class="intro-otter">🦦</div>
+      <h1>Otter Village</h1>
+      <p>Paddle around the pond and gather <b>drifting treasures</b> —
+         driftwood, reeds, shells and berries float by on the current.</p>
+      <p>Bring them back and <b>build a cozy village</b> for your otter family. 🏡</p>
+      <div class="controls-hint">
+        <div><b>Move:</b> drag anywhere (mobile) &nbsp;·&nbsp; WASD / arrows (desktop)</div>
+        <div><b>Gather:</b> just paddle into floating items</div>
+      </div>
+      <button id="start-btn">Start paddling 🌊</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
