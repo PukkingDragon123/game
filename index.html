@@ -6,19 +6,28 @@
 <meta name="theme-color" content="#7ec8e3" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <title>Otter Village 🦦</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
 <style>
   :root {
     --wood:#b07a45; --stone:#9aa6b2; --reed:#7bbf6a; --shell:#ef9bc0;
-    --panel: rgba(28, 40, 56, 0.78);
-    --panel-lite: rgba(255,255,255,0.14);
+    /* gradient panels — sharp-edged indie feel */
+    --panel: linear-gradient(145deg, rgba(38,54,74,0.86), rgba(22,32,46,0.88));
+    --panel-lite: linear-gradient(145deg, rgba(255,255,255,0.20), rgba(255,255,255,0.07));
+    --accent: linear-gradient(120deg,#ffd16b,#ff9d4d);
+    --ink: #1c2838;
+    --hand: 'Patrick Hand', 'Segoe UI', system-ui, sans-serif;
+    --hand-title: 'Caveat', 'Patrick Hand', cursive;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
     background: #9fd9ef;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: var(--hand);
     color: #fff; user-select: none; -webkit-user-select: none;
     touch-action: none;
+    letter-spacing: .3px;
   }
   #app { position: fixed; inset: 0; }
   canvas { display: block; width: 100%; height: 100%; }
@@ -29,29 +38,32 @@
   #resBar {
     position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%;
     transform: translateX(-50%);
-    display: flex; gap: 8px; padding: 8px 10px;
-    background: var(--panel); border-radius: 18px;
-    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    display: flex; gap: 7px; padding: 8px 10px;
+    background: var(--panel); border-radius: 0;
+    border: 1.5px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.28);
   }
   .res {
     display: flex; align-items: center; gap: 5px;
-    padding: 4px 9px; border-radius: 12px; background: var(--panel-lite);
-    font-weight: 700; font-size: 15px; min-width: 56px; justify-content: center;
+    padding: 4px 9px; border-radius: 0; background: var(--panel-lite);
+    border: 1px solid rgba(255,255,255,.12);
+    font-weight: 400; font-size: 19px; min-width: 56px; justify-content: center;
     transition: transform .12s ease;
   }
   .res .ic { font-size: 18px; }
-  .res.pop { animation: pop .35s ease; }
-  @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  .res.pop { animation: pop .4s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop { 0%{transform:scale(1)} 35%{transform:scale(1.45) rotate(-4deg)} 100%{transform:scale(1)} }
 
   #topLeft {
     position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px;
-    background: var(--panel); border-radius: 16px; padding: 8px 12px;
-    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
-    text-align: left; line-height: 1.25;
+    background: var(--panel); border-radius: 0; padding: 8px 13px;
+    border: 1.5px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.28);
+    text-align: left; line-height: 1.2;
   }
-  #topLeft .lvl { font-size: 20px; font-weight: 800; }
-  #topLeft .pop { font-size: 12px; opacity: .85; }
-  #xpWrap { width: 120px; height: 7px; background: rgba(0,0,0,.3); border-radius: 6px; margin-top:5px; overflow:hidden; }
+  #topLeft .lvl { font-size: 26px; font-weight: 700; font-family: var(--hand-title); line-height: 1; }
+  #topLeft .pop { font-size: 16px; opacity: .9; }
+  #xpWrap { width: 124px; height: 9px; background: rgba(0,0,0,.35); border-radius: 0; margin-top:5px; overflow:hidden; border:1px solid rgba(255,255,255,.12); }
   #xpBar { height: 100%; width: 0%; background: linear-gradient(90deg,#ffe07a,#ffb347); transition: width .35s ease; }
 
   /* ---------- Build dock ---------- */
@@ -59,26 +71,31 @@
     position: absolute; left: 50%; transform: translateX(-50%);
     bottom: max(14px, env(safe-area-inset-bottom));
     display: flex; gap: 8px; padding: 9px; pointer-events: auto;
-    background: var(--panel); border-radius: 20px; backdrop-filter: blur(8px);
-    box-shadow: 0 8px 26px rgba(0,0,0,.3); max-width: 96vw; overflow-x: auto;
+    background: var(--panel); border-radius: 0; backdrop-filter: blur(8px);
+    border: 1.5px solid rgba(255,255,255,.18);
+    box-shadow: 0 8px 26px rgba(0,0,0,.32); max-width: 96vw; overflow-x: auto;
   }
   .build {
-    pointer-events: auto; cursor: pointer; border: none; outline: none;
-    background: var(--panel-lite); border-radius: 14px; padding: 8px 8px 6px;
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    min-width: 66px; color: #fff; transition: transform .1s ease, background .15s;
+    pointer-events: auto; cursor: pointer; border: 1px solid rgba(255,255,255,.12); outline: none;
+    background: var(--panel-lite); border-radius: 0; padding: 8px 8px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    min-width: 66px; color: #fff;
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1), background .15s, box-shadow .15s;
     position: relative;
   }
-  .build:active { transform: scale(.93); }
-  .build .bIcon { font-size: 26px; line-height: 1; }
-  .build .bName { font-size: 11px; font-weight: 700; }
-  .build .bCost { font-size: 10.5px; opacity: .9; white-space: nowrap; }
-  .build.afford { background: rgba(123,191,106,.32); }
-  .build.afford:hover { background: rgba(123,191,106,.5); }
+  .build:active { transform: scale(.88); }
+  .build .bIcon { font-size: 26px; line-height: 1; transition: transform .15s; }
+  .build:active .bIcon { transform: scale(1.25) rotate(-6deg); }
+  .build .bName { font-size: 14px; font-weight: 400; }
+  .build .bCost { font-size: 13px; opacity: .92; white-space: nowrap; }
+  .build.afford { background: linear-gradient(145deg, rgba(140,210,120,.5), rgba(90,170,80,.32)); box-shadow: 0 0 0 1px rgba(160,230,140,.5), 0 4px 14px rgba(80,160,70,.35); }
+  .build.afford:hover { background: linear-gradient(145deg, rgba(150,220,130,.7), rgba(100,180,90,.45)); }
   .build.locked { opacity: .45; filter: grayscale(.6); }
   .build .lockTag {
-    position:absolute; top:-7px; right:-6px; background:#e8674f; color:#fff;
-    font-size:9px; font-weight:800; padding:2px 6px; border-radius:10px;
+    position:absolute; top:-8px; right:-7px;
+    background:linear-gradient(145deg,#f0795f,#d84e38); color:#fff;
+    font-size:12px; font-weight:400; padding:1px 7px; border-radius:0;
+    border:1px solid rgba(255,255,255,.3); transform: rotate(-6deg);
   }
 
   /* ---------- Joystick ---------- */
@@ -100,54 +117,71 @@
 
   /* ---------- Toast ---------- */
   #toast {
-    position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%) translateY(20px);
-    background: var(--panel); padding: 10px 18px; border-radius: 16px;
-    font-weight: 700; font-size: 15px; opacity: 0; transition: all .35s ease;
-    pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.3); max-width: 88vw; text-align:center;
+    position: absolute; bottom: 124px; left: 50%; transform: translateX(-50%) translateY(20px) scale(.92);
+    background: var(--panel); padding: 9px 20px; border-radius: 0;
+    border: 1.5px solid rgba(255,255,255,.2);
+    font-weight: 400; font-size: 19px; opacity: 0;
+    transition: opacity .3s ease, transform .35s cubic-bezier(.34,1.56,.64,1);
+    pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.32); max-width: 88vw; text-align:center;
   }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 
   #hintBtn {
     position:absolute; top: max(12px, env(safe-area-inset-top)); right: 12px;
-    pointer-events:auto; cursor:pointer; width: 40px; height: 40px; border:none;
-    border-radius: 50%; background: var(--panel); color:#fff; font-size:18px;
-    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    pointer-events:auto; cursor:pointer; width: 42px; height: 42px;
+    border:1.5px solid rgba(255,255,255,.2);
+    border-radius: 0; background: var(--panel); color:#fff; font-size:22px;
+    font-family: var(--hand-title); font-weight:700;
+    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.28);
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1);
   }
+  #hintBtn:active { transform: scale(.86) rotate(-8deg); }
 
   /* ---------- Overlays ---------- */
   .overlay {
     position: fixed; inset: 0; z-index: 50; display: flex; align-items: center;
-    justify-content: center; background: linear-gradient(160deg,#bfeaff,#7ec8e3 60%,#5ab0d6);
+    justify-content: center;
+    background: linear-gradient(160deg,#d6f2ff 0%,#9bdcf0 38%,#6cbfe0 70%,#4aa3cc 100%);
     text-align: center; padding: 24px;
   }
   .overlay.hidden { display: none; }
   .card {
-    background: var(--panel); border-radius: 26px; padding: 28px 26px;
-    max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    background: var(--panel); border-radius: 0; padding: 30px 28px;
+    border: 2px solid rgba(255,255,255,.22);
+    max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.38);
     backdrop-filter: blur(10px);
   }
-  .card h1 { margin: 0 0 4px; font-size: 34px; letter-spacing: .5px; }
-  .card .sub { font-size: 15px; opacity: .9; margin: 0 0 16px; }
-  .card p { font-size: 14px; line-height: 1.5; opacity: .92; margin: 8px 0; }
-  .howto { text-align: left; background: rgba(0,0,0,.18); border-radius: 14px; padding: 12px 14px; margin: 14px 0; font-size: 13.5px; line-height: 1.7; }
-  .btn {
-    pointer-events: auto; cursor: pointer; border: none; margin-top: 8px;
-    background: linear-gradient(90deg,#ffd16b,#ff9d4d); color: #5a3210;
-    font-weight: 800; font-size: 18px; padding: 14px 34px; border-radius: 16px;
-    box-shadow: 0 8px 22px rgba(255,160,60,.5); transition: transform .1s;
+  .card h1 { margin: 0 0 2px; font-size: 52px; letter-spacing: .5px; font-family: var(--hand-title); font-weight: 700; line-height: .95; }
+  .card .sub { font-size: 20px; opacity: .92; margin: 0 0 16px; }
+  .card p { font-size: 18px; line-height: 1.45; opacity: .94; margin: 8px 0; }
+  .howto {
+    text-align: left; border-radius: 0; padding: 13px 16px; margin: 16px 0;
+    font-size: 18px; line-height: 1.65;
+    background: linear-gradient(145deg, rgba(0,0,0,.26), rgba(0,0,0,.12));
+    border-left: 4px solid #ffb347;
   }
-  .btn:active { transform: scale(.95); }
-  .otterTitle { font-size: 56px; margin-bottom: 4px; }
+  .btn {
+    pointer-events: auto; cursor: pointer; border: none; margin-top: 10px;
+    background: var(--accent); color: #5a3210;
+    font-family: var(--hand-title); font-weight: 700; font-size: 26px;
+    padding: 12px 38px; border-radius: 0;
+    box-shadow: 0 8px 22px rgba(255,160,60,.5), inset 0 1px 0 rgba(255,255,255,.4);
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1);
+  }
+  .btn:hover { transform: translateY(-2px) scale(1.03); }
+  .btn:active { transform: scale(.93) rotate(-1deg); }
+  .otterTitle { font-size: 60px; margin-bottom: 0; animation: bob 1.4s ease-in-out infinite; }
 
   #loader {
     position: fixed; inset: 0; z-index: 100; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; background:#7ec8e3; gap: 14px;
+    align-items:center; justify-content:center; gap: 14px;
+    background: linear-gradient(160deg,#9bdcf0 0%,#6cbfe0 60%,#4aa3cc 100%);
   }
-  #loader .o { font-size: 64px; animation: bob 1.1s ease-in-out infinite; }
+  #loader .o { font-size: 68px; animation: bob 1.1s ease-in-out infinite; }
   @keyframes bob { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-14px) rotate(4deg)} }
-  #loader .t { font-weight: 800; font-size: 22px; }
-  #loader .b { width: 180px; height: 8px; background: rgba(255,255,255,.35); border-radius:6px; overflow:hidden; }
-  #loader .bf { height:100%; width: 30%; background:#fff; border-radius:6px; animation: load 1.3s ease-in-out infinite; }
+  #loader .t { font-weight: 700; font-size: 34px; font-family: var(--hand-title); }
+  #loader .b { width: 180px; height: 9px; background: rgba(255,255,255,.35); border-radius:0; overflow:hidden; border:1px solid rgba(255,255,255,.4); }
+  #loader .bf { height:100%; width: 30%; background:#fff; border-radius:0; animation: load 1.3s ease-in-out infinite; }
   @keyframes load { 0%{margin-left:-30%} 100%{margin-left:100%} }
 </style>
 </head>
@@ -418,12 +452,12 @@ function makeOtter(scaleScale=1, furColor=0x9b6a43){
   snout.position.set(0,-0.08,0.33); snout.scale.set(1,0.8,0.9); head.add(snout);
   const nose = new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8), dark);
   nose.position.set(0,-0.04,0.6); head.add(nose);
-  // eyes
+  // simple black dot eyes — clean, flat, unlit so they read as pure dots
+  const eyeMat = new THREE.MeshBasicMaterial({ color:0x0d0d0d });
   for(const sx of [-1,1]){
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8), dark);
-    eye.position.set(0.18*sx, 0.12, 0.4); head.add(eye);
-    const sp = new THREE.Mesh(new THREE.SphereGeometry(0.035,6,6), new THREE.MeshBasicMaterial({color:0xffffff}));
-    sp.position.set(0.2*sx, 0.16, 0.47); head.add(sp);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12,16,16), eyeMat);
+    eye.position.set(0.17*sx, 0.13, 0.41); eye.scale.set(1,1,0.5);
+    head.add(eye);
     // ears
     const ear = new THREE.Mesh(new THREE.SphereGeometry(0.13,10,8), fur);
     ear.position.set(0.3*sx, 0.38, -0.02); ear.scale.set(1,0.7,0.6); head.add(ear);
@@ -458,7 +492,18 @@ function makeOtter(scaleScale=1, furColor=0x9b6a43){
   g.userData.tail = tail;
 
   g.scale.setScalar(scaleScale);
+  g.userData.baseScale = scaleScale;       // for bouncy squash & stretch
+  g.userData.bouncePhase = Math.random()*Math.PI*2;
   return g;
+}
+
+// Apply a volume-preserving squash & stretch so creatures feel bouncy/organic.
+// b in [-1,1] drives it: +1 = stretched tall & thin, -1 = squashed wide & flat.
+function applyBounce(o, b, intensity){
+  const base = o.userData.baseScale || 1;
+  const sy = 1 + b*0.13*intensity;       // vertical stretch
+  const sxz = 1 - b*0.10*intensity;      // horizontal squash (keeps volume-ish)
+  o.scale.set(base*sxz, base*sy, base*sxz);
 }
 
 const otter = makeOtter(1.0);
@@ -532,19 +577,39 @@ function spawnDrift(type){
 // ---------- Particles (collection burst) ----------
 const burstPool = [];
 function spawnBurst(pos, color){
-  const n = 12;
+  const n = 20;
   const geo = new THREE.BufferGeometry();
   const arr = new Float32Array(n*3);
   for(let i=0;i<n;i++){ arr[i*3]=pos.x; arr[i*3+1]=pos.y; arr[i*3+2]=pos.z; }
   geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
-  const mat = new THREE.PointsMaterial({ color, size:0.45, transparent:true, opacity:1, depthWrite:false });
+  const mat = new THREE.PointsMaterial({
+    color, size:0.5, transparent:true, opacity:1, depthWrite:false,
+    blending:THREE.AdditiveBlending, sizeAttenuation:true,
+  });
   const pts = new THREE.Points(geo, mat);
   scene.add(pts);
   const vels=[];
   for(let i=0;i<n;i++){
-    vels.push(new THREE.Vector3(rand(-1,1), rand(0.6,2.2), rand(-1,1)).multiplyScalar(2.5));
+    // burst outward in a dome — snappy pop with a little upward bias
+    const a = Math.random()*Math.PI*2, up = rand(0.3,1.0);
+    vels.push(new THREE.Vector3(Math.cos(a)*rand(.5,1), up*2.4, Math.sin(a)*rand(.5,1)).multiplyScalar(rand(2.2,3.4)));
   }
-  burstPool.push({ pts, vels, life:0, max:0.8 });
+  burstPool.push({ pts, vels, life:0, max:0.75, baseSize:0.5 });
+  spawnRing(pos, color, 2.0);
+}
+
+// ---------- Expanding shockwave rings (satisfying collect/build pop) ----------
+const ringPool = [];
+function spawnRing(pos, color, maxR=2.2){
+  const geo = new THREE.RingGeometry(0.12, 0.32, 36);
+  const mat = new THREE.MeshBasicMaterial({
+    color, transparent:true, opacity:0.85, side:THREE.DoubleSide,
+    depthWrite:false, blending:THREE.AdditiveBlending,
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.rotation.x = -Math.PI/2; m.position.copy(pos); m.position.y += 0.04;
+  scene.add(m);
+  ringPool.push({ m, life:0, max:0.6, maxR });
 }
 
 // ---------- Build placement preview ring ----------
@@ -693,6 +758,8 @@ function tryBuild(b){
   toast(`${b.icon} ${b.name} built! +${b.xp} XP`);
   beep(660,0.09); setTimeout(()=>beep(880,0.12),90);
   confettiAt(m.position);
+  spawnRing(m.position.clone().setY(1.56), 0xffe6a8, 3.2);
+  spawnBurst(m.position.clone().setY(1.9), 0xfff0c0);
 }
 
 const growAnims=[];
@@ -707,6 +774,8 @@ function gainXP(n){
     toast(`🎉 Village reached Level ${state.level}!`);
     beep(523,0.1); setTimeout(()=>beep(659,0.1),100); setTimeout(()=>beep(784,0.16),200);
     confettiAt(otter.position, 40);
+    spawnRing(otter.position.clone().setY(otter.position.y+0.1), 0xffe07a, 4.5);
+    spawnBurst(otter.position.clone().setY(otter.position.y+1.2), 0xffd166);
   }
 }
 
@@ -785,6 +854,7 @@ window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; joyEnd()
 // ---------- Game loop ----------
 const clock = new THREE.Clock();
 let collectCooldown = 0;
+let splashTimer = 0;
 const facing = new THREE.Vector3(0,0,1);
 let camAngle = 0;
 
@@ -843,6 +913,23 @@ function animate(){
       otter.userData.arms[1].rotation.x = -swim*(moving?0.8:0.3);
     }
 
+    // bouncy squash & stretch — faster, springier bounce while moving
+    const bounceSpd = moving ? 13 : 5.5;
+    const bounceAmt = moving ? 1.0 : 0.45;
+    otter.userData.bouncePhase += dt*bounceSpd;
+    applyBounce(otter, Math.sin(otter.userData.bouncePhase), bounceAmt);
+    // little hop on land + extra squash at the bottom of each bounce
+    if(onLand && moving){
+      otter.position.y = baseY + Math.max(0, Math.sin(otter.userData.bouncePhase))*0.22;
+    }
+
+    // ----- water splash trail behind a swimming otter -----
+    splashTimer -= dt;
+    if(moving && !onLand && splashTimer<=0){
+      splashTimer = 0.16;
+      spawnRing(new THREE.Vector3(otter.position.x, 0.12, otter.position.z), 0xeafcff, 1.4);
+    }
+
     // ----- drift items -----
     if(collectCooldown>0) collectCooldown-=dt;
     for(let i=driftItems.length-1;i>=0;i--){
@@ -886,15 +973,19 @@ function animate(){
     const target = 9 + Math.min(8, state.level*1);
     while(driftItems.length < target) spawnDrift();
 
-    // ----- followers -----
+    // ----- followers (village otters — bouncy little hoppers) -----
     for(const f of followers){
       f.userData.angle += f.userData.speed*dt;
       const r=f.userData.rad;
       f.position.x = Math.cos(f.userData.angle)*r;
       f.position.z = Math.sin(f.userData.angle)*r;
-      f.position.y = 1.55 + Math.abs(Math.sin(t*4 + f.userData.bob))*0.12;
+      const hop = Math.abs(Math.sin(t*4 + f.userData.bob));
+      f.position.y = 1.55 + hop*0.22;
       f.rotation.y = f.userData.angle + (f.userData.speed>0?Math.PI:0) + Math.PI/2;
       if(f.userData.tail) f.userData.tail.rotation.z = Math.sin(t*8+f.userData.bob)*0.4;
+      // squash at the bottom of the hop, stretch at the top
+      f.userData.bouncePhase = t*4 + f.userData.bob;
+      applyBounce(f, Math.cos(f.userData.bouncePhase)*0.9, 0.8);
     }
   }
 
@@ -904,19 +995,34 @@ function animate(){
     const pos=b.pts.geometry.attributes.position;
     for(let j=0;j<b.vels.length;j++){
       b.vels[j].y -= 6*dt;
+      b.vels[j].multiplyScalar(0.92); // drag for a snappy pop that settles
       pos.setXYZ(j, pos.getX(j)+b.vels[j].x*dt, pos.getY(j)+b.vels[j].y*dt, pos.getZ(j)+b.vels[j].z*dt);
     }
     pos.needsUpdate=true;
-    b.pts.material.opacity = 1 - b.life/b.max;
+    const k = b.life/b.max;
+    b.pts.material.opacity = 1 - k;
+    b.pts.material.size = b.baseSize*(1 - k*0.7); // shrink as they fade
     if(b.life>=b.max){ scene.remove(b.pts); b.pts.geometry.dispose(); b.pts.material.dispose(); burstPool.splice(i,1); }
   }
-  // ----- grow anims -----
+  // ----- shockwave rings -----
+  for(let i=ringPool.length-1;i>=0;i--){
+    const rg=ringPool[i]; rg.life+=dt;
+    const k = rg.life/rg.max;
+    const e = 1-Math.pow(1-k, 3);          // ease-out expansion
+    const s = 0.3 + e*rg.maxR;
+    rg.m.scale.set(s,s,s);
+    rg.m.material.opacity = 0.85*(1-k);
+    if(rg.life>=rg.max){ scene.remove(rg.m); rg.m.geometry.dispose(); rg.m.material.dispose(); ringPool.splice(i,1); }
+  }
+  // ----- grow anims (springy elastic pop-in) -----
   for(let i=growAnims.length-1;i>=0;i--){
-    const a=growAnims[i]; a.t+=dt*2.2;
-    const s=Math.min(1, a.t); const e=1+Math.sin(Math.min(1,s)*Math.PI)*0.15; // overshoot
-    a.obj.scale.setScalar(s*e);
-    a.obj.rotation.y += dt*2*(1-s);
-    if(a.t>=1.2){ a.obj.scale.setScalar(1); growAnims.splice(i,1); }
+    const a=growAnims[i]; a.t+=dt*1.8;
+    const k=Math.min(1, a.t);
+    // elastic settle — bounces past 1.0 a couple times before resting
+    const e = k>=1 ? 1 : 1 - Math.pow(2,-9*k)*Math.cos(k*16);
+    a.obj.scale.setScalar(Math.max(0.01, e));
+    a.obj.rotation.y += dt*2*(1-k);
+    if(a.t>=1.3){ a.obj.scale.setScalar(1); growAnims.splice(i,1); }
   }
   // ----- confetti -----
   for(let i=confetti.length-1;i>=0;i--){
