@@ -148,6 +148,33 @@
   }
   #fishBtn:active { transform: scale(.86) rotate(8deg); }
 
+  #editBtn {
+    position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 104px); right: 12px;
+    pointer-events:auto; cursor:pointer; width: 42px; height: 42px;
+    border:1.5px solid rgba(255,255,255,.2); border-radius: 0;
+    background: var(--panel); color:#fff; font-size:21px;
+    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.28);
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1), background .2s;
+  }
+  #editBtn.on { background: linear-gradient(145deg,#9be86a,#5abf4a); color:#1c3a16; }
+  #editBtn:active { transform: scale(.86) rotate(-8deg); }
+
+  #dockTabs {
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom: calc(max(14px, env(safe-area-inset-bottom)) + 92px);
+    display:flex; gap:6px; pointer-events:auto; z-index:6;
+  }
+  .dtab {
+    pointer-events:auto; cursor:pointer; border:1.5px solid rgba(255,255,255,.2);
+    border-radius:0; background: var(--panel); color:#fff; font-family:var(--hand);
+    font-size:16px; padding:5px 14px; backdrop-filter: blur(8px);
+    box-shadow:0 4px 14px rgba(0,0,0,.3); transition: transform .1s, background .2s;
+  }
+  .dtab.on { background: var(--accent); color:#5a3210; }
+  .dtab:active { transform: scale(.92); }
+  .actBtn.hidden { display:none; }
+  #pickBtn { background: linear-gradient(145deg,#bfe0ff,#7fb0e0); color:#16314a; }
+
   .res-coins { background: linear-gradient(145deg, rgba(255,215,90,.4), rgba(210,150,40,.2)); }
   .res-coins .ic { filter: drop-shadow(0 0 5px rgba(255,210,90,.7)); }
 
@@ -291,6 +318,7 @@
   </div>
 
   <button id="fishBtn" title="Fish Collection">🐠</button>
+  <button id="editBtn" title="Decorate / Edit mode">🛠️</button>
 
   <!-- Oxygen + depth (diving only) -->
   <div id="diveHud" class="hidden">
@@ -310,10 +338,15 @@
 
   <div id="toast"></div>
 
+  <div id="dockTabs">
+    <button id="tabBuild" class="dtab on">🏗️ Build</button>
+    <button id="tabDecor" class="dtab">🌷 Decor</button>
+  </div>
   <div id="buildDock"></div>
 
   <!-- Action buttons (right side) -->
   <div id="actBtns">
+    <button id="pickBtn" class="actBtn hidden" title="Pick up (refund)">♻️</button>
     <button id="dashBtn" class="actBtn" title="Dash">⚡</button>
     <button id="diveBtn" class="actBtn" title="Dive / Surface">🤿</button>
   </div>
@@ -335,8 +368,9 @@
       🤿 <b>Dive:</b> tap the mask on open water to explore the reef (or press <b>F</b>).<br>
       💨 <b>Oxygen:</b> air drains underwater &amp; dashing costs extra — surface in time!<br>
       💎 <b>Treasure:</b> grab hidden chests &amp; gems on the seabed for 💰 coins.<br>
-      🐠 <b>Fish:</b> rarer fish are jumpier but worth more 🍣 food (via the Fish Factory).<br>
-      🏝️ <b>Buy Land</b> with coins, 🐾 adopt pets &amp; 🏗️ build to level up your village!
+      🏗️ <b>Build &amp; 🌷 Decorate:</b> place huts, houses &amp; décor on the tile map (Build/Decor tabs).<br>
+      🛠️ <b>Edit mode:</b> stand on an item &amp; tap ♻️ to pick it up (full refund). Tap a 🏠 house to repaint it.<br>
+      🏝️ <b>Buy Land</b> with coins to grow the island &amp; 🐾 adopt pets!
     </div>
     <button class="btn" id="startBtn">Start Splashing 🌊</button>
   </div>
@@ -357,10 +391,12 @@ import * as THREE from 'three';
 const $ = (s) => document.querySelector(s);
 
 // ---------- Config ----------
-const POND_R = 34;          // water radius
-let   ISLAND_R = 13;        // central grassy island radius (grows on expansion)
-const ISLAND_MAX = 22;      // expansion cap
+const POND_R = 46;          // water radius
+let   ISLAND_R = 18;        // central grassy island radius (grows on expansion)
+const ISLAND_MAX = 30;      // expansion cap
 const OTTER_SPEED = 12;
+const TILE = 1.6;           // tile-based map cell size (Animal-Crossing style)
+const GRASS_Y = 1.55;       // flat island walking surface height
 
 // --- Diving ---
 const SEABED_Y   = -10;     // ocean floor depth
@@ -425,12 +461,31 @@ const BUILDINGS = [
   { id:'fishfac', icon:'🏭', name:'Fish Factory',cost:{wood:10,stone:8},         xp:32, pop:1, lvl:3,
     produces:{ in:'fish', out:'food', every:4 } },
   { id:'aquarium',icon:'🐠', name:'Aquarium',    cost:{stone:10,shell:8,wood:4}, xp:34, pop:0, lvl:3 },
+  { id:'house',   icon:'🏠', name:'Cozy House',  cost:{wood:12,stone:6},         xp:40, pop:1, lvl:2, customizable:true },
   { id:'tree',    icon:'🌳', name:'Big Tree',     cost:{reed:5,wood:5,shell:3},   xp:30, pop:0, lvl:3 },
   { id:'tower',   icon:'🏯', name:'Lantern Tower',cost:{stone:14,wood:10,shell:6},xp:60,pop:2, lvl:4 },
-  // --- special actions (not placed on a plot) ---
+  // --- special actions (not placed on a tile) ---
   { id:'pet',     icon:'🐾', name:'Adopt Pet',   cost:{food:6},                  xp:20, lvl:2, special:'pet' },
   { id:'land',    icon:'🏝️', name:'Buy Land',    cost:{coins:30},                xp:25, lvl:1, special:'expand' },
 ];
+
+// Animal-Crossing-style decorations — placed on tiles, can be picked up & refunded.
+const DECOR = [
+  { id:'flowerbed', icon:'🌷', name:'Flower Bed',  cost:{reed:2},          xp:4,  lvl:1 },
+  { id:'bush',      icon:'🌿', name:'Topiary Bush',cost:{reed:3},          xp:4,  lvl:1 },
+  { id:'fence',     icon:'🪵', name:'Fence',       cost:{wood:1},          xp:2,  lvl:1 },
+  { id:'lamp',      icon:'🏮', name:'Lamp Post',   cost:{wood:2,stone:1},  xp:6,  lvl:1 },
+  { id:'bench',     icon:'🪑', name:'Park Bench',  cost:{wood:3},          xp:6,  lvl:1 },
+  { id:'umbrella',  icon:'⛱️', name:'Beach Umbrella',cost:{reed:2,shell:2},xp:6,  lvl:1 },
+  { id:'fountain',  icon:'⛲', name:'Fountain',    cost:{stone:6},         xp:14, lvl:2 },
+  { id:'mailbox',   icon:'📮', name:'Mailbox',     cost:{wood:2},          xp:5,  lvl:1 },
+  { id:'campfire',  icon:'🔥', name:'Campfire',    cost:{wood:3,stone:1},  xp:6,  lvl:1 },
+  { id:'topi',      icon:'🌲', name:'Pine Topiary',cost:{reed:4},          xp:8,  lvl:1 },
+  { id:'statue',    icon:'🗿', name:'Stone Statue',cost:{stone:8},         xp:16, lvl:3 },
+  { id:'balloon',   icon:'🎈', name:'Balloons',    cost:{shell:3},         xp:8,  lvl:2 },
+];
+const DECOR_BY_ID = Object.fromEntries(DECOR.map(d=>[d.id,d]));
+const BUILD_BY_ID = Object.fromEntries(BUILDINGS.map(b=>[b.id,b]));
 
 // ---------- State ----------
 const state = {
@@ -440,11 +495,14 @@ const state = {
   caught: {},              // species id -> count caught (collection / aquarium)
   treasures: {},           // treasure id -> count found
   level: 1, xp: 0, pop: 1, builds: 0,
-  plots: [],     // {pos, used}
+  tiles: [],     // tile-based map cells {x,z,used,obj}
+  placed: [],    // {obj, tile, def, kind}  — everything placed, for pickup/move
   pets: 0,
   expands: 0,
   diving: false,
   oxygen: MAX_OXYGEN,
+  editMode: false,   // Animal-Crossing edit/decorate mode
+  dockTab: 'build',  // 'build' | 'decor'
   running: false,
 };
 function xpForLevel(l){ return Math.round(40 * Math.pow(1.55, l-1)); }
@@ -573,16 +631,11 @@ sand.position.y = -0.55; sand.receiveShadow = true;
 islandGroup.add(sand);
 
 function buildIslandGeo(r){
-  const moundGeo = new THREE.CylinderGeometry(r, r+1.6, 3.0, 56, 1);
-  const mpos = moundGeo.attributes.position;
-  for(let i=0;i<mpos.count;i++){
-    const x=mpos.getX(i), y=mpos.getY(i), z=mpos.getZ(i);
-    if(y>0){ const rr=Math.sqrt(x*x+z*z)/r; mpos.setY(i, y + (1-rr*rr)*0.9); }
-  }
-  moundGeo.computeVertexNormals();
+  // flat-topped island so the tile map sits cleanly (top face at GRASS_Y)
+  const moundGeo = new THREE.CylinderGeometry(r, r+1.8, 2.9, 64, 1);
   island.geometry.dispose(); island.geometry = moundGeo;
   sand.geometry.dispose();
-  sand.geometry = new THREE.CylinderGeometry(r+1.7, r+2.4, 0.5, 56);
+  sand.geometry = new THREE.CylinderGeometry(r+1.9, r+2.7, 0.5, 64);
 }
 buildIslandGeo(ISLAND_R);
 
@@ -645,17 +698,70 @@ function decorateIsland(rMax){
 }
 decorateIsland(ISLAND_R);
 
-// Build plots arranged in rings on the island
-function addPlotRing(r, n){
-  for(let i=0;i<n;i++){
-    const a = (i/n)*Math.PI*2 + (r*0.3);
-    state.plots.push({ pos:new THREE.Vector3(Math.cos(a)*r, 1.5, Math.sin(a)*r), used:false });
+// ---------- Tile-based map (Animal Crossing style) ----------
+const TILE_Y = GRASS_Y + 0.02;
+// mowed-lawn checker rendered as one cheap repeating texture
+function makeCheckerTex(){
+  const c=document.createElement('canvas'); c.width=c.height=2; const x=c.getContext('2d');
+  x.fillStyle='#88c66c'; x.fillRect(0,0,2,2);
+  x.fillStyle='#7cb85f'; x.fillRect(0,0,1,1); x.fillRect(1,1,1,1);
+  const t=new THREE.CanvasTexture(c); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter;
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+}
+const checkerTex = makeCheckerTex();
+const lawn = new THREE.Mesh(new THREE.CircleGeometry(ISLAND_R-0.9, 64),
+  new THREE.MeshStandardMaterial({ map:checkerTex, roughness:0.95 }));
+lawn.rotation.x = -Math.PI/2; lawn.position.y = TILE_Y; lawn.receiveShadow = true; islandGroup.add(lawn);
+
+const gridGroup = new THREE.Group(); gridGroup.visible=false; islandGroup.add(gridGroup); // edit grid
+
+// tile cursor highlight (shows where the next placement lands)
+const tileCursor = new THREE.Mesh(new THREE.PlaneGeometry(TILE*0.96, TILE*0.96),
+  new THREE.MeshBasicMaterial({ color:0x9be86a, transparent:true, opacity:0.45, side:THREE.DoubleSide, depthWrite:false }));
+tileCursor.rotation.x = -Math.PI/2; tileCursor.visible=false; islandGroup.add(tileCursor);
+
+function rebuildTiles(){
+  // logical tile grid (no per-tile meshes — placement only)
+  state.tiles.length = 0;
+  const half = Math.floor((ISLAND_R-1.0)/TILE);
+  for(let ix=-half; ix<=half; ix++){
+    for(let iz=-half; iz<=half; iz++){
+      const x=ix*TILE, z=iz*TILE;
+      if(Math.hypot(x,z) > ISLAND_R-1.2) continue;   // keep tiles on grass, off the beach
+      state.tiles.push({ ix, iz, x, z, used:false, obj:null });
+    }
   }
+  // re-mark used tiles from already-placed objects
+  for(const p of state.placed){
+    const tl = state.tiles.find(t=>t.ix===p.tile.ix && t.iz===p.tile.iz);
+    if(tl){ tl.used=true; tl.obj=p.obj; p.tile=tl; }
+  }
+  // resize lawn + checker density
+  lawn.geometry.dispose(); lawn.geometry = new THREE.CircleGeometry(ISLAND_R-0.9, 64);
+  const cells = (ISLAND_R-0.9)*2/TILE;
+  checkerTex.repeat.set(cells/2, cells/2); checkerTex.needsUpdate=true;
+  // rebuild edit grid helper
+  while(gridGroup.children.length) gridGroup.remove(gridGroup.children[0]);
+  const size = half*2*TILE;
+  const gh = new THREE.GridHelper(size, half*2, 0xffffff, 0xffffff);
+  gh.material.transparent=true; gh.material.opacity=0.30; gh.position.y=TILE_Y+0.02;
+  gridGroup.add(gh);
 }
-function makePlots(){
-  addPlotRing(0,1); addPlotRing(5.5,6); addPlotRing(9.5,9);
+rebuildTiles();
+
+function tileAt(x,z){
+  const ix=Math.round(x/TILE), iz=Math.round(z/TILE);
+  return state.tiles.find(t=>t.ix===ix && t.iz===iz) || null;
 }
-makePlots();
+function nearestEmptyTile(pos){
+  let best=null, bd=Infinity;
+  for(const t of state.tiles){
+    if(t.used) continue;
+    const d=(t.x-pos.x)*(t.x-pos.x)+(t.z-pos.z)*(t.z-pos.z);
+    if(d<bd){ bd=d; best=t; }
+  }
+  return best;
+}
 
 // Expand the island: grow geometry, push the water shoreline out, add a fresh plot ring.
 function expandIsland(){
@@ -667,8 +773,8 @@ function expandIsland(){
   // a couple of palms & flowers on the new band
   for(let i=0;i<2;i++){ const p=makePalm(); const a=rand(0,Math.PI*2),r=rand(ISLAND_R-3,ISLAND_R-1.3); p.position.set(Math.cos(a)*r,1.5,Math.sin(a)*r); decoGroup.add(p); }
   for(let i=0;i<5;i++){ const fl=makeFlower(); const a=rand(0,Math.PI*2),r=rand(ISLAND_R-3.5,ISLAND_R-1.2); fl.position.set(Math.cos(a)*r,1.5,Math.sin(a)*r); decoGroup.add(fl); }
-  addPlotRing(ISLAND_R-2.2, 10 + state.expands*2);
   state.expands++;
+  rebuildTiles();            // bigger island → more tiles to build & decorate on
   // satisfying grow pop on the whole island
   islandPop = 0.0;
   return true;
@@ -1116,31 +1222,28 @@ function spawnRing(pos, color, maxR=2.2){
   ringPool.push({ m, life:0, max:0.6, maxR });
 }
 
-// ---------- Build placement preview ring ----------
-const plotMarks = [];
-function refreshPlotMarks(){
-  // create simple ring markers on empty plots
-  plotMarks.forEach(m=>islandGroup.remove(m));
-  plotMarks.length=0;
-}
-refreshPlotMarks();
-
-function nearestEmptyPlot(){
-  let best=null, bd=Infinity;
-  for(const p of state.plots){
-    if(p.used) continue;
-    const d = p.pos.distanceTo(otter.position);
-    if(d<bd){ bd=d; best=p; }
-  }
-  return best;
-}
-
 // Building meshes
-function makeBuilding(id){
+const HOUSE_ROOFS = [0xc7563f, 0x4f86c6, 0x6fb56a, 0xc79a3a, 0xb06bd8, 0x46b0a8];
+function makeBuilding(id, variant=0){
   const g=new THREE.Group();
   const wood=new THREE.MeshStandardMaterial({color:0xb07a45,roughness:0.85});
   const roof=new THREE.MeshStandardMaterial({color:0xc7563f,roughness:0.8});
   const stoneM=new THREE.MeshStandardMaterial({color:0x9aa6b2,roughness:1});
+  if(id==='house'){
+    // a cozy customizable cottage (Animal-Crossing-y)
+    const roofCol = HOUSE_ROOFS[variant % HOUSE_ROOFS.length];
+    const wallM=new THREE.MeshStandardMaterial({color:0xf3e6c8,roughness:0.85});
+    const roofM=new THREE.MeshStandardMaterial({color:roofCol,roughness:0.7});
+    const body=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.3,1.5),wallM); body.position.y=0.65; g.add(body);
+    const rf=new THREE.Mesh(new THREE.ConeGeometry(1.45,0.95,4),roofM); rf.rotation.y=Math.PI/4; rf.position.y=1.75; g.add(rf);
+    const door=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.75,0.1),new THREE.MeshStandardMaterial({color:0x7a4a28})); door.position.set(0,0.45,0.76); g.add(door);
+    const knob=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8),new THREE.MeshStandardMaterial({color:0xffd24a,metalness:0.6,roughness:0.3})); knob.position.set(0.15,0.45,0.82); g.add(knob);
+    for(const sx of [-0.55,0.55]){ const win=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.35,0.08),new THREE.MeshStandardMaterial({color:0x8fd6ff,emissive:0x335577,emissiveIntensity:0.3})); win.position.set(sx,0.8,0.76); g.add(win); }
+    const chim=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.5,0.22),new THREE.MeshStandardMaterial({color:0xb0463a})); chim.position.set(0.5,1.95,0.2); g.add(chim);
+    g.userData.house=true; g.userData.variant=variant;
+    g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+    return g;
+  }
   if(id==='hut'){
     const base=new THREE.Mesh(new THREE.CylinderGeometry(0.9,1.0,1.0,12),wood); base.position.y=0.5; g.add(base);
     const rf=new THREE.Mesh(new THREE.ConeGeometry(1.25,1.0,12),roof); rf.position.y=1.4; g.add(rf);
@@ -1221,6 +1324,62 @@ function makeBuilding(id){
   return g;
 }
 
+// ---------- Decoration meshes (Animal Crossing style) ----------
+function makeDecor(id){
+  const g=new THREE.Group();
+  const wood=new THREE.MeshStandardMaterial({color:0xb07a45,roughness:0.85});
+  const leaf=new THREE.MeshStandardMaterial({color:0x4fae5a,roughness:0.85});
+  if(id==='flowerbed'){
+    const soil=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.18,1.1),new THREE.MeshStandardMaterial({color:0x6b4a2f})); soil.position.y=0.09; g.add(soil);
+    const cols=[0xff6b9d,0xffd166,0xb892ff,0x6fd0ff,0xff9d4d];
+    for(let i=0;i<4;i++){ const fl=makeFlower(); fl.scale.setScalar(0.8); fl.position.set(rand(-0.35,0.35),0.16,rand(-0.35,0.35)); g.add(fl); }
+  } else if(id==='bush'){
+    for(let i=0;i<3;i++){ const b=new THREE.Mesh(new THREE.IcosahedronGeometry(rand(0.35,0.5),0),leaf); b.position.set(rand(-0.25,0.25),0.4+rand(0,0.2),rand(-0.25,0.25)); g.add(b); }
+  } else if(id==='topi'){
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.14,0.5,7),wood); trunk.position.y=0.25; g.add(trunk);
+    for(let i=0;i<3;i++){ const c=new THREE.Mesh(new THREE.ConeGeometry(0.6-i*0.16,0.7,8),leaf); c.position.y=0.7+i*0.42; g.add(c); }
+  } else if(id==='fence'){
+    for(const sx of [-0.5,0,0.5]){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.6,0.12),wood); p.position.set(sx,0.3,0); g.add(p); }
+    for(const yy of [0.2,0.45]){ const rail=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.08,0.08),wood); rail.position.set(0,yy,0); g.add(rail); }
+  } else if(id==='lamp'){
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,1.3,8),new THREE.MeshStandardMaterial({color:0x37434f})); post.position.y=0.65; g.add(post);
+    const lamp=new THREE.Mesh(new THREE.SphereGeometry(0.18,12,10),new THREE.MeshStandardMaterial({color:0xffe7a8,emissive:0xffcf6a,emissiveIntensity:0.9})); lamp.position.y=1.35; g.add(lamp);
+    const pl=new THREE.PointLight(0xffd27a,0.7,7); pl.position.y=1.35; g.add(pl);
+  } else if(id==='bench'){
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.1,0.4),wood); seat.position.y=0.42; g.add(seat);
+    const back=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.4,0.1),wood); back.position.set(0,0.62,-0.16); g.add(back);
+    for(const sx of [-0.45,0.45]) for(const sz of [-0.15,0.15]){ const lg=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.42,0.1),wood); lg.position.set(sx,0.21,sz); g.add(lg); }
+  } else if(id==='umbrella'){
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1.4,6),wood); pole.position.y=0.7; g.add(pole);
+    const top=new THREE.Mesh(new THREE.ConeGeometry(0.8,0.5,12),new THREE.MeshStandardMaterial({color:0xff6b6b})); top.position.y=1.35; g.add(top);
+    const stripe=new THREE.Mesh(new THREE.ConeGeometry(0.81,0.5,12,1,true,0,Math.PI/3),new THREE.MeshStandardMaterial({color:0xffffff,side:THREE.DoubleSide})); stripe.position.y=1.35; g.add(stripe);
+  } else if(id==='fountain'){
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.9,0.4,16),new THREE.MeshStandardMaterial({color:0x9aa6b2,roughness:1})); base.position.y=0.2; g.add(base);
+    const water=new THREE.Mesh(new THREE.CylinderGeometry(0.68,0.68,0.12,16),new THREE.MeshStandardMaterial({color:0x6fd0e8,transparent:true,opacity:0.85})); water.position.y=0.42; g.add(water);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.14,0.5,8),new THREE.MeshStandardMaterial({color:0x9aa6b2})); stem.position.y=0.65; g.add(stem);
+    const top=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.1,12),new THREE.MeshStandardMaterial({color:0x9aa6b2})); top.position.y=0.92; g.add(top);
+  } else if(id==='mailbox'){
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.7,6),wood); post.position.y=0.35; g.add(post);
+    const box=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.3,0.5),new THREE.MeshStandardMaterial({color:0xe55a4a})); box.position.y=0.82; g.add(box);
+    const flag=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.18,0.02),new THREE.MeshStandardMaterial({color:0xffd24a})); flag.position.set(0.18,0.88,0); g.add(flag);
+  } else if(id==='campfire'){
+    for(let i=0;i<5;i++){ const lg=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.6,6),wood); const a=i/5*Math.PI*2; lg.position.set(Math.cos(a)*0.18,0.12,Math.sin(a)*0.18); lg.rotation.set(0.5*Math.cos(a),a,0.5*Math.sin(a)); g.add(lg); }
+    const fire=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.5,8),new THREE.MeshStandardMaterial({color:0xff8a3a,emissive:0xff6a1a,emissiveIntensity:0.9})); fire.position.y=0.4; g.add(fire);
+    const pl=new THREE.PointLight(0xff9a4a,0.8,6); pl.position.y=0.6; g.add(pl);
+    g.userData.flicker=pl;
+  } else if(id==='statue'){
+    const base=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.3,0.7),new THREE.MeshStandardMaterial({color:0x8a929c})); base.position.y=0.15; g.add(base);
+    const head=new THREE.Mesh(new THREE.DodecahedronGeometry(0.42,0),new THREE.MeshStandardMaterial({color:0x9aa6b2,roughness:1})); head.scale.set(0.9,1.2,0.9); head.position.y=0.85; g.add(head);
+  } else if(id==='balloon'){
+    const cols=[0xff6b6b,0xffd166,0x6fd0ff];
+    for(let i=0;i<3;i++){ const b=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,12),new THREE.MeshStandardMaterial({color:cols[i],roughness:0.4})); b.scale.set(1,1.2,1); b.position.set((i-1)*0.28,1.2+i*0.06,0); g.add(b);
+      const str=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,1.0,4),new THREE.MeshStandardMaterial({color:0xdddddd})); str.position.set((i-1)*0.28,0.6,0); g.add(str); }
+    g.userData.float=true;
+  }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
+
 // ---------- HUD wiring ----------
 const HUD_KEYS = ['wood','reed','stone','shell','food'];
 function updateResHUD(flashKey){
@@ -1263,21 +1422,26 @@ function costStr(b){
   if(b.special==='expand' && ISLAND_R>=ISLAND_MAX) return 'MAX';
   return Object.entries(effectiveCost(b)).map(([k,v])=>`${ic(k)}${v}`).join(' ');
 }
+function dockList(){ return state.dockTab==='decor' ? DECOR : BUILDINGS; }
+let dockBuiltTab=null;
 function renderDock(){
   const dock = $('#buildDock');
-  if(dock.children.length !== BUILDINGS.length){
+  const list = dockList();
+  if(dockBuiltTab !== state.dockTab){
+    dockBuiltTab = state.dockTab;
     dock.innerHTML='';
-    BUILDINGS.forEach(b=>{
+    list.forEach(b=>{
       const btn=document.createElement('button');
       btn.className='build'; btn.dataset.id=b.id;
       btn.innerHTML=`<span class="bIcon">${b.icon}</span><span class="bName">${b.name}</span><span class="bCost">${costStr(b)}</span>`;
-      btn.addEventListener('click',()=>tryBuild(b));
+      btn.addEventListener('click',()=> state.dockTab==='decor' ? tryPlaceDecor(b) : tryBuild(b));
       dock.appendChild(btn);
     });
   }
   // update affordability / lock
-  BUILDINGS.forEach(b=>{
+  list.forEach(b=>{
     const btn = dock.querySelector(`[data-id="${b.id}"]`);
+    if(!btn) return;
     btn.classList.toggle('locked', state.level < b.lvl);
     btn.classList.toggle('afford', state.level>=b.lvl && canAfford(b));
     let tag = btn.querySelector('.lockTag');
@@ -1286,6 +1450,12 @@ function renderDock(){
       tag.textContent='Lv'+b.lvl;
     } else if(tag){ tag.remove(); }
   });
+}
+function setDockTab(tab){
+  state.dockTab = tab;
+  $('#tabBuild').classList.toggle('on', tab==='build');
+  $('#tabDecor').classList.toggle('on', tab==='decor');
+  renderDock();
 }
 
 let toastT=null;
@@ -1321,32 +1491,97 @@ function tryBuild(b){
     return;
   }
 
-  // ----- normal placed buildings -----
+  // ----- normal placed buildings (on a tile) -----
+  if(state.diving){ toast('🤿 Surface to build on the island!'); return; }
+  // tapping an already-placed customizable house cycles its colour
+  if(b.customizable){
+    const onTile = tileAt(otter.position.x, otter.position.z);
+    if(onTile && onTile.used && onTile.obj && onTile.obj.userData.house){
+      const obj=onTile.obj; const nv=(obj.userData.variant+1)%HOUSE_ROOFS.length;
+      const rec=state.placed.find(p=>p.obj===obj);
+      const fresh=makeBuilding('house', nv);
+      fresh.position.copy(obj.position); fresh.rotation.copy(obj.rotation);
+      islandGroup.remove(obj); islandGroup.add(fresh);
+      onTile.obj=fresh; if(rec) rec.obj=fresh;
+      toast('🎨 Repainted the roof!'); beep(700,0.06); spawnRing(fresh.position.clone().setY(1.6),0xffe6a8,2.0);
+      return;
+    }
+  }
   if(!canAfford(b)){ toast(`Need ${costStr(b)} — gather more!`); beep(180,0.08,'square'); return; }
-  const plot = nearestEmptyPlot();
-  if(!plot){ toast('🏡 No empty plots — Expand the Isle! 🏝️'); return; }
+  const tile = nearestEmptyTile(otter.position);
+  if(!tile){ toast('🏡 No free tiles — Buy Land to expand! 🏝️'); return; }
   pay(b.cost);
-  plot.used=true;
-  // place
+  tile.used=true;
   const m = makeBuilding(b.id);
-  m.position.copy(plot.pos); m.position.y = 1.55;
+  m.position.set(tile.x, GRASS_Y, tile.z);
   m.scale.setScalar(0.01);
   islandGroup.add(m);
+  tile.obj=m; state.placed.push({ obj:m, tile, def:b, kind:'build' });
   growAnims.push({ obj:m, t:0 });
-  // register manufacture facility
   if(b.produces) producers.push({ building:m, def:b.produces, timer:0 });
-  // rewards
   state.builds++;
-  state.pop += b.pop;
+  state.pop += b.pop||0;
   if(b.pop>0) addFollower();
   gainXP(b.xp);
-  updateResHUD(); updateStatsHUD();
+  updateResHUD(); updateStatsHUD(); flashGrid();
   toast(`${b.icon} ${b.name} built! +${b.xp} XP`);
   beep(660,0.09); setTimeout(()=>beep(880,0.12),90);
   confettiAt(m.position);
   spawnRing(m.position.clone().setY(1.56), 0xffe6a8, 3.2);
   spawnBurst(m.position.clone().setY(1.9), 0xfff0c0);
 }
+
+// ----- place a decoration on the nearest free tile -----
+function tryPlaceDecor(d){
+  if(state.level < d.lvl){ toast(`🔒 Reach Village Lv ${d.lvl} first!`); return; }
+  if(state.diving){ toast('🤿 Surface to decorate the island!'); return; }
+  if(!canAfford(d)){ toast(`Need ${costStr(d)} — gather more!`); beep(180,0.08,'square'); return; }
+  const tile = nearestEmptyTile(otter.position);
+  if(!tile){ toast('🌷 No free tiles — Buy Land to expand! 🏝️'); return; }
+  pay(d.cost);
+  tile.used=true;
+  const m = makeDecor(d.id);
+  m.position.set(tile.x, GRASS_Y, tile.z);
+  m.rotation.y = Math.round(Math.random()*4)*Math.PI/2;
+  m.scale.setScalar(0.01);
+  islandGroup.add(m);
+  tile.obj=m; state.placed.push({ obj:m, tile, def:d, kind:'decor' });
+  growAnims.push({ obj:m, t:0 });
+  gainXP(d.xp);
+  updateResHUD(); updateStatsHUD(); flashGrid();
+  toast(`${d.icon} ${d.name} placed!`);
+  beep(560,0.07); setTimeout(()=>beep(760,0.09),70);
+  spawnRing(m.position.clone().setY(1.56), 0x9be86a, 2.0);
+}
+
+// ----- pick up whatever the otter is standing on (refunds the cost) -----
+function pickUpHere(){
+  if(state.diving){ toast('🤿 Surface first!'); return; }
+  const tl = tileAt(otter.position.x, otter.position.z);
+  if(!tl || !tl.used){ toast('Stand on something you placed, then tap ♻️'); return; }
+  const idx = state.placed.findIndex(p=>p.tile===tl || (p.obj===tl.obj));
+  if(idx<0){ toast('That can’t be picked up.'); return; }
+  const rec = state.placed[idx];
+  // refund the full cost back
+  const cost = rec.def.cost||{};
+  for(const k in cost) (k==='coins') ? state.coins+=cost[k] : state.res[k]+=cost[k];
+  // undo rewards for buildings
+  if(rec.kind==='build'){
+    state.builds=Math.max(0,state.builds-1);
+    if(rec.def.produces){ const pi=producers.findIndex(p=>p.building===rec.obj); if(pi>=0) producers.splice(pi,1); }
+  }
+  spawnBurst(rec.obj.position.clone().setY(rec.obj.position.y+0.6), 0xffffff);
+  islandGroup.remove(rec.obj);
+  tl.used=false; tl.obj=null;
+  state.placed.splice(idx,1);
+  updateResHUD(); updateStatsHUD();
+  toast(`♻️ Picked up ${rec.def.name} (cost refunded)`);
+  beep(500,0.06,'triangle'); setTimeout(()=>beep(360,0.08,'triangle'),70);
+}
+
+// brief grid flash when something is placed
+let gridFlash=0;
+function flashGrid(){ if(!state.editMode){ gridGroup.visible=true; gridFlash=0.8; } }
 
 const growAnims=[];
 function gainXP(n){
@@ -1589,6 +1824,20 @@ window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; joyEnd()
 // action buttons
 $('#dashBtn').addEventListener('click', tryDash);
 $('#diveBtn').addEventListener('click', toggleDive);
+$('#editBtn').addEventListener('click', toggleEdit);
+$('#pickBtn').addEventListener('click', pickUpHere);
+$('#tabBuild').addEventListener('click', ()=>setDockTab('build'));
+$('#tabDecor').addEventListener('click', ()=>setDockTab('decor'));
+function toggleEdit(){
+  if(!state.running) return;
+  state.editMode = !state.editMode;
+  $('#editBtn').classList.toggle('on', state.editMode);
+  $('#pickBtn').classList.toggle('hidden', !state.editMode);
+  gridGroup.visible = state.editMode;
+  tileCursor.visible = state.editMode;
+  if(state.editMode){ setDockTab('decor'); toast('🛠️ Edit mode — place décor, or stand on an item & tap ♻️'); }
+  else { tileCursor.visible=false; toast('✅ Done decorating!'); }
+}
 // double-tap the joystick zone to dash
 let lastJoyTap=0;
 joyZone.addEventListener('touchstart',()=>{ const now=performance.now(); if(now-lastJoyTap<260) tryDash(); lastJoyTap=now; });
@@ -1694,6 +1943,19 @@ function animate(){
       if(state.oxygen<=0){ state.oxygen=0; setDiving(false); toast('😮‍💨 Out of air — surfaced!'); }
       else if(state.oxygen<5 && Math.floor(state.oxygen*2)%2===0 && Math.random()<0.05) beep(880,0.05,'square',0.05);
     }
+
+    // ----- tile cursor (Animal Crossing placement helper) -----
+    if(!state.diving && (state.editMode || gridFlash>0)){
+      const under = tileAt(otter.position.x, otter.position.z);
+      if(state.editMode && under && under.used){
+        tileCursor.visible=true; tileCursor.position.set(under.x, TILE_Y+0.03, under.z); tileCursor.material.color.setHex(0xff7e6e);
+      } else {
+        const tgt = nearestEmptyTile(otter.position);
+        if(tgt){ tileCursor.visible=true; tileCursor.position.set(tgt.x, TILE_Y+0.03, tgt.z); tileCursor.material.color.setHex(0x9be86a); }
+        else tileCursor.visible=false;
+      }
+    } else tileCursor.visible=false;
+    if(gridFlash>0){ gridFlash-=dt; if(gridFlash<=0 && !state.editMode) gridGroup.visible=false; }
 
     // ----- water splash trail behind a swimming otter -----
     splashTimer -= dt;
@@ -1880,6 +2142,8 @@ function animate(){
           fm.rotation.y = -fm.userData.aqPhase;
         });
       }
+      if(ch.userData.flicker){ ch.userData.flicker.intensity = 0.6 + Math.sin(t*12+ch.position.x)*0.3; }
+      if(ch.userData.float){ ch.position.y = GRASS_Y + Math.sin(t*2+ch.position.x)*0.12; }
     });
 
     // ----- island expansion squash pop -----
@@ -1959,8 +2223,8 @@ function animate(){
   const camTarget = otter.position;
   diveCamK += ((state.diving?1:0) - diveCamK)*Math.min(1,dt*2.5);
   const kk = diveCamK;
-  const camH = (1-kk)*14.5 + kk*(camTarget.y+5.5);
-  const camD = (1-kk)*18   + kk*11;
+  const camH = (1-kk)*18 + kk*(camTarget.y+5.5);
+  const camD = (1-kk)*23 + kk*11;
   const desired = new THREE.Vector3(camTarget.x, camH, camTarget.z + camD);
   camera.position.lerp(desired, Math.min(1,dt*3.2));
   camera.lookAt(camTarget.x, camTarget.y + (1-kk)*1.5 + kk*0.3, camTarget.z);

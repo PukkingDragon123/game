@@ -7,6 +7,15 @@ earns XP and attracts more otters. Level up to unlock fancier buildings!
 
 ## Features
 
+- **🏝️ Tile-based island (Animal Crossing style)** — a big, flat, mowed-lawn
+  grid island. Buildings & décor snap to tiles; a green cursor shows where the
+  next item lands. **Buy Land** with coins to grow the island & unlock more tiles.
+- **🌷 Decoration & 🛠️ edit mode** — a **Decor** tab with flower beds, hedges,
+  fences, lamp posts, benches, umbrellas, fountains, mailboxes, campfires,
+  topiaries, statues & balloons. Toggle **Edit mode** to place items or stand on
+  one and tap ♻️ to pick it up (full refund).
+- **🏠 Houses you can decorate** — place a Cozy House and tap it to repaint the
+  roof in different colours, then dress the yard with décor.
 - **🤿 Underwater diving (Dave-the-Diver style)** — tap the dive mask on open
   water to descend to the **coral reef**: swaying kelp, colourful corals, reef
   fish, and **hidden treasure** (pearls, coins, gems, chests, lost crowns).
