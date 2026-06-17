@@ -39,17 +39,28 @@ earns XP and attracts more otters. Level up to unlock fancier buildings!
 - **🏝️ Island expansion** — spend resources to grow the island and unlock more
   build plots (costs scale each time).
 
-## Play
+## How to view / play
 
-It's a single self-contained file — no build step. Just open it:
+No build step and **no internet needed** — three.js is vendored in `vendor/`.
+
+**Easiest (recommended): run a tiny local server.** From this folder:
 
 ```bash
-# any static server works, e.g.
 python3 -m http.server 8000
-# then visit http://localhost:8000
 ```
 
-Or simply open `index.html` in a modern browser.
+…then open **http://localhost:8000** in your browser.
+
+In **Claude Code on the web**, run that same command — when it reports
+`Serving HTTP on ... port 8000`, open the forwarded preview/port that pops up
+(it maps to port 8000). If the preview asks for a port, enter **8000**.
+
+**Also works by double-clicking** `index.html` (it opens via `file://`).
+A server is still the most reliable option across browsers.
+
+> If you ever see a spinning otter that never starts, you're likely opening it
+> from a sandbox that blocks files, or `vendor/three.min.js` is missing. Use the
+> local-server method above and it will work 100%.
 
 ## Controls
 
