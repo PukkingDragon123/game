@@ -531,7 +531,7 @@ function pickFishSpecies(deep){
 
 // ---------- Renderer / Scene ----------
 const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));  // cap DPR for perf
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -552,7 +552,7 @@ scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2cc, 1.25);
 sun.position.set(28, 46, 18);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1536, 1536);
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 140;
 const sc = 55;
 sun.shadow.camera.left=-sc; sun.shadow.camera.right=sc; sun.shadow.camera.top=sc; sun.shadow.camera.bottom=-sc;
@@ -666,11 +666,13 @@ buildIslandGeo(ISLAND_R);
 
 // decorative grass tufts — sprinkled, and topped up after each expansion
 const tuftGeo = new THREE.ConeGeometry(0.25, 0.8, 5);
+// share a small palette of materials instead of one per tuft (perf)
+const tuftMats = [0.42,0.48,0.54].map(l=> new THREE.MeshStandardMaterial({ color:new THREE.Color().setHSL(0.28,0.5,l), roughness:1 }));
 function scatterTufts(count, rMin, rMax){
   for(let i=0;i<count;i++){
     const a = Math.random()*Math.PI*2, r = rand(rMin, rMax);
     const x=Math.cos(a)*r, z=Math.sin(a)*r;
-    const m = new THREE.Mesh(tuftGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(0.28, 0.5, rand(0.4,0.55)), roughness:1 }));
+    const m = new THREE.Mesh(tuftGeo, tuftMats[(Math.random()*tuftMats.length)|0]);
     m.position.set(x, 1.55, z); m.scale.setScalar(rand(0.6,1.3));
     m.rotation.y = Math.random()*Math.PI; m.castShadow = true;
     islandGroup.add(m);
@@ -806,75 +808,59 @@ function expandIsland(){
 }
 let islandPop = 1.0; // 0..1 scrub used for a quick squash when expanding
 
-// ---------- Otter ----------
+// ---------- Otter (slim, cute quadruped) ----------
 function makeOtter(scaleScale=1, furColor=0x9b6a43){
   const g = new THREE.Group();
-  const fur = new THREE.MeshStandardMaterial({ color:furColor, roughness:0.7 });
-  const belly = new THREE.MeshStandardMaterial({ color:0xe8c79a, roughness:0.7 });
-  const dark = new THREE.MeshStandardMaterial({ color:0x2a1c12, roughness:0.5 });
-  const pink = new THREE.MeshStandardMaterial({ color:0xd76e7e, roughness:0.6 });
+  const fur   = new THREE.MeshStandardMaterial({ color:furColor, roughness:0.72 });
+  const belly = new THREE.MeshStandardMaterial({ color:0xe8c79a, roughness:0.72 });
+  const dark  = new THREE.MeshStandardMaterial({ color:0x2a1c12, roughness:0.5 });
+  const eyeMat= new THREE.MeshBasicMaterial({ color:0x141414 });
 
-  // body
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 0.7, 6, 14), fur);
-  body.rotation.z = Math.PI/2; body.position.y = 0.62; body.castShadow = true;
-  body.scale.set(1,1,1.15);
+  // sleek body along +Z (forward) — slimmer, not a round blob
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.95, 6, 12), fur);
+  body.rotation.x = Math.PI/2; body.position.set(0, 0.52, -0.05); body.castShadow = true;
   g.add(body);
-  // belly patch
-  const bel = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14,12), belly);
-  bel.position.set(0.0,0.5,0.42); bel.scale.set(0.8,0.9,0.7);
-  g.add(bel);
+  // lighter chest/underside
+  const bel = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.55, 5, 10), belly);
+  bel.rotation.x = Math.PI/2; bel.position.set(0, 0.42, 0.12); bel.scale.set(0.92,0.7,0.95); g.add(bel);
 
   // head
   const head = new THREE.Group();
-  head.position.set(0, 1.05, 0.62);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.46, 18,16), fur);
-  skull.castShadow = true; head.add(skull);
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14,12), belly);
-  snout.position.set(0,-0.08,0.33); snout.scale.set(1,0.8,0.9); head.add(snout);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.1,10,8), dark);
-  nose.position.set(0,-0.04,0.6); head.add(nose);
-  // simple black dot eyes — clean, flat, unlit so they read as pure dots
-  const eyeMat = new THREE.MeshBasicMaterial({ color:0x0d0d0d });
+  head.position.set(0, 0.72, 0.58);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 14), fur); skull.castShadow = true; head.add(skull);
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 10), belly); snout.position.set(0,-0.07,0.24); snout.scale.set(1,0.85,0.95); head.add(snout);
+  const nose  = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), dark); nose.position.set(0,-0.04,0.42); head.add(nose);
   for(const sx of [-1,1]){
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12,16,16), eyeMat);
-    eye.position.set(0.17*sx, 0.13, 0.41); eye.scale.set(1,1,0.5);
-    head.add(eye);
-    // ears
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.13,10,8), fur);
-    ear.position.set(0.3*sx, 0.38, -0.02); ear.scale.set(1,0.7,0.6); head.add(ear);
+    // small, cute black-dot eyes
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 12), eyeMat);
+    eye.position.set(0.135*sx, 0.07, 0.255); eye.scale.set(1,1,0.6); head.add(eye);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.095, 10, 8), fur);
+    ear.position.set(0.2*sx, 0.26, -0.02); ear.scale.set(1,0.8,0.55); head.add(ear);
   }
-  // cheeks
-  for(const sx of [-1,1]){
-    const ch = new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8), pink);
-    ch.position.set(0.26*sx,-0.02,0.34); head.add(ch);
-  }
-  g.add(head);
-  g.userData.head = head;
+  g.add(head); g.userData.head = head;
 
-  // arms
-  const arms=[];
-  for(const sx of [-1,1]){
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.13,0.3,4,8), fur);
-    arm.position.set(0.45*sx, 0.55, 0.45); arm.castShadow=true;
-    g.add(arm); arms.push(arm);
+  // four hip-pivoting legs: FL, FR, BL, BR
+  const legGeo = new THREE.CapsuleGeometry(0.08, 0.2, 4, 7);
+  const pawGeo = new THREE.SphereGeometry(0.095, 8, 7);
+  const legs = [];
+  const hips = [[-0.22,0.34],[0.22,0.34],[-0.22,-0.3],[0.22,-0.3]];
+  for(const [hx,hz] of hips){
+    const leg = new THREE.Group(); leg.position.set(hx, 0.38, hz);
+    const limb = new THREE.Mesh(legGeo, fur); limb.position.y = -0.15; limb.castShadow = true; leg.add(limb);
+    const paw  = new THREE.Mesh(pawGeo, dark); paw.position.set(0,-0.28,0.05); paw.scale.set(1,0.5,1.3); leg.add(paw);
+    g.add(leg); legs.push(leg);
   }
-  g.userData.arms = arms;
-  // feet
-  for(const sx of [-1,1]){
-    const ft = new THREE.Mesh(new THREE.SphereGeometry(0.18,10,8), dark);
-    ft.position.set(0.28*sx,0.18,-0.3); ft.scale.set(1,0.5,1.3); g.add(ft);
-  }
+  g.userData.legs = legs;
 
-  // tail
-  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.22,0.9,5,10), fur);
-  tail.position.set(0,0.4,-0.85); tail.rotation.x = -0.5; tail.castShadow=true;
-  tail.scale.set(1,1,1.2);
-  g.add(tail);
-  g.userData.tail = tail;
+  // slim tapering tail
+  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.6, 5, 9), fur);
+  tail.position.set(0, 0.44, -0.72); tail.rotation.x = -0.7; tail.castShadow = true;
+  g.add(tail); g.userData.tail = tail;
 
   g.scale.setScalar(scaleScale);
   g.userData.baseScale = scaleScale;       // for bouncy squash & stretch
   g.userData.bouncePhase = Math.random()*Math.PI*2;
+  g.userData.gait = Math.random()*Math.PI*2;
   return g;
 }
 
@@ -1140,7 +1126,7 @@ function makeAnemone(){
   const base=new THREE.Mesh(new THREE.SphereGeometry(0.4,12,10,0,Math.PI*2,0,Math.PI*0.6),baseM); base.position.y=0.15; g.add(base);
   const tipM=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(hue%1,0.7,0.7),roughness:0.5,emissive:new THREE.Color().setHSL(hue%1,0.7,0.3),emissiveIntensity:0.25});
   const tents=[];
-  for(let i=0;i<14;i++){
+  for(let i=0;i<8;i++){
     const a=Math.random()*Math.PI*2, r=rand(0.05,0.3);
     const tent=new THREE.Mesh(new THREE.CapsuleGeometry(0.04,rand(0.4,0.8),3,5),tipM);
     tent.position.set(Math.cos(a)*r,0.45,Math.sin(a)*r);
@@ -1164,19 +1150,19 @@ function makeStarfish(){
 // scatter coral + kelp + critters around the floor (off the island footprint)
 const corals=[];
 function populateReef(){
-  for(let i=0;i<38;i++){
+  for(let i=0;i<26;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-2, POND_R-3);
     const c=makeCoral(); c.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); c.rotation.y=Math.random()*Math.PI*2; underwater.add(c); corals.push(c);
   }
-  for(let i=0;i<24;i++){
+  for(let i=0;i<16;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-1, POND_R-3);
     const k=makeKelp(); k.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(k); kelps.push(k);
   }
-  for(let i=0;i<10;i++){
+  for(let i=0;i<6;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, POND_R-4);
     const an=makeAnemone(); an.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(an); anemones.push(an);
   }
-  for(let i=0;i<14;i++){
+  for(let i=0;i<9;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, POND_R-4);
     const sf=makeStarfish(); sf.position.set(Math.cos(a)*r, SEABED_Y+0.04, Math.sin(a)*r); underwater.add(sf);
   }
@@ -1186,7 +1172,7 @@ populateReef();
 // --- ambient: marine snow + sunbeam light shafts (alive, dreamy water) ---
 let marineSnow=null;
 (function buildMarineSnow(){
-  const n=260; const geo=new THREE.BufferGeometry(); const arr=new Float32Array(n*3);
+  const n=150; const geo=new THREE.BufferGeometry(); const arr=new Float32Array(n*3);
   for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, r=Math.random()*(POND_R-2);
     arr[i*3]=Math.cos(a)*r; arr[i*3+1]=SEABED_Y+Math.random()*9; arr[i*3+2]=Math.sin(a)*r; }
   geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
@@ -1196,7 +1182,7 @@ let marineSnow=null;
 const lightShafts=[];
 (function buildShafts(){
   const mat=new THREE.MeshBasicMaterial({ color:0xbfeeff, transparent:true, opacity:0.06, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide });
-  for(let i=0;i<7;i++){
+  for(let i=0;i<5;i++){
     const shaft=new THREE.Mesh(new THREE.ConeGeometry(rand(2,3.5), 12, 10, 1, true), mat);
     const a=Math.random()*Math.PI*2, r=rand(4, POND_R-8);
     shaft.position.set(Math.cos(a)*r, SEABED_Y+8, Math.sin(a)*r);
@@ -1388,8 +1374,7 @@ function makeBuilding(id, variant=0){
   } else if(id==='tower'){
     const base=new THREE.Mesh(new THREE.CylinderGeometry(0.8,1.0,2.4,8),stoneM); base.position.y=1.2; g.add(base);
     const mid=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.8,1.4,8),new THREE.MeshStandardMaterial({color:0xc7563f,roughness:0.8})); mid.position.y=3.0; g.add(mid);
-    const lant=new THREE.Mesh(new THREE.SphereGeometry(0.5,12,10),new THREE.MeshStandardMaterial({color:0xffe07a,emissive:0xffae3b,emissiveIntensity:0.8})); lant.position.y=4.0; g.add(lant);
-    const pl=new THREE.PointLight(0xffd27a,1.2,14); pl.position.y=4.0; g.add(pl);
+    const lant=new THREE.Mesh(new THREE.SphereGeometry(0.5,12,10),new THREE.MeshStandardMaterial({color:0xffe07a,emissive:0xffae3b,emissiveIntensity:1.1})); lant.position.y=4.0; g.add(lant);
     const rf=new THREE.Mesh(new THREE.ConeGeometry(0.8,0.8,8),new THREE.MeshStandardMaterial({color:0x8a3a2c})); rf.position.y=4.7; g.add(rf);
   } else if(id==='woodcut'){
     // little timber cabin with a spinning saw blade
@@ -1452,8 +1437,7 @@ function makeDecor(id){
     for(const yy of [0.2,0.45]){ const rail=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.08,0.08),wood); rail.position.set(0,yy,0); g.add(rail); }
   } else if(id==='lamp'){
     const post=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,1.3,8),new THREE.MeshStandardMaterial({color:0x37434f})); post.position.y=0.65; g.add(post);
-    const lamp=new THREE.Mesh(new THREE.SphereGeometry(0.18,12,10),new THREE.MeshStandardMaterial({color:0xffe7a8,emissive:0xffcf6a,emissiveIntensity:0.9})); lamp.position.y=1.35; g.add(lamp);
-    const pl=new THREE.PointLight(0xffd27a,0.7,7); pl.position.y=1.35; g.add(pl);
+    const lamp=new THREE.Mesh(new THREE.SphereGeometry(0.18,12,10),new THREE.MeshStandardMaterial({color:0xffe7a8,emissive:0xffcf6a,emissiveIntensity:1.0})); lamp.position.y=1.35; g.add(lamp);
   } else if(id==='bench'){
     const seat=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.1,0.4),wood); seat.position.y=0.42; g.add(seat);
     const back=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.4,0.1),wood); back.position.set(0,0.62,-0.16); g.add(back);
@@ -1474,8 +1458,7 @@ function makeDecor(id){
   } else if(id==='campfire'){
     for(let i=0;i<5;i++){ const lg=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.6,6),wood); const a=i/5*Math.PI*2; lg.position.set(Math.cos(a)*0.18,0.12,Math.sin(a)*0.18); lg.rotation.set(0.5*Math.cos(a),a,0.5*Math.sin(a)); g.add(lg); }
     const fire=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.5,8),new THREE.MeshStandardMaterial({color:0xff8a3a,emissive:0xff6a1a,emissiveIntensity:0.9})); fire.position.y=0.4; g.add(fire);
-    const pl=new THREE.PointLight(0xff9a4a,0.8,6); pl.position.y=0.6; g.add(pl);
-    g.userData.flicker=pl;
+    g.userData.flicker=fire;   // emissive flicker (no real light → cheaper)
   } else if(id==='statue'){
     const base=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.3,0.7),new THREE.MeshStandardMaterial({color:0x8a929c})); base.position.y=0.15; g.add(base);
     const head=new THREE.Mesh(new THREE.DodecahedronGeometry(0.42,0),new THREE.MeshStandardMaterial({color:0x9aa6b2,roughness:1})); head.scale.set(0.9,1.2,0.9); head.position.y=0.85; g.add(head);
@@ -2026,8 +2009,7 @@ function animate(){
     else baseY = onLand ? 1.55 : 0.15;
     otter.position.y += (baseY - otter.position.y)*Math.min(1,dt*(state.diving?2.5:8));
 
-    // ----- otter anim (banking + gentle sway) -----
-    const swim = Math.sin(t*9);
+    // ----- otter anim (banking + gait + sway) -----
     if(state.diving){
       otter.rotation.z = otter.userData.bank + Math.sin(t*2.2)*0.04;
       otter.rotation.x = -0.22 + Math.sin(t*2)*0.05;   // nose-down gliding pose
@@ -2036,13 +2018,19 @@ function animate(){
       if(!onLand){ otter.position.y += Math.sin(t*3)*0.04; otter.rotation.z = otter.userData.bank + Math.sin(t*3)*0.05; }
       else otter.rotation.z = otter.userData.bank*0.5;
     }
-    if(otter.userData.tail) otter.userData.tail.rotation.z = swim*(moving?0.5:0.2);
-    if(otter.userData.head) otter.userData.head.rotation.z = swim*0.06;
-    if(otter.userData.arms){
-      const sp2 = dashTime>0 ? 1.2 : (moving?0.8:0.3);
-      otter.userData.arms[0].rotation.x = swim*sp2;
-      otter.userData.arms[1].rotation.x = -swim*sp2;
+    // four-leg gait: diagonal trot on land, flutter-paddle in water
+    const legs = otter.userData.legs;
+    if(legs){
+      const swimming = state.diving || !onLand;
+      const gSpd = moving ? (swimming?14:11) : 2.5;
+      const amp  = dashTime>0 ? 0.9 : (moving ? (swimming?0.55:0.7) : 0.12);
+      otter.userData.gait += dt*gSpd;
+      const ph = otter.userData.gait, s1 = Math.sin(ph), s2 = Math.sin(ph+Math.PI);
+      legs[0].rotation.x = s1*amp; legs[3].rotation.x = s1*amp;   // FL + BR
+      legs[1].rotation.x = s2*amp; legs[2].rotation.x = s2*amp;   // FR + BL
     }
+    if(otter.userData.tail) otter.userData.tail.rotation.z = Math.sin(t*8)*(moving?0.4:0.15);
+    if(otter.userData.head) otter.userData.head.rotation.z = Math.sin(t*4)*0.05;
 
     // bouncy squash & stretch — faster, springier bounce while moving
     const bounceSpd = moving ? 13 : 5.5;
@@ -2135,6 +2123,7 @@ function animate(){
       f.position.y = 1.55 + hop*0.22;
       f.rotation.y = f.userData.angle + (f.userData.speed>0?Math.PI:0) + Math.PI/2;
       if(f.userData.tail) f.userData.tail.rotation.z = Math.sin(t*8+f.userData.bob)*0.4;
+      if(f.userData.legs){ const s=Math.sin(t*9+f.userData.bob)*0.5, L=f.userData.legs; L[0].rotation.x=s; L[3].rotation.x=s; L[1].rotation.x=-s; L[2].rotation.x=-s; }
       // squash at the bottom of the hop, stretch at the top
       f.userData.bouncePhase = t*4 + f.userData.bob;
       applyBounce(f, Math.cos(f.userData.bouncePhase)*0.9, 0.8);
@@ -2269,7 +2258,7 @@ function animate(){
           fm.rotation.y = -fm.userData.aqPhase;
         });
       }
-      if(ch.userData.flicker){ ch.userData.flicker.intensity = 0.6 + Math.sin(t*12+ch.position.x)*0.3; }
+      if(ch.userData.flicker){ ch.userData.flicker.material.emissiveIntensity = 0.7 + Math.sin(t*12+ch.position.x)*0.35; }
       if(ch.userData.float){ ch.position.y = GRASS_Y + Math.sin(t*2+ch.position.x)*0.12; }
     });
 
