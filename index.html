@@ -359,6 +359,41 @@
     text-align: center; padding: 24px;
   }
   .overlay.hidden { display: none; }
+
+  /* cinematic title (the 3D sunset scene shows behind it) */
+  #start {
+    position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
+    justify-content:space-between; align-items:center;
+    padding: calc(env(safe-area-inset-top) + 26px) 18px calc(env(safe-area-inset-bottom) + 22px);
+    pointer-events:none;
+  }
+  #start.hidden { display:none; }
+  #start .titleBanner { text-align:center; text-shadow:0 3px 16px rgba(0,0,0,.5); }
+  #start .tIcon { font-size:62px; animation:bob 1.6s ease-in-out infinite; }
+  #start h1 { font-family:var(--hand-title); font-weight:700; font-size:58px; margin:0; color:#fff; letter-spacing:.5px; }
+  #start .sub { font-size:19px; color:#ffe9c8; margin:3px 0 0; }
+  #start .startBottom { display:flex; flex-direction:column; align-items:center; gap:13px; pointer-events:auto; width:100%; max-width:440px; }
+  #start .howtoBox { width:100%; background:rgba(8,14,24,.62); border:1.5px solid rgba(255,255,255,.18); backdrop-filter:blur(8px); }
+  #start .howtoBox summary { cursor:pointer; padding:10px 14px; font-family:var(--hand); font-size:18px; color:#fff; }
+  #start .howto { text-align:left; padding:4px 16px 14px; font-size:15.5px; line-height:1.6; color:#eaf2ff; border-left:4px solid #ffb347; }
+  #start .credit { font-family:var(--hand); font-size:18px; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.6); }
+  #start .credit b { color:#ffe07a; }
+
+  /* fishing mini-game */
+  #fishGame { position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:rgba(6,20,34,.45); backdrop-filter:blur(3px); }
+  #fishGame.hidden { display:none; }
+  .fgCard { display:flex; flex-direction:column; align-items:center; gap:12px; padding:22px 30px; background:var(--panel); border:2px solid rgba(255,255,255,.26); box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .fgFish { font-size:56px; transition:transform .06s; }
+  .fgFish.fight { animation:fgshake .22s infinite; }
+  @keyframes fgshake { 0%,100%{transform:translateX(-5px) rotate(-7deg);} 50%{transform:translateX(5px) rotate(7deg);} }
+  .fgLabel { font-family:var(--hand-title); font-size:24px; color:#fff; }
+  .fgBarWrap { position:relative; width:66px; height:220px; background:rgba(0,0,0,.42); border:2px solid rgba(255,255,255,.3); overflow:hidden; }
+  .fgFill { position:absolute; left:0; bottom:0; width:100%; height:34%; background:linear-gradient(0deg,#52bf52,#9be86a); }
+  .fgFill.danger { background:linear-gradient(0deg,#e0533a,#ff8a5a); }
+  .fgGoal { position:absolute; left:0; top:7%; width:100%; height:3px; background:#ffe07a; box-shadow:0 0 8px #ffe07a; }
+  .fgBtn { pointer-events:auto; cursor:pointer; border:none; background:linear-gradient(145deg,#ffe07a,#ff9d3b); color:#5a3210; font-family:var(--hand-title); font-weight:700; font-size:30px; padding:14px 50px; box-shadow:0 8px 22px rgba(255,160,60,.5); user-select:none; -webkit-user-select:none; }
+  .fgBtn:active { transform:scale(.92); }
+  .fgHint { font-size:15px; color:#cfe0ee; }
   .card {
     background: var(--panel); border-radius: 0; padding: 30px 28px;
     border: 2px solid rgba(255,255,255,.22);
@@ -459,6 +494,17 @@
   <!-- Minimap (real ocean map) -->
   <canvas id="miniMap" width="150" height="150"></canvas>
 
+  <!-- Fishing mini-game -->
+  <div id="fishGame" class="hidden">
+    <div class="fgCard">
+      <div class="fgFish" id="fgFish">🐟</div>
+      <div class="fgLabel" id="fgLabel">Reel it in!</div>
+      <div class="fgBarWrap"><div class="fgFill" id="fgFill"></div><div class="fgGoal"></div></div>
+      <button class="fgBtn" id="fgBtn">REEL!</button>
+      <div class="fgHint">tap fast — it fights back!</div>
+    </div>
+  </div>
+
   <div id="hotbar"></div>
 
   <!-- Inventory / chest storage overlay -->
@@ -482,23 +528,27 @@
 </div>
 
 <!-- Start overlay -->
-<div id="start" class="overlay hidden">
-  <div class="card">
-    <div class="otterTitle">🦦</div>
+<div id="start" class="hidden">
+  <div class="titleBanner">
+    <div class="tIcon">🦦</div>
     <h1>Otter Village</h1>
-    <p class="sub">Dive the reef, catch fish &amp; grow your cozy village</p>
-    <div class="howto">
-      🕹️ <b>Move:</b> drag on the left (or <b>WASD</b>). <b>⚡ Dash:</b> button, <b>Shift</b>/<b>Space</b>, or double-tap.<br>
-      🤚 <b>Collect (E):</b> tap the green button (or press <b>E</b>) to catch fish, gather 🌳🪨🌿 nodes, grab 💎 treasure, open chests &amp; recruit villagers — whatever you're next to.<br>
-      ⛵ <b>Sail:</b> walk up to your boat &amp; press 🤚 to set sail across the ocean. Steer with the joystick, dash for a gust, tap 🤚 near a shore to dock.<br>
-      🗺️ <b>Map:</b> the minimap (top-right) shows 🏘️ Village Isle (recruit villagers) &amp; 🏴‍☠️ Treasure Isle (dig up chests).<br>
-      🤿 <b>Dive:</b> tap the mask on open water to explore the reef (or press <b>F</b>).<br>
-      🎒 <b>Inventory:</b> press <b>I</b>/<b>Tab</b> (or tap 🎒) — drag to sort, 1–8 picks a hotbar slot.<br>
-      🔨 <b>Craft (C):</b> the Workbench crafts tools, furniture &amp; buildings into your bag; select one &amp; tap 📍 to place it.<br>
-      🛠️ <b>Edit mode:</b> stand on an item &amp; tap ♻️ to pick it up (full refund). Tap a 🏠 house to repaint it.<br>
-      🏝️ <b>Buy Land</b> with coins to grow the island &amp; 🐾 adopt pets!
-    </div>
-    <button class="btn" id="startBtn">Start Splashing 🌊</button>
+    <p class="sub">A cozy island life — fish, sail, build &amp; befriend</p>
+  </div>
+  <div class="startBottom">
+    <details class="howtoBox">
+      <summary>📖 How to play</summary>
+      <div class="howto">
+        🕹️ <b>Move:</b> drag on the left (or <b>WASD</b>). <b>⚡ Dash:</b> button, <b>Shift</b>/<b>Space</b>, or double-tap.<br>
+        🤚 <b>Collect (E):</b> tap the green button (or press <b>E</b>) to catch fish, gather 🌳🪨🌿 nodes, grab 💎 treasure, open chests, read 📬 mail &amp; recruit villagers.<br>
+        🎣 <b>Fishing:</b> hook a fish, then tap <b>REEL!</b> fast — the bar drains as it fights back. Fill it to land the catch!<br>
+        ⛵ <b>Sail:</b> walk to your boat &amp; press 🤚 to sail the ocean. Tap 🤚 near a shore to dock.<br>
+        🗺️ <b>Map:</b> the minimap shows 🏘️ Village Isle (recruit) &amp; 🏴‍☠️ Treasure Isle.<br>
+        🤿 <b>Dive:</b> tap the mask on open water to explore the reef (or press <b>F</b>).<br>
+        🔨 <b>Craft (C):</b> the Workbench crafts items into your bag; select one &amp; tap 📍 to place it.<br>
+      </div>
+    </details>
+    <button class="btn" id="startBtn">▶  Play</button>
+    <div class="credit">✨ a game by <b>Pukking Dragon</b> ✨</div>
   </div>
 </div>
 </body>
@@ -548,7 +598,7 @@ const GRASS_Y = 1.55;       // flat island walking surface height
 const SEABED_Y   = -16;     // ocean floor depth (deep)
 const DIVE_SWIM_Y= -12.5;   // depth the otter roams at while diving
 const MAX_OXYGEN = 28;      // seconds of air at the surface
-const DIVE_SPEED = 13;      // a touch faster underwater
+const DIVE_SPEED = 16;      // faster, freer underwater swimming
 
 // Resource types (drifting collectibles) + processed goods
 const RES = {
@@ -685,6 +735,8 @@ const state = {
   diving: false,
   sailing: false,    // riding/steering the boat across the ocean
   recruits: 0,
+  day: 1,
+  mail: { has:false, msg:'' },
   oxygen: MAX_OXYGEN,
   editMode: false,   // Animal-Crossing edit/decorate mode
   dockTab: 'build',  // 'build' | 'decor'
@@ -749,6 +801,70 @@ sun.shadow.camera.left=-sc; sun.shadow.camera.right=sc; sun.shadow.camera.top=sc
 sun.shadow.bias = -0.0004;
 scene.add(sun);
 scene.add(sun.target);
+
+// ---------- Title-screen cinematic (sunset, sun, seagulls, sitting otter) ----------
+let titleMode = true;
+const DAY_BG = new THREE.Color(0xbfeaff);
+const sunDefaults = { col:sun.color.getHex(), int:sun.intensity, hemiInt:hemi.intensity };
+function makeSkyGradient(cols){
+  const c=document.createElement('canvas'); c.width=8; c.height=256; const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,256); cols.forEach(([p,col])=>g.addColorStop(p,col));
+  x.fillStyle=g; x.fillRect(0,0,8,256);
+  const tex=new THREE.CanvasTexture(c); if(THREE.SRGBColorSpace) tex.colorSpace=THREE.SRGBColorSpace; return tex;
+}
+const sunsetSky = makeSkyGradient([[0,'#241a5e'],[0.34,'#6a3f97'],[0.58,'#e06a86'],[0.78,'#ff9d54'],[1,'#ffe2a0']]);
+// big setting sun on the horizon
+const sunGroup = new THREE.Group();
+const sunGlow = new THREE.Mesh(new THREE.CircleGeometry(18,40), new THREE.MeshBasicMaterial({color:0xffc46a,transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(9,40), new THREE.MeshBasicMaterial({color:0xfff0bc,transparent:true,opacity:0.98,fog:false}));
+sunGroup.add(sunGlow, sunDisc); sunGroup.position.set(-12, 8.5, -POND_R*0.92); sunGroup.visible=false; scene.add(sunGroup);
+// flying seagulls (ambient — kept all the time)
+function makeGull(){
+  const g=new THREE.Group();
+  const m=new THREE.MeshStandardMaterial({color:0xf6f6f6, roughness:0.85, side:THREE.DoubleSide});
+  const wL=new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.36), m); wL.position.x=-0.55;
+  const wR=new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.36), m); wR.position.x=0.55;
+  g.add(wL,wR); g.userData={wL,wR,ph:Math.random()*6.28};
+  return g;
+}
+const gulls=[];
+for(let i=0;i<6;i++){
+  const gl=makeGull();
+  gl.userData.cx=rand(-25,25); gl.userData.cz=rand(-25,25); gl.userData.rad=rand(22,55);
+  gl.userData.h=rand(17,30); gl.userData.spd=rand(0.08,0.2)*(Math.random()<0.5?-1:1); gl.userData.ang=rand(0,6.28);
+  gl.scale.setScalar(rand(0.8,1.6)); scene.add(gl); gulls.push(gl);
+}
+function startTitleScene(){
+  scene.background = sunsetSky; scene.fog.color.set(0xffb98a); scene.fog.near=70; scene.fog.far=230;
+  sunGroup.visible=true;
+  sun.color.set(0xffb060); sun.intensity=1.5; sun.position.set(-12,18,-60); hemi.intensity=0.6; hemi.color.set(0xffd9b0);
+  const h=$('#hud'); if(h) h.style.visibility='hidden';
+}
+function endTitleScene(){
+  titleMode=false;
+  scene.background = DAY_BG; scene.fog.color.copy(DAY_BG); scene.fog.near=85; scene.fog.far=180;
+  sunGroup.visible=false;
+  sun.color.setHex(sunDefaults.col); sun.intensity=sunDefaults.int; sun.position.set(28,46,18); hemi.intensity=sunDefaults.hemiInt; hemi.color.set(0xfdf6e3);
+  otter.position.set(0,0,ISLAND_R+5);
+  const h=$('#hud'); if(h) h.style.visibility='';
+}
+function updateTitle(t,dt){
+  // otter sits on the shore gazing out to sea & the sun
+  otter.position.set(2.5, GRASS_Y-0.12, -(ISLAND_R-3));
+  otter.rotation.set(0, Math.PI, 0);
+  const A=otter.userData.arms, L=otter.userData.legs, H=otter.userData.head;
+  if(L){ L[0].rotation.set(-1.45,0,0); L[1].rotation.set(-1.45,0,0); }
+  if(A){ A[0].rotation.set(0.2,0,-0.18); A[1].rotation.set(0.2,0,0.18); }
+  if(H){ H.rotation.set(Math.sin(t*0.5)*0.05, 0, Math.sin(t*0.4)*0.03); }
+  applyBounce(otter, 0, 0);
+  sunDisc.material.opacity = 0.9 + Math.sin(t*1.4)*0.06;
+  sunGlow.scale.setScalar(1 + Math.sin(t*1.1)*0.05);
+  // slow cinematic drift behind the otter, out toward the horizon
+  const cx = 6.5 + 1.6*Math.sin(t*0.06);
+  const cz = -(ISLAND_R-3) + 9.5 + Math.sin(t*0.05)*1.2;
+  camera.position.lerp(new THREE.Vector3(cx, 5.2, cz), Math.min(1,dt*2));
+  camera.lookAt(0, 3.4, -POND_R*0.5);
+}
 
 // ---------- Water ----------
 // a finely subdivided plane (clipped to a disc in the shader) so the whole
@@ -1549,6 +1665,52 @@ function openChestPickup(cp){
   updateResHUD(); updateStatsHUD();
 }
 
+// ---------- Home dock + mailbox + daily time ----------
+function makeDock(){
+  const g=new THREE.Group();
+  const wood=new THREE.MeshStandardMaterial({color:0x9a6b3f,roughness:0.85});
+  const dark=new THREE.MeshStandardMaterial({color:0x6b4a28,roughness:0.9});
+  for(let i=0;i<6;i++){ const pl=new THREE.Mesh(new THREE.BoxGeometry(1.55,0.16,2.2), wood); pl.position.set(i*1.55,0.55,0); g.add(pl); }
+  for(let i=0;i<=5;i+=1){ if(i%2) continue; for(const sz of [-0.95,0.95]){ const post=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,1.5,7), dark); post.position.set(i*1.55,-0.1,sz); g.add(post); } }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
+function makeMailbox(){
+  const g=new THREE.Group();
+  const post=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,1.0,8), new THREE.MeshStandardMaterial({color:0x8a5a2b,roughness:0.9})); post.position.y=0.5; g.add(post);
+  const box=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.4,0.72), new THREE.MeshStandardMaterial({color:0xd23b3b,roughness:0.6})); box.position.y=1.05; g.add(box);
+  const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.72,12,1,false,0,Math.PI), new THREE.MeshStandardMaterial({color:0xb22a2a,roughness:0.6})); lid.rotation.z=Math.PI/2; lid.position.y=1.25; g.add(lid);
+  const flag=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.26,0.18), new THREE.MeshStandardMaterial({color:0xffd166})); flag.position.set(0.3,1.2,0); g.add(flag);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.userData.flag=flag; return g;
+}
+let homeDock=null, homeMailbox=null;
+function buildHomeDockAndMail(){
+  homeDock=makeDock(); homeDock.position.set(ISLAND_R-1.5, 0, 0); scene.add(homeDock);
+  homeMailbox=makeMailbox(); homeMailbox.position.set(3.5, GRASS_Y, ISLAND_R-3.5); homeMailbox.rotation.y=-0.4; scene.add(homeMailbox);
+}
+const MAIL_MSGS = [
+  'Dear friend, the tides look gentle today. Happy fishing! — A neighbour 🐚',
+  'Heard there is rare treasure near the far isle. Bring your boat! 🗺️',
+  'Your village is looking lovely. Mind if I visit soon? 🏡',
+  'The reef has been busy with colourful fish lately! 🐠',
+  'Thanks for the warm welcome — see you at the dock! ⛵',
+];
+const DAY_LEN = 150;   // seconds per in-game day
+let dayTimer = 0;
+function advanceDay(){
+  state.day = (state.day||1) + 1;
+  const t=$('#toast'); t.style.color='#ffe07a'; toast(`🌅 Day ${state.day} — a fresh morning in the village!`); setTimeout(()=>{ t.style.color=''; },1900);
+  beep(523,0.12,'sine'); setTimeout(()=>beep(659,0.14,'sine'),130);
+  if(Math.random()<0.55){
+    // a new villager arrives at the home dock to be recruited
+    spawnNPC(ISLANDS[0], rand(0,Math.PI*2), ISLAND_R*0.55);
+    state.mail={ has:true, msg:'A traveller has arrived on the island — come say hello and invite them to stay! 🧑' };
+  } else {
+    state.mail={ has:true, msg: MAIL_MSGS[(Math.random()*MAIL_MSGS.length)|0] };
+  }
+}
+
 // ---------- Bubbles (rising, while diving) ----------
 const bubbles=[];
 function spawnBubble(pos){
@@ -2219,6 +2381,52 @@ function catchDeepFish(df, idx){
   const f0=rar.glow>=0.5?560:440; beep(f0,0.07,'triangle',0.06); setTimeout(()=>beep(f0*1.5,0.09,'triangle',0.05),70);
 }
 
+// ---------- Fishing mini-game (tap to reel; the fish fights back) ----------
+let fishing=null;
+function startFishing(target){
+  if(fishing) return;
+  if(target.kind==='surface') target.sw.hooked=true; else target.df.hooked=true;
+  const rar = RARITY[target.sp.rarity];
+  // rarer fish fight harder & start with less line reeled in
+  fishing = { target, progress:0.34, t:0, surge:0, drainBase: 0.15 + rar.glow*0.10 };
+  $('#fgFish').textContent = target.sp.emoji || '🐟';
+  $('#fgLabel').textContent = 'Reel it in!';
+  $('#fgFill').style.height = '34%';
+  $('#fishGame').classList.remove('hidden');
+  beep(300,0.1,'sawtooth',0.05);
+}
+function fishingClick(){
+  if(!fishing) return;
+  fishing.progress = Math.min(1, fishing.progress + 0.075);
+  beep(420 + fishing.progress*340, 0.04, 'square', 0.045);
+  const fish=$('#fgFish'); fish.style.transform='scale(1.2)'; setTimeout(()=>{ if(fishing) fish.style.transform=''; }, 55);
+  if(fishing.progress>=1) endFishing(true);
+}
+function endFishing(win){
+  if(!fishing) return;
+  const tg=fishing.target; fishing=null;
+  $('#fishGame').classList.add('hidden'); $('#fgFish').classList.remove('fight');
+  if(tg.kind==='surface'){ tg.sw.hooked=false; if(win) catchFish(tg.sw); }
+  else { tg.df.hooked=false; const i=deepFish.indexOf(tg.df); if(win && i>=0) catchDeepFish(tg.df,i); }
+  if(!win){ toast('🎣 It wriggled off the line!'); beep(180,0.12,'square'); setTimeout(()=>beep(140,0.14,'square'),110); }
+}
+function updateFishing(dt){
+  if(!fishing) return;
+  fishing.t += dt;
+  // baseline tension + bursts where the fish yanks hard
+  let drain = fishing.drainBase + 0.12*Math.max(0, Math.sin(fishing.t*2.6));
+  fishing.surge -= dt;
+  if(fishing.surge<=0 && Math.random()<0.02){ fishing.surge=rand(0.5,1.0); beep(210,0.08,'sawtooth',0.05); }
+  const fighting = fishing.surge>0;
+  if(fighting) drain += 0.6;
+  fishing.progress -= drain*dt;
+  const fill=$('#fgFill'); fill.style.height = Math.max(0,fishing.progress*100)+'%';
+  fill.classList.toggle('danger', fishing.progress<0.25 || fighting);
+  $('#fgFish').classList.toggle('fight', fighting);
+  $('#fgLabel').textContent = fighting ? "It's fighting — TAP!" : 'Reel it in!';
+  if(fishing.progress<=0) endFishing(false);
+}
+
 // collect a hidden treasure → coins
 function collectTreasure(tr, idx){
   const t=tr.t, rar=RARITY[t.rarity];
@@ -2387,6 +2595,13 @@ function disembark(){
 function nearestOf(list, range, getPos){ let b=null,bd=range; for(const e of list){ const p=getPos(e); const d=Math.hypot(p.x-otter.position.x, p.z-otter.position.z); if(d<bd){ bd=d; b=e; } } return b; }
 function nearestForageReady(){ return nearestOf(forageNodes.filter(n=>n.ready), 1.9, n=>n.mesh.position); }
 function nearestNPCInRange(){ return nearestOf(npcs, 2.4, n=>n.mesh.position); }
+function mailboxNear(){ return homeMailbox && !state.diving && !state.sailing && Math.hypot(otter.position.x-homeMailbox.position.x, otter.position.z-homeMailbox.position.z)<2.4; }
+function readMail(){
+  if(state.mail && state.mail.has){
+    const t=$('#toast'); t.style.color='#ffe07a'; toast('📬 '+state.mail.msg); setTimeout(()=>{ t.style.color=''; },2600);
+    state.mail.has=false; beep(660,0.07); setTimeout(()=>beep(880,0.09),80);
+  } else { toast('📭 No new mail today — check back tomorrow!'); beep(300,0.06,'triangle'); }
+}
 function nearestChestPickup(){ return nearestOf(chestPickups.filter(c=>c.ready), 2.4, c=>c.mesh.position); }
 function nearestFishInRange(){ return nearestOf(swimmers, 2.3, s=>s.mesh.position); }
 function nearestDriftInRange(){ return nearestOf(driftItems.filter(d=>!d.collecting), 2.3, d=>d.mesh.position); }
@@ -2397,6 +2612,7 @@ function contextHint(){
   if(state.sailing) return '⚓';
   if(!state.running) return '🤚';
   if(!state.diving && boatNear()) return '⛵';
+  if(mailboxNear()) return '📬';
   const tl=tileAt(otter.position.x,otter.position.z);
   if(tl&&tl.obj&&state.chests.find(c=>c.obj===tl.obj)) return '📦';
   if(nearestNPCInRange()) return '🧑';
@@ -2411,6 +2627,7 @@ function interact(){
   if(!state.running) return;
   if(state.sailing){ disembark(); return; }
   if(!state.diving && boatNear()){ boardBoat(); return; }
+  if(mailboxNear()){ readMail(); return; }
   const tl=tileAt(otter.position.x,otter.position.z);
   const chest = tl&&tl.obj ? state.chests.find(c=>c.obj===tl.obj) : null;
   if(chest){ openInv(chest); return; }
@@ -2419,10 +2636,10 @@ function interact(){
   const nd=nearestForageReady(); if(nd){ harvestNode(nd); return; }
   if(state.diving){
     const ti=nearestTreasureIdx(); if(ti>=0){ collectTreasure(treasures[ti], ti); return; }
-    const di=nearestDeepFishIdx(); if(di>=0){ catchDeepFish(deepFish[di], di); return; }
+    const di=nearestDeepFishIdx(); if(di>=0){ startFishing({kind:'deep', df:deepFish[di], sp:deepFish[di].sp}); return; }
     toast('Swim closer to grab treasure or fish 💎'); return;
   }
-  const fi=nearestFishInRange(); if(fi){ catchFish(fi); return; }
+  const fi=nearestFishInRange(); if(fi){ startFishing({kind:'surface', sw:fi, sp:fi.sp}); return; }
   const dr=nearestDriftInRange();
   if(dr){ dr.collecting=true; dr.scoop=0; spawnBurst(dr.mesh.position.clone().setY(dr.mesh.position.y+0.4), RES[dr.type].color); beep(520+Math.random()*120,0.07,'triangle',0.05); return; }
   toast('Nothing to collect nearby 🤚');
@@ -2433,6 +2650,7 @@ const move = new THREE.Vector2(0,0); // x,z desired direction (-1..1)
 const keys = {};
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
+  if(fishing){ if(k===' '||k==='e'||k==='enter'){ e.preventDefault(); fishingClick(); } return; }
   if(k===' '||k==='shift'){ if(!e.repeat) tryDash(); }
   if(k==='f'){ if(!e.repeat) toggleDive(); }
   if(k==='e'){ if(!e.repeat){ e.preventDefault(); interact(); } }
@@ -2497,6 +2715,9 @@ function toggleInv(){
 $('#bagBtn').addEventListener('click', toggleInv);
 $('#invClose').addEventListener('click', closeInv);
 $('#invPanel').addEventListener('click', e=>{ if(e.target.id==='invPanel') closeInv(); });
+// fishing mini-game taps
+$('#fgBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); fishingClick(); });
+$('#fishGame').addEventListener('pointerdown', e=>{ if(e.target.id!=='fgBtn') fishingClick(); });
 // drag + tooltip on the panel grids; selection on the bottom hotbar
 for(const id of ['#invHot','#invBag','#invStorage']){
   const g=$(id); g.addEventListener('pointerdown', onSlotDown); g.addEventListener('mousemove', invHover); g.addEventListener('mouseleave',()=>$('#invTip').classList.add('hidden'));
@@ -2543,7 +2764,17 @@ function animate(){
   const t = clock.elapsedTime;
   waterUniforms.uTime.value = t;
 
+  // seagulls wheel overhead (title + game)
+  for(const gl of gulls){
+    const u=gl.userData; u.ang+=u.spd*dt;
+    gl.position.set(u.cx+Math.cos(u.ang)*u.rad, u.h+Math.sin(u.ang*2)*1.6, u.cz+Math.sin(u.ang)*u.rad);
+    gl.rotation.y=-u.ang+Math.PI/2; u.ph+=dt*8; const f=Math.sin(u.ph)*0.6;
+    u.wL.rotation.z=f; u.wR.rotation.z=-f;
+  }
+  if(titleMode) updateTitle(t,dt);
+
   if(state.running){
+    updateFishing(dt);          // reeling mini-game (when a fish is hooked)
     // ----- movement: sail the boat, or walk/swim on foot -----
     if(dashCD>0) dashCD-=dt;
     if(dashTime>0) dashTime-=dt;
@@ -2773,6 +3004,12 @@ function animate(){
     // ----- fish: swim, wander, flee & get caught -----
     for(let i=swimmers.length-1;i>=0;i--){
       const sw=swimmers[i], m=sw.mesh; sw.t+=dt;
+      if(sw.hooked){   // thrashing on the line in front of the otter
+        m.position.x += ((otter.position.x+Math.sin(t*9)*1.2)-m.position.x)*Math.min(1,dt*6);
+        m.position.z += ((otter.position.z+Math.cos(t*11)*1.2)-m.position.z)*Math.min(1,dt*6);
+        m.position.y = 0.12 + Math.sin(t*13)*0.2; m.rotation.z = Math.sin(t*16)*0.4;
+        animateFish(m, sw, dt, 2.5); continue;
+      }
       const toOtX=otter.position.x-m.position.x, toOtZ=otter.position.z-m.position.z;
       const od=Math.hypot(toOtX,toOtZ);
       // dart away when the otter gets close (rarer fish are jumpier)
@@ -2814,6 +3051,12 @@ function animate(){
       // reef fish
       for(let i=deepFish.length-1;i>=0;i--){
         const df=deepFish[i], m=df.mesh; df.t+=dt;
+        if(df.hooked){
+          m.position.x += ((otter.position.x+Math.sin(t*9)*1.2)-m.position.x)*Math.min(1,dt*6);
+          m.position.z += ((otter.position.z+Math.cos(t*11)*1.2)-m.position.z)*Math.min(1,dt*6);
+          m.position.y += ((otter.position.y+Math.sin(t*13)*0.3)-m.position.y)*Math.min(1,dt*6);
+          m.rotation.z = Math.sin(t*16)*0.4; animateFish(m, df, dt, 2.5); continue;
+        }
         const toX=otter.position.x-m.position.x, toZ=otter.position.z-m.position.z;
         const od=Math.hypot(toX,toZ);
         const fleeR=3.0 + RARITY[df.sp.rarity].glow*1.6;
@@ -2867,6 +3110,11 @@ function animate(){
 
     // ----- idle boat bob (when not being sailed) -----
     if(!state.sailing){ boat.position.y = 0.25 + Math.sin(t*1.4)*0.06; boat.rotation.z = Math.sin(t*0.9)*0.03; if(boat.userData.flag) boat.userData.flag.rotation.y = Math.sin(t*3)*0.3; }
+
+    // ----- daily time: a new day brings a visitor or a letter -----
+    dayTimer += dt;
+    if(dayTimer >= DAY_LEN){ dayTimer = 0; advanceDay(); }
+    if(homeMailbox){ const fl=homeMailbox.userData.flag; const up=state.mail&&state.mail.has; fl.rotation.z = (up?-0.9:0) + (up?Math.sin(t*5)*0.05:0); fl.material.color.setHex(up?0xffd166:0x9a9a9a); }
 
     // ----- villagers to recruit: idle bob + bouncing "!" marker -----
     for(const n of npcs){
@@ -3002,22 +3250,23 @@ function animate(){
   }
 
   // ----- camera follow (pulls in & lower while diving, higher & wider while sailing) -----
-  const camTarget = state.sailing ? boat.position : otter.position;
-  diveCamK += ((state.diving?1:0) - diveCamK)*Math.min(1,dt*2.5);
-  const kk = diveCamK;
-  const sail = state.sailing?1:0;
-  const camH = (1-kk)*(18 + sail*5) + kk*(camTarget.y+5.5);
-  const camD = (1-kk)*(23 + sail*8) + kk*11;
-  // gentle underwater sway so the world feels alive & buoyant
-  const swayX = kk*Math.sin(t*0.6)*0.7, swayY = kk*Math.sin(t*0.9+1.3)*0.4;
-  const desired = new THREE.Vector3(camTarget.x+swayX, camH+swayY, camTarget.z + camD);
-  camera.position.lerp(desired, Math.min(1,dt*3.2));
-  // camera shake for impactful actions
-  if(camShake>0.001){ camShake*=Math.pow(0.0001,dt); camera.position.x+=(Math.random()-0.5)*camShake; camera.position.y+=(Math.random()-0.5)*camShake; camera.position.z+=(Math.random()-0.5)*camShake; }
-  else camShake=0;
-  camera.lookAt(camTarget.x, camTarget.y + (1-kk)*1.5 + kk*0.3, camTarget.z);
-  // sun follows for shadow coverage
-  sun.target.position.copy(camTarget);
+  if(!titleMode){
+    const camTarget = state.sailing ? boat.position : otter.position;
+    diveCamK += ((state.diving?1:0) - diveCamK)*Math.min(1,dt*2.5);
+    const kk = diveCamK;
+    const sail = state.sailing?1:0;
+    const camH = (1-kk)*(18 + sail*5) + kk*(camTarget.y+5.5);
+    const camD = (1-kk)*(23 + sail*8) + kk*11;
+    // gentle underwater sway so the world feels alive & buoyant
+    const swayX = kk*Math.sin(t*0.6)*0.7, swayY = kk*Math.sin(t*0.9+1.3)*0.4;
+    const desired = new THREE.Vector3(camTarget.x+swayX, camH+swayY, camTarget.z + camD);
+    camera.position.lerp(desired, Math.min(1,dt*3.2));
+    // camera shake for impactful actions
+    if(camShake>0.001){ camShake*=Math.pow(0.0001,dt); camera.position.x+=(Math.random()-0.5)*camShake; camera.position.y+=(Math.random()-0.5)*camShake; camera.position.z+=(Math.random()-0.5)*camShake; }
+    else camShake=0;
+    camera.lookAt(camTarget.x, camTarget.y + (1-kk)*1.5 + kk*0.3, camTarget.z);
+    sun.target.position.copy(camTarget);
+  }
 
   renderer.render(scene, camera);
 }
@@ -3070,6 +3319,7 @@ function drawMiniMap(){
 // ---------- Boot ----------
 function init(){
   buildExtraIslands();       // village isle (recruit villagers) + treasure isle (sail to them)
+  buildHomeDockAndMail();    // pier by the boat + a mailbox for daily letters
   for(let i=0;i<10;i++) spawnDrift();
   for(let i=0;i<6;i++) spawnFish();
   for(let i=0;i<8;i++) spawnDeepFish();
@@ -3078,6 +3328,7 @@ function init(){
   // a small starter kit so building is possible right away
   addItem('wood',8); addItem('reed',5); addItem('stone',5); addItem('berry',3);
   renderHotbar(); updateResHUD(); updateStatsHUD(); drawMiniMap();
+  startTitleScene();         // cinematic sunset title until the player taps Play
 }
 init();
 
@@ -3086,6 +3337,7 @@ setTimeout(()=>{ $('#loader').style.display='none'; $('#start').classList.remove
 
 $('#startBtn').addEventListener('click',()=>{
   $('#start').classList.add('hidden');
+  endTitleScene();           // sunrise: swap to bright daytime & hand control to the player
   state.running=true;
   try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); audioCtx.resume(); }catch(e){}
   beep(523,0.1); setTimeout(()=>beep(784,0.14),110);
