@@ -516,17 +516,17 @@ if(!window.THREE){
 const $ = (s) => document.querySelector(s);
 
 // ---------- Config ----------
-const POND_R = 46;          // water radius
-let   ISLAND_R = 18;        // central grassy island radius (grows on expansion)
-const ISLAND_MAX = 30;      // expansion cap
+const POND_R = 66;          // water radius (big open ocean)
+let   ISLAND_R = 22;        // central grassy island radius (grows on expansion)
+const ISLAND_MAX = 42;      // expansion cap
 const OTTER_SPEED = 12;
 const TILE = 1.6;           // tile-based map cell size (Animal-Crossing style)
 const GRASS_Y = 1.55;       // flat island walking surface height
 
 // --- Diving ---
-const SEABED_Y   = -10;     // ocean floor depth
-const DIVE_SWIM_Y= -8.0;    // depth the otter roams at while diving
-const MAX_OXYGEN = 22;      // seconds of air at the surface
+const SEABED_Y   = -16;     // ocean floor depth (deep)
+const DIVE_SWIM_Y= -12.5;   // depth the otter roams at while diving
+const MAX_OXYGEN = 28;      // seconds of air at the surface
 const DIVE_SPEED = 13;      // a touch faster underwater
 
 // Resource types (drifting collectibles) + processed goods
@@ -709,7 +709,7 @@ $('#app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xbfeaff);
-scene.fog = new THREE.Fog(0xbfeaff, 60, 130);
+scene.fog = new THREE.Fog(0xbfeaff, 85, 180);
 
 const camera = new THREE.PerspectiveCamera(52, window.innerWidth/window.innerHeight, 0.1, 400);
 
@@ -730,11 +730,11 @@ scene.add(sun.target);
 // ---------- Water ----------
 // a finely subdivided plane (clipped to a disc in the shader) so the whole
 // surface ripples with smooth, fluid, layered waves
-const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 84, 84);
+const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 128, 128);
 const waterUniforms = {
   uTime: { value: 0 },
-  uColorDeep:    { value: new THREE.Color(0x1565a0) },
-  uColorShallow: { value: new THREE.Color(0x73e0ec) },
+  uColorDeep:    { value: new THREE.Color(0x0a3d6e) },
+  uColorShallow: { value: new THREE.Color(0x86eede) },
   uIslandR: { value: ISLAND_R },
   uPondR: { value: POND_R },
 };
@@ -747,10 +747,10 @@ const waterMat = new THREE.ShaderMaterial({
     varying float vWave;
     varying vec3 vN;
     float wave(vec2 p){
-      return sin(p.x*0.30 + uTime*1.2)*0.13
-           + sin(p.y*0.37 - uTime*1.0)*0.10
-           + sin((p.x*0.7 + p.y*0.5) + uTime*0.85)*0.07
-           + sin((p.x*0.22 - p.y*0.9) - uTime*0.6)*0.05;
+      return sin(p.x*0.16 + uTime*1.0)*0.20
+           + sin(p.y*0.21 - uTime*0.85)*0.15
+           + sin((p.x*0.5 + p.y*0.38) + uTime*0.8)*0.08
+           + sin((p.x*0.14 - p.y*0.6) - uTime*0.5)*0.06;
     }
     void main(){
       vec3 p = position;
@@ -777,18 +777,19 @@ const waterMat = new THREE.ShaderMaterial({
       float d = length(vXZ);
       if(d > uPondR) discard;                          // clip the square into a disc
       float t = clamp((d - uIslandR) / (uPondR - uIslandR), 0.0, 1.0);
-      vec3 col = mix(uColorShallow, uColorDeep, smoothstep(0.0,1.0,t));
-      // soft up-facing shimmer + scrolling caustics
-      col += pow(max(vN.y,0.0), 4.0) * 0.12;
-      col += smoothstep(2.2, 3.0, caustic(vXZ)) * 0.22;
-      // bright wave crests
-      col += smoothstep(0.10, 0.20, vWave) * 0.30;
-      // animated shoreline foam
-      float foam = smoothstep(0.9, 0.0, abs(d - uIslandR - 0.4));
+      vec3 col = mix(uColorShallow, uColorDeep, smoothstep(0.0,1.0,pow(t,0.85)));
+      // sky tint on up-facing crests (fake fresnel reflection)
+      col = mix(col, vec3(0.62,0.86,1.0), pow(max(vN.y,0.0), 3.0)*0.18);
+      // scrolling caustic shimmer
+      col += smoothstep(2.2, 3.0, caustic(vXZ)) * 0.18;
+      // bright foam-white wave crests
+      col += smoothstep(0.16, 0.30, vWave) * 0.45;
+      // animated shoreline foam ring
+      float foam = smoothstep(1.1, 0.0, abs(d - uIslandR - 0.4));
       foam *= 0.55 + 0.45*sin(d*3.0 - uTime*3.2);
-      col = mix(col, vec3(1.0), clamp(foam,0.0,1.0)*0.5);
-      float edge = smoothstep(uPondR, uPondR-2.5, d);
-      gl_FragColor = vec4(col, 0.86*edge + 0.08);
+      col = mix(col, vec3(1.0), clamp(foam,0.0,1.0)*0.55);
+      float edge = smoothstep(uPondR, uPondR-3.0, d);
+      gl_FragColor = vec4(col, 0.9*edge + 0.06);
     }
   `,
 });
@@ -976,52 +977,75 @@ function expandIsland(){
 let islandPop = 1.0; // 0..1 scrub used for a quick squash when expanding
 
 // ---------- Otter (slim, cute quadruped) ----------
-function makeOtter(scaleScale=1, furColor=0x9b6a43){
+const SHIRT_COLS = [0xff8f6b, 0x6bc0f0, 0x9be86a, 0xffd166, 0xc89bf0, 0xff9bc0];
+// Animal-Crossing-style villager: a big round head on a tiny body, standing upright
+// with stubby swinging arms & two stepping legs. Forward = +Z.
+function makeOtter(scaleScale=1, furColor=0x9b6a43, shirtColor){
+  shirtColor = shirtColor ?? SHIRT_COLS[(Math.random()*SHIRT_COLS.length)|0];
   const g = new THREE.Group();
-  const fur   = new THREE.MeshStandardMaterial({ color:furColor, roughness:0.72 });
-  const belly = new THREE.MeshStandardMaterial({ color:0xe8c79a, roughness:0.72 });
+  const fur   = new THREE.MeshStandardMaterial({ color:furColor, roughness:0.82 });
+  const shirt = new THREE.MeshStandardMaterial({ color:shirtColor, roughness:0.68 });
+  const belly = new THREE.MeshStandardMaterial({ color:0xf3ddb6, roughness:0.82 });
   const dark  = new THREE.MeshStandardMaterial({ color:0x2a1c12, roughness:0.5 });
+  const eyeW  = new THREE.MeshBasicMaterial({ color:0xffffff });
   const eyeMat= new THREE.MeshBasicMaterial({ color:0x141414 });
+  const cheek = new THREE.MeshBasicMaterial({ color:0xff9bb0, transparent:true, opacity:0.55 });
 
-  // sleek body along +Z (forward) — slimmer, not a round blob
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.95, 4, 8), fur);
-  body.rotation.x = Math.PI/2; body.position.set(0, 0.52, -0.05); body.castShadow = true;
-  g.add(body);
-  // lighter chest/underside
-  const bel = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.55, 5, 10), belly);
-  bel.rotation.x = Math.PI/2; bel.position.set(0, 0.42, 0.12); bel.scale.set(0.92,0.7,0.95); g.add(bel);
+  // --- little torso (wears a coloured shirt) ---
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.32, 5, 12), shirt);
+  torso.position.y = 0.6; torso.castShadow = true; g.add(torso);
+  const bp = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10), belly);
+  bp.position.set(0, 0.58, 0.18); bp.scale.set(0.8, 0.95, 0.5); g.add(bp);
 
-  // head
-  const head = new THREE.Group();
-  head.position.set(0, 0.72, 0.58);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), fur); skull.castShadow = true; head.add(skull);
-  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), belly); snout.position.set(0,-0.07,0.24); snout.scale.set(1,0.85,0.95); head.add(snout);
-  const nose  = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), dark); nose.position.set(0,-0.04,0.42); head.add(nose);
+  // --- big head (the AC signature) ---
+  const head = new THREE.Group(); head.position.set(0, 1.16, 0);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.46, 18, 16), fur);
+  skull.scale.set(1, 0.97, 0.97); skull.castShadow = true; head.add(skull);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), belly);
+  muzzle.position.set(0, -0.08, 0.36); muzzle.scale.set(1.15, 0.78, 0.78); head.add(muzzle);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), dark);
+  nose.position.set(0, -0.02, 0.55); head.add(nose);
   for(const sx of [-1,1]){
-    // small, cute black-dot eyes
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 12), eyeMat);
-    eye.position.set(0.135*sx, 0.07, 0.255); eye.scale.set(1,1,0.6); head.add(eye);
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.095, 10, 8), fur);
-    ear.position.set(0.2*sx, 0.26, -0.02); ear.scale.set(1,0.8,0.55); head.add(ear);
+    const ew = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 14), eyeW);
+    ew.position.set(0.17*sx, 0.05, 0.36); ew.scale.set(0.78, 1.05, 0.55); head.add(ew);
+    const pu = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 12), eyeMat);
+    pu.position.set(0.185*sx, 0.04, 0.45); pu.scale.set(1, 1.1, 0.6); head.add(pu);
+    const sh = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), eyeW);
+    sh.position.set(0.205*sx, 0.09, 0.5); head.add(sh);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), fur);
+    ear.position.set(0.34*sx, 0.33, -0.02); ear.scale.set(1, 0.9, 0.5); ear.castShadow=true; head.add(ear);
+    const ci = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), cheek);
+    ci.position.set(0.29*sx, -0.06, 0.33); ci.rotation.y = 0.5*sx; head.add(ci);
   }
   g.add(head); g.userData.head = head;
 
-  // four hip-pivoting legs: FL, FR, BL, BR
-  const legGeo = new THREE.CapsuleGeometry(0.08, 0.2, 4, 7);
-  const pawGeo = new THREE.SphereGeometry(0.095, 8, 7);
+  // --- stubby arms (pivot at shoulder, swing while walking) ---
+  const armGeo = new THREE.CapsuleGeometry(0.085, 0.22, 4, 8);
+  const arms = [];
+  for(const sx of [-1,1]){
+    const arm = new THREE.Group(); arm.position.set(0.31*sx, 0.78, 0);
+    const limb = new THREE.Mesh(armGeo, shirt); limb.position.y = -0.14; limb.castShadow = true; arm.add(limb);
+    const paw  = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), dark); paw.position.y = -0.3; arm.add(paw);
+    arm.rotation.z = 0.16*sx;
+    g.add(arm); arms.push(arm);
+  }
+  g.userData.arms = arms;
+
+  // --- two stubby legs (pivot at hip, alternate steps) ---
+  const legGeo = new THREE.CapsuleGeometry(0.105, 0.14, 4, 8);
   const legs = [];
-  const hips = [[-0.22,0.34],[0.22,0.34],[-0.22,-0.3],[0.22,-0.3]];
-  for(const [hx,hz] of hips){
-    const leg = new THREE.Group(); leg.position.set(hx, 0.38, hz);
-    const limb = new THREE.Mesh(legGeo, fur); limb.position.y = -0.15; limb.castShadow = true; leg.add(limb);
-    const paw  = new THREE.Mesh(pawGeo, dark); paw.position.set(0,-0.28,0.05); paw.scale.set(1,0.5,1.3); leg.add(paw);
+  for(const sx of [-1,1]){
+    const leg = new THREE.Group(); leg.position.set(0.14*sx, 0.34, 0);
+    const limb = new THREE.Mesh(legGeo, fur); limb.position.y = -0.12; limb.castShadow = true; leg.add(limb);
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), dark);
+    foot.position.set(0, -0.24, 0.06); foot.scale.set(1, 0.5, 1.5); leg.add(foot);
     g.add(leg); legs.push(leg);
   }
   g.userData.legs = legs;
 
-  // slim tapering tail
-  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.6, 5, 9), fur);
-  tail.position.set(0, 0.44, -0.72); tail.rotation.x = -0.7; tail.castShadow = true;
+  // --- small flat otter tail ---
+  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.3, 4, 8), fur);
+  tail.position.set(0, 0.4, -0.3); tail.rotation.x = 1.1; tail.scale.set(1.4, 1, 0.5); tail.castShadow = true;
   g.add(tail); g.userData.tail = tail;
 
   g.scale.setScalar(scaleScale);
@@ -1118,63 +1142,43 @@ function makeFishMesh(sp, scale=1){
   const rar = RARITY[sp.rarity];
   const g = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: sp.body, roughness:0.35, metalness: rar.glow>0?0.35:0.1,
-    emissive: rar.glow>0 ? new THREE.Color(sp.body) : 0x000000,
-    emissiveIntensity: rar.glow*0.6,
+    color: sp.body, roughness:0.5, metalness: rar.glow>0?0.3:0.05, flatShading:true,
+    emissive: rar.glow>0 ? new THREE.Color(sp.body) : 0x000000, emissiveIntensity: rar.glow*0.5,
   });
-  const finMat = new THREE.MeshStandardMaterial({ color: sp.fin, roughness:0.5, side:THREE.DoubleSide,
-    transparent:true, opacity:0.92 });
+  const finMat = new THREE.MeshStandardMaterial({ color: sp.fin, roughness:0.6, flatShading:true, side:THREE.DoubleSide });
 
-  // body — flattened ellipsoid (sphere scaled)
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), bodyMat);
-  let bx = sp.long ? 1.7 : 1.25, by = sp.tall ? 1.25 : 0.9, bz = sp.puff ? 1.05 : 0.6;
-  body.scale.set(bx, by, bz);
-  g.add(body);
+  // body — a clean faceted diamond (low-poly "origami", not a blobby AI shape)
+  let bx = sp.long ? 1.55 : 1.2, by = sp.tall ? 1.15 : 0.85, bz = sp.puff ? 0.85 : 0.5;
+  const body = new THREE.Mesh(new THREE.OctahedronGeometry(0.44, 0), bodyMat);
+  body.scale.set(bx, by, bz); g.add(body);
   const grp = { body };
 
-  // tail fin (triangle fan)
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.5, 4), finMat);
-  tail.rotation.z = Math.PI/2; tail.position.x = -0.42*bx; tail.scale.set(1, sp.tall?1.5:1.1, 0.18);
+  // tail — a single flat triangle
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.5, 3), finMat);
+  tail.rotation.z = -Math.PI/2; tail.position.x = -0.5*bx; tail.scale.set(1, sp.tall?1.5:1.2, 0.08);
   g.add(tail); grp.tail = tail;
-  // top fin
-  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.42, 3), finMat);
-  dorsal.position.set(0, 0.34*by, 0); dorsal.scale.set(1,1,0.16); g.add(dorsal);
-  // side (pectoral) fins — flap to feel alive
+  // dorsal — small triangle on top
+  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 3), finMat);
+  dorsal.position.set(-0.02, 0.32*by, 0); dorsal.scale.set(1,1,0.08); g.add(dorsal);
+  // pectoral — flat triangles that flap
   const pecs=[];
   for(const sz of [-1,1]){
-    const pec = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.32, 3), finMat);
-    pec.position.set(0.12, -0.04, sz*(0.2*bz+0.05));
-    pec.rotation.set(0.4, 0, -0.5*sz); pec.scale.set(1,1,0.2);
+    const pec = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.26, 3), finMat);
+    pec.position.set(0.06, -0.05, sz*(0.2*bz+0.02)); pec.rotation.set(0,0,sz>0?-0.6:0.6); pec.scale.set(1,1,0.08);
     g.add(pec); pecs.push(pec);
   }
   grp.pecs = pecs;
 
-  // cute big black-dot eyes with a tiny shine
-  const eyeMat = new THREE.MeshBasicMaterial({ color:0x111111 });
-  const shineMat = new THREE.MeshBasicMaterial({ color:0xffffff });
+  // single tiny eye dot per side — minimal & clean
+  const eyeMat = new THREE.MeshBasicMaterial({ color:0x141414 });
   for(const sz of [-1,1]){
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.1,14,14), eyeMat);
-    eye.position.set(0.30*bx, 0.08, sz*0.16*bz+sz*0.03); eye.scale.set(1,1,0.7);
-    g.add(eye);
-    const shine = new THREE.Mesh(new THREE.SphereGeometry(0.032,8,8), shineMat);
-    shine.position.set(0.34*bx, 0.12, sz*0.16*bz+sz*0.05); g.add(shine);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat);
+    eye.position.set(0.26*bx, 0.06, sz*(0.14*bz+0.02)); g.add(eye);
   }
-  // little smile
-  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.07,0.018,6,10,Math.PI),
-    new THREE.MeshBasicMaterial({color:0x7a3b3b}));
-  mouth.position.set(0.40*bx, -0.06, 0); mouth.rotation.set(Math.PI,0,Math.PI*0.5); g.add(mouth);
-  // stripe / spot accents for flashy species
+  // one subtle accent stripe (flat triangle) for "stripe" species
   if(sp.stripe){
-    for(let i=-1;i<=1;i++){
-      const st=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.5*by,0.62*bz), new THREE.MeshStandardMaterial({color: sp.fin, roughness:0.4}));
-      st.position.set(i*0.18, 0, 0); g.add(st);
-    }
-  }
-  if(sp.spots){
-    for(let i=0;i<5;i++){
-      const dt=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), new THREE.MeshStandardMaterial({color: sp.fin}));
-      dt.position.set(rand(-0.2,0.3), rand(-0.1,0.2), (Math.random()<0.5?1:-1)*0.27*bz); g.add(dt);
-    }
+    const st = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 3), finMat);
+    st.rotation.z = Math.PI; st.position.set(-0.05, 0, 0); st.scale.set(0.5, 1, bz*1.7); g.add(st);
   }
 
   g.traverse(o=>{ if(o.isMesh && o.material!==eyeMat) o.castShadow=true; });
@@ -1317,15 +1321,15 @@ function makeStarfish(){
 // scatter coral + kelp + critters around the floor (off the island footprint)
 const corals=[];
 function populateReef(){
-  for(let i=0;i<26;i++){
+  for(let i=0;i<42;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-2, POND_R-3);
     const c=makeCoral(); c.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); c.rotation.y=Math.random()*Math.PI*2; underwater.add(c); corals.push(c);
   }
-  for(let i=0;i<16;i++){
+  for(let i=0;i<28;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-1, POND_R-3);
     const k=makeKelp(); k.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(k); kelps.push(k);
   }
-  for(let i=0;i<6;i++){
+  for(let i=0;i<11;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, POND_R-4);
     const an=makeAnemone(); an.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(an); anemones.push(an);
   }
@@ -2166,13 +2170,13 @@ function setDiving(on){
   $('#diveBtn').textContent = on ? '🌊' : '🤿';
   if(on){
     scene.background = SEA_BG;
-    scene.fog.color.copy(SEA_BG); scene.fog.near = 16; scene.fog.far = 62;
+    scene.fog.color.copy(SEA_BG); scene.fog.near = 14; scene.fog.far = 82;
     hemi.intensity = 0.75; sun.intensity = 0.85; hemi.groundColor.set(0x0d5570);
     toast('🤿 Diving! Watch your oxygen — surface before it runs out!');
     beep(330,0.12,'sine'); setTimeout(()=>beep(247,0.16,'sine'),120);
   } else {
     scene.background = SKY_BG;
-    scene.fog.color.copy(SKY_BG); scene.fog.near = 60; scene.fog.far = 130;
+    scene.fog.color.copy(SKY_BG); scene.fog.near = 85; scene.fog.far = 180;
     hemi.intensity = 0.85; sun.intensity = 1.25; hemi.groundColor.set(0x6fa8c7);
     state.oxygen = MAX_OXYGEN;
     toast('🌊 Surfaced! Air refilled. Treasure banked.');
@@ -2376,19 +2380,20 @@ function animate(){
       if(!onLand){ otter.position.y += Math.sin(t*3)*0.04; otter.rotation.z = otter.userData.bank + Math.sin(t*3)*0.05; }
       else otter.rotation.z = otter.userData.bank*0.5;
     }
-    // four-leg gait: diagonal trot on land, flutter-paddle in water
-    const legs = otter.userData.legs;
-    if(legs){
-      const swimming = state.diving || !onLand;
-      const gSpd = moving ? (swimming?14:11) : 2.5;
-      const amp  = dashTime>0 ? 0.9 : (moving ? (swimming?0.55:0.7) : 0.12);
-      otter.userData.gait += dt*gSpd;
-      const ph = otter.userData.gait, s1 = Math.sin(ph), s2 = Math.sin(ph+Math.PI);
-      legs[0].rotation.x = s1*amp; legs[3].rotation.x = s1*amp;   // FL + BR
-      legs[1].rotation.x = s2*amp; legs[2].rotation.x = s2*amp;   // FR + BL
+    // bipedal villager waddle: legs step, arms swing opposite (paddle while swimming)
+    const legs = otter.userData.legs, arms = otter.userData.arms;
+    const swimming = state.diving || !onLand;
+    const gSpd = moving ? (swimming?12:10) : 0;
+    const amp  = dashTime>0 ? 0.85 : (moving ? (swimming?0.5:0.62) : 0);
+    otter.userData.gait += dt*gSpd;
+    const ph = otter.userData.gait, s1 = Math.sin(ph), s2 = Math.sin(ph+Math.PI);
+    if(legs){ legs[0].rotation.x = s1*amp; legs[1].rotation.x = s2*amp; }
+    if(arms){
+      arms[0].rotation.x = s2*amp*0.9; arms[1].rotation.x = s1*amp*0.9;
+      arms[0].rotation.z = -0.16 - (swimming?0.5:0); arms[1].rotation.z = 0.16 + (swimming?0.5:0);
     }
-    if(otter.userData.tail) otter.userData.tail.rotation.z = Math.sin(t*8)*(moving?0.4:0.15);
-    if(otter.userData.head) otter.userData.head.rotation.z = Math.sin(t*4)*0.05;
+    if(otter.userData.tail) otter.userData.tail.rotation.z = Math.sin(t*7)*(moving?0.35:0.12);
+    if(otter.userData.head){ otter.userData.head.rotation.z = Math.sin(t*3)*0.04; otter.userData.head.rotation.x = swimming?0.15:0; }
 
     // bouncy squash & stretch — faster, springier bounce while moving
     const bounceSpd = moving ? 13 : 5.5;
@@ -2531,8 +2536,10 @@ function animate(){
       const hop = Math.abs(Math.sin(t*4 + f.userData.bob));
       f.position.y = 1.55 + hop*0.22;
       f.rotation.y = f.userData.angle + (f.userData.speed>0?Math.PI:0) + Math.PI/2;
-      if(f.userData.tail) f.userData.tail.rotation.z = Math.sin(t*8+f.userData.bob)*0.4;
-      if(f.userData.legs){ const s=Math.sin(t*9+f.userData.bob)*0.5, L=f.userData.legs; L[0].rotation.x=s; L[3].rotation.x=s; L[1].rotation.x=-s; L[2].rotation.x=-s; }
+      if(f.userData.tail) f.userData.tail.rotation.z = Math.sin(t*8+f.userData.bob)*0.3;
+      const s=Math.sin(t*9+f.userData.bob)*0.5, L=f.userData.legs, A=f.userData.arms;
+      if(L){ L[0].rotation.x=s; L[1].rotation.x=-s; }
+      if(A){ A[0].rotation.x=-s*0.9; A[1].rotation.x=s*0.9; }
       // squash at the bottom of the hop, stretch at the top
       f.userData.bouncePhase = t*4 + f.userData.bob;
       applyBounce(f, Math.cos(f.userData.bouncePhase)*0.9, 0.8);
