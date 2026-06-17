@@ -7,6 +7,17 @@ earns XP and attracts more otters. Level up to unlock fancier buildings!
 
 ## Features
 
+- **🤿 Underwater diving (Dave-the-Diver style)** — tap the dive mask on open
+  water to descend to the **coral reef**: swaying kelp, colourful corals, reef
+  fish, and **hidden treasure** (pearls, coins, gems, chests, lost crowns).
+- **💨 Oxygen** — your air drains while submerged (dashing costs extra). Surface
+  before it runs out or you'll be forced up. Surfacing refills air & banks loot.
+- **⚡ Dash & better controls** — momentum-based swimming with a dash burst
+  (button, **Shift**/**Space**, or double-tap the joystick).
+- **💰 Treasure → coins → Buy Land** — sunken treasure gives gold you spend to
+  **buy land** and expand the island.
+- **⛵ Boat** — a little dinghy bobs on the surface as your home base.
+
 - **🐟 Fish with rarity** — Common → Uncommon → Rare → Epic → Legendary species
   (Minnow, Rainbow Trout, Crystal Angel, Rainbow Koi, Golden Arowana…). Rarer
   fish dart away faster but are worth far more. Track your catches in the 🐠

@@ -148,6 +148,49 @@
   }
   #fishBtn:active { transform: scale(.86) rotate(8deg); }
 
+  .res-coins { background: linear-gradient(145deg, rgba(255,215,90,.4), rgba(210,150,40,.2)); }
+  .res-coins .ic { filter: drop-shadow(0 0 5px rgba(255,210,90,.7)); }
+
+  /* ---------- Action buttons (dash / dive) ---------- */
+  #actBtns {
+    position:absolute; right: 14px; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 6px);
+    display:flex; flex-direction:column; gap:12px; pointer-events:none; z-index:6;
+  }
+  .actBtn {
+    pointer-events:auto; cursor:pointer; width:72px; height:72px; border-radius:0;
+    border:2px solid rgba(255,255,255,.28); color:#fff; font-size:34px;
+    background: var(--panel); backdrop-filter: blur(8px);
+    box-shadow: 0 8px 22px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.25);
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1), filter .15s, opacity .2s;
+  }
+  .actBtn:active { transform: scale(.86); }
+  #dashBtn { background: linear-gradient(145deg,#ffe07a,#ff9d3b); color:#5a3210; }
+  #dashBtn.cooling { filter: grayscale(.7) brightness(.7); opacity:.6; }
+  #diveBtn.under { background: linear-gradient(145deg,#7ad7ff,#2f9bd6); }
+
+  /* ---------- Oxygen / depth ---------- */
+  #diveHud {
+    position:absolute; top:50%; left: 14px; transform: translateY(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; z-index:7;
+  }
+  #diveHud.hidden { display:none; }
+  #oxyWrap {
+    position:relative; width:26px; height:200px; background: rgba(0,0,0,.4);
+    border:2px solid rgba(255,255,255,.3); display:flex; align-items:flex-end; overflow:hidden;
+  }
+  #oxyBar {
+    width:100%; height:100%;
+    background: linear-gradient(0deg,#2fd0ff,#9bf0ff);
+    transition: height .15s linear, background .3s;
+  }
+  #oxyBar.low { background: linear-gradient(0deg,#ff5e5e,#ffb14d); animation: oxyFlash .6s ease-in-out infinite; }
+  @keyframes oxyFlash { 0%,100%{opacity:1} 50%{opacity:.5} }
+  #oxyTxt { position:absolute; bottom:6px; left:50%; transform:translateX(-50%); font-size:13px; font-weight:400; text-shadow:0 1px 2px #000; }
+  #depthTag {
+    background: var(--panel); border:1.5px solid rgba(255,255,255,.25); padding:3px 9px;
+    font-size:16px; box-shadow:0 4px 14px rgba(0,0,0,.3);
+  }
+
   .res-fish .ic, .res-food .ic { filter: drop-shadow(0 0 4px rgba(120,200,255,.6)); }
   .res-food { background: linear-gradient(145deg, rgba(255,180,90,.34), rgba(220,120,60,.18)); }
 
@@ -244,9 +287,16 @@
     <div class="res" id="res-shell"><span class="ic">🐚</span><span class="n">0</span></div>
     <div class="res res-fish" id="res-fish"><span class="ic">🐟</span><span class="n">0</span></div>
     <div class="res res-food" id="res-food"><span class="ic">🍣</span><span class="n">0</span></div>
+    <div class="res res-coins" id="res-coins"><span class="ic">💰</span><span class="n">0</span></div>
   </div>
 
   <button id="fishBtn" title="Fish Collection">🐠</button>
+
+  <!-- Oxygen + depth (diving only) -->
+  <div id="diveHud" class="hidden">
+    <div id="oxyWrap"><div id="oxyBar"></div><span id="oxyTxt">O₂</span></div>
+    <div id="depthTag">▼ <span id="depthNum">0</span>m</div>
+  </div>
 
   <!-- Fish collection / Aquarium log -->
   <div id="fishDex" class="hidden">
@@ -262,6 +312,12 @@
 
   <div id="buildDock"></div>
 
+  <!-- Action buttons (right side) -->
+  <div id="actBtns">
+    <button id="dashBtn" class="actBtn" title="Dash">⚡</button>
+    <button id="diveBtn" class="actBtn" title="Dive / Surface">🤿</button>
+  </div>
+
   <div id="joyZone">
     <div id="joyBase"></div>
     <div id="joyStick"></div>
@@ -273,14 +329,14 @@
   <div class="card">
     <div class="otterTitle">🦦</div>
     <h1>Otter Village</h1>
-    <p class="sub">Gather treasures, catch fish &amp; grow your cozy village</p>
+    <p class="sub">Dive the reef, catch fish &amp; grow your cozy village</p>
     <div class="howto">
-      🕹️ <b>Move:</b> drag anywhere on the left (or use <b>WASD</b> / arrow keys).<br>
-      💧 <b>Gather:</b> swim into floating resources &amp; 🐟 fish to scoop them up.<br>
-      🐠 <b>Rarity:</b> rarer fish are jumpier — but worth far more food!<br>
-      🏭 <b>Make:</b> a Fish Factory turns fish into 🍣 food; a Wood Cutter makes wood.<br>
-      🐾 <b>Pets &amp; 🏝️ Island:</b> spend food on pets, expand the isle for more room.<br>
-      🏗️ <b>Build &amp; grow:</b> each build adds otters &amp; XP — level up your village!
+      🕹️ <b>Move:</b> drag on the left (or <b>WASD</b>). <b>⚡ Dash:</b> button, <b>Shift</b>/<b>Space</b>, or double-tap.<br>
+      🤿 <b>Dive:</b> tap the mask on open water to explore the reef (or press <b>F</b>).<br>
+      💨 <b>Oxygen:</b> air drains underwater &amp; dashing costs extra — surface in time!<br>
+      💎 <b>Treasure:</b> grab hidden chests &amp; gems on the seabed for 💰 coins.<br>
+      🐠 <b>Fish:</b> rarer fish are jumpier but worth more 🍣 food (via the Fish Factory).<br>
+      🏝️ <b>Buy Land</b> with coins, 🐾 adopt pets &amp; 🏗️ build to level up your village!
     </div>
     <button class="btn" id="startBtn">Start Splashing 🌊</button>
   </div>
@@ -304,7 +360,13 @@ const $ = (s) => document.querySelector(s);
 const POND_R = 34;          // water radius
 let   ISLAND_R = 13;        // central grassy island radius (grows on expansion)
 const ISLAND_MAX = 22;      // expansion cap
-const OTTER_SPEED = 11;
+const OTTER_SPEED = 12;
+
+// --- Diving ---
+const SEABED_Y   = -10;     // ocean floor depth
+const DIVE_SWIM_Y= -8.0;    // depth the otter roams at while diving
+const MAX_OXYGEN = 22;      // seconds of air at the surface
+const DIVE_SPEED = 13;      // a touch faster underwater
 
 // Resource types (drifting collectibles) + processed goods
 const RES = {
@@ -315,6 +377,15 @@ const RES = {
   food:  { ic:'🍣', name:'Food',      color:0xff9d4d },  // processed from fish
 };
 const RES_KEYS = ['wood','reed','stone','shell'];        // only these drift in the water
+
+// Hidden treasures found on the reef floor while diving
+const TREASURES = [
+  { id:'pearl', name:'Pearl',        emoji:'🫧', coins:6,  rarity:'uncommon', col:0xeaf6ff },
+  { id:'coin',  name:'Old Coins',    emoji:'🪙', coins:10, rarity:'common',   col:0xffd24a },
+  { id:'gem',   name:'Sea Gem',      emoji:'💎', coins:22, rarity:'rare',     col:0x6fe0ff },
+  { id:'chest', name:'Sunken Chest', emoji:'🧰', coins:45, rarity:'epic',     col:0xc08a4a },
+  { id:'crown', name:'Lost Crown',   emoji:'👑', coins:120,rarity:'legendary',col:0xffe07a },
+];
 
 // ---------- Fish: rarity tiers + species ----------
 const RARITY = {
@@ -334,6 +405,12 @@ const FISH = [
   { id:'angel',   name:'Crystal Angel',   emoji:'🪼', rarity:'rare',      body:0x6fd0ff, fin:0xa8e6ff, tall:true },
   { id:'koi',     name:'Rainbow Koi',     emoji:'🎏', rarity:'epic',      body:0xff7ea8, fin:0xfff0a8, stripe:true },
   { id:'arowana', name:'Golden Arowana',  emoji:'🐉', rarity:'legendary', body:0xffd24a, fin:0xfff2b0, long:true },
+  // --- reef / deep-water species (appear while diving) ---
+  { id:'clown',   name:'Clownfish',       emoji:'🐠', rarity:'common',    body:0xff8c2a, fin:0xffffff, stripe:true, deep:true },
+  { id:'tang',    name:'Blue Tang',       emoji:'🐟', rarity:'uncommon',  body:0x2f7bff, fin:0xffe04a, tall:true, deep:true },
+  { id:'lion',    name:'Lionfish',        emoji:'🦁', rarity:'rare',      body:0xd9543a, fin:0xfff0d0, stripe:true, deep:true },
+  { id:'manta',   name:'Manta Ray',       emoji:'🦈', rarity:'epic',      body:0x4a5a72, fin:0x9fb0c8, long:true, tall:true, deep:true },
+  { id:'whale',   name:'Moon Whale',      emoji:'🐋', rarity:'legendary', body:0x6f8adf, fin:0xbfe0ff, long:true, deep:true },
 ];
 const FISH_BY_ID = Object.fromEntries(FISH.map(f=>[f.id,f]));
 
@@ -352,18 +429,22 @@ const BUILDINGS = [
   { id:'tower',   icon:'🏯', name:'Lantern Tower',cost:{stone:14,wood:10,shell:6},xp:60,pop:2, lvl:4 },
   // --- special actions (not placed on a plot) ---
   { id:'pet',     icon:'🐾', name:'Adopt Pet',   cost:{food:6},                  xp:20, lvl:2, special:'pet' },
-  { id:'expand',  icon:'🏝️', name:'Expand Isle', cost:{stone:10,reed:8},         xp:25, lvl:2, special:'expand' },
+  { id:'land',    icon:'🏝️', name:'Buy Land',    cost:{coins:30},                xp:25, lvl:1, special:'expand' },
 ];
 
 // ---------- State ----------
 const state = {
   res: { wood:0, reed:0, stone:0, shell:0, food:0 },
+  coins: 0,                // gold from sunken treasure — used to buy land
   fish: 0,                 // raw fish on hand (feedstock for the factory)
   caught: {},              // species id -> count caught (collection / aquarium)
+  treasures: {},           // treasure id -> count found
   level: 1, xp: 0, pop: 1, builds: 0,
   plots: [],     // {pos, used}
   pets: 0,
   expands: 0,
+  diving: false,
+  oxygen: MAX_OXYGEN,
   running: false,
 };
 function xpForLevel(l){ return Math.round(40 * Math.pow(1.55, l-1)); }
@@ -373,9 +454,10 @@ function rollRarity(){
   for(const k in RARITY){ r-=RARITY[k].weight; if(r<=0) return k; }
   return 'common';
 }
-function pickFishSpecies(){
+function pickFishSpecies(deep){
   const rar = rollRarity();
-  const pool = FISH.filter(f=>f.rarity===rar);
+  let pool = FISH.filter(f=>f.rarity===rar && (deep ? f.deep : !f.deep));
+  if(!pool.length) pool = FISH.filter(f=> deep ? f.deep : !f.deep);
   return pool[(Math.random()*pool.length)|0] || FISH[0];
 }
 
@@ -518,6 +600,51 @@ function scatterTufts(count, rMin, rMax){
 }
 scatterTufts(46, 0, ISLAND_R-1.5);
 
+// --- prettier island: palm trees, rocks & flower clusters ---
+const decoGroup = new THREE.Group(); islandGroup.add(decoGroup);
+function makePalm(){
+  const g=new THREE.Group();
+  const trunkM=new THREE.MeshStandardMaterial({color:0xb98a55,roughness:0.85});
+  const segs=4;
+  for(let i=0;i<segs;i++){
+    const s=new THREE.Mesh(new THREE.CylinderGeometry(0.16-i*0.02,0.2-i*0.02,0.7,7),trunkM);
+    s.position.set(Math.sin(i*0.5)*0.12, 0.35+i*0.62, Math.cos(i*0.5)*0.04);
+    s.rotation.z = i*0.04; g.add(s);
+  }
+  const leafM=new THREE.MeshStandardMaterial({color:0x4fae5a,roughness:0.8,side:THREE.DoubleSide});
+  for(let i=0;i<6;i++){
+    const leaf=new THREE.Mesh(new THREE.ConeGeometry(0.34,1.5,4),leafM);
+    const a=i/6*Math.PI*2;
+    leaf.position.set(Math.cos(a)*0.5, 2.7, Math.sin(a)*0.5);
+    leaf.rotation.set(Math.PI/2.4*Math.cos(a), -a, Math.PI/2.4*Math.sin(a)); leaf.scale.set(1,1,0.25);
+    g.add(leaf);
+  }
+  const coco=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8),new THREE.MeshStandardMaterial({color:0x6b4324})); coco.position.set(0,2.5,0.18); g.add(coco);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.scale.setScalar(rand(0.85,1.25));
+  return g;
+}
+function makeRock(){
+  const m=new THREE.Mesh(new THREE.DodecahedronGeometry(rand(0.4,0.9),0),new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(0.08,0.06,rand(0.45,0.6)),roughness:1}));
+  m.scale.set(1,rand(0.6,0.9),1); m.rotation.set(rand(0,3),rand(0,3),rand(0,3)); m.castShadow=true; return m;
+}
+function makeFlower(){
+  const g=new THREE.Group();
+  const cols=[0xff6b9d,0xffd166,0xb892ff,0xff9d4d,0x6fd0ff,0xffffff];
+  const c=cols[(Math.random()*cols.length)|0];
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.4,5),new THREE.MeshStandardMaterial({color:0x4a8f3f})); stem.position.y=0.2; g.add(stem);
+  for(let i=0;i<5;i++){ const p=new THREE.Mesh(new THREE.SphereGeometry(0.09,7,7),new THREE.MeshStandardMaterial({color:c})); const a=i/5*Math.PI*2; p.position.set(Math.cos(a)*0.1,0.42,Math.sin(a)*0.1); g.add(p); }
+  const mid=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,8),new THREE.MeshStandardMaterial({color:0xffe07a})); mid.position.y=0.44; g.add(mid);
+  return g;
+}
+function decorateIsland(rMax){
+  // a few palms near the rim, rocks & flower patches across the grass
+  for(let i=0;i<5;i++){ const p=makePalm(); const a=rand(0,Math.PI*2),r=rand(rMax*0.45,rMax-1.5); p.position.set(Math.cos(a)*r,1.5,Math.sin(a)*r); decoGroup.add(p); }
+  for(let i=0;i<7;i++){ const rk=makeRock(); const a=rand(0,Math.PI*2),r=rand(1,rMax-1); rk.position.set(Math.cos(a)*r,1.6,Math.sin(a)*r); decoGroup.add(rk); }
+  for(let i=0;i<14;i++){ const fl=makeFlower(); const a=rand(0,Math.PI*2),r=rand(1,rMax-1.5); fl.position.set(Math.cos(a)*r,1.5,Math.sin(a)*r); decoGroup.add(fl); }
+}
+decorateIsland(ISLAND_R);
+
 // Build plots arranged in rings on the island
 function addPlotRing(r, n){
   for(let i=0;i<n;i++){
@@ -537,6 +664,9 @@ function expandIsland(){
   buildIslandGeo(ISLAND_R);
   waterUniforms.uIslandR.value = ISLAND_R;
   scatterTufts(16, ISLAND_R-3.5, ISLAND_R-1.0);
+  // a couple of palms & flowers on the new band
+  for(let i=0;i<2;i++){ const p=makePalm(); const a=rand(0,Math.PI*2),r=rand(ISLAND_R-3,ISLAND_R-1.3); p.position.set(Math.cos(a)*r,1.5,Math.sin(a)*r); decoGroup.add(p); }
+  for(let i=0;i<5;i++){ const fl=makeFlower(); const a=rand(0,Math.PI*2),r=rand(ISLAND_R-3.5,ISLAND_R-1.2); fl.position.set(Math.cos(a)*r,1.5,Math.sin(a)*r); decoGroup.add(fl); }
   addPlotRing(ISLAND_R-2.2, 10 + state.expands*2);
   state.expands++;
   // satisfying grow pop on the whole island
@@ -781,6 +911,173 @@ function spawnFish(sp){
   });
 }
 
+/* ============================================================= *
+ *  UNDERWATER WORLD — seabed, coral reefs, kelp, treasure, deep *
+ *  fish. Hidden until you dive; explored Dave-the-Diver style.  *
+ * ============================================================= */
+const underwater = new THREE.Group();
+underwater.visible = false;
+scene.add(underwater);
+
+// --- seabed: a big sandy disc with darker rim ---
+const seabed = new THREE.Mesh(
+  new THREE.CircleGeometry(POND_R+2, 72),
+  new THREE.MeshStandardMaterial({ color:0x255a6b, roughness:1 })
+);
+seabed.rotation.x = -Math.PI/2; seabed.position.y = SEABED_Y; seabed.receiveShadow = true;
+underwater.add(seabed);
+// sandy patches
+for(let i=0;i<5;i++){
+  const a=Math.random()*Math.PI*2, r=rand(4,POND_R-6);
+  const patch=new THREE.Mesh(new THREE.CircleGeometry(rand(3,6),20), new THREE.MeshStandardMaterial({color:0xcdb98a,roughness:1,transparent:true,opacity:0.9}));
+  patch.rotation.x=-Math.PI/2; patch.position.set(Math.cos(a)*r, SEABED_Y+0.05, Math.sin(a)*r);
+  underwater.add(patch);
+}
+
+// --- coral reef cluster builder ---
+const CORAL_COLS = [0xff7eb0, 0xff9d4d, 0x7be0c0, 0xb892ff, 0xffd166, 0x6fd0ff, 0xff5e7e];
+function makeCoral(){
+  const g=new THREE.Group();
+  const c = CORAL_COLS[(Math.random()*CORAL_COLS.length)|0];
+  const mat=new THREE.MeshStandardMaterial({ color:c, roughness:0.6 });
+  const kind=(Math.random()*3)|0;
+  if(kind===0){ // branching
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.3,1.4,7),mat); trunk.position.y=0.7; g.add(trunk);
+    for(let i=0;i<5;i++){
+      const br=new THREE.Mesh(new THREE.CapsuleGeometry(0.12,rand(0.5,1.0),4,7),mat);
+      br.position.set(rand(-0.4,0.4),rand(0.9,1.6),rand(-0.4,0.4));
+      br.rotation.set(rand(-0.7,0.7),0,rand(-0.7,0.7)); g.add(br);
+    }
+  } else if(kind===1){ // brain/round
+    for(let i=0;i<4;i++){
+      const b=new THREE.Mesh(new THREE.IcosahedronGeometry(rand(0.4,0.8),0),mat);
+      b.position.set(rand(-0.5,0.5),rand(0.3,0.9),rand(-0.5,0.5)); g.add(b);
+    }
+  } else { // fan
+    const fan=new THREE.Mesh(new THREE.CircleGeometry(rand(0.8,1.3),9,0,Math.PI), new THREE.MeshStandardMaterial({color:c,roughness:0.6,side:THREE.DoubleSide}));
+    fan.position.y=0.9; g.add(fan);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.12,0.9,6),mat); stem.position.y=0.45; g.add(stem);
+  }
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  g.scale.setScalar(rand(0.8,1.7));
+  return g;
+}
+// --- swaying kelp ---
+const kelps=[];
+function makeKelp(){
+  const g=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(0.33,0.5,rand(0.3,0.45)),roughness:0.8,side:THREE.DoubleSide});
+  const h=rand(3,6), seg=6;
+  for(let i=0;i<seg;i++){
+    const blade=new THREE.Mesh(new THREE.PlaneGeometry(0.5, h/seg*1.1), mat);
+    blade.position.y = (i+0.5)*(h/seg); g.add(blade);
+  }
+  g.userData.h=h; g.userData.phase=Math.random()*Math.PI*2;
+  return g;
+}
+
+// scatter coral + kelp around the floor (off the island footprint)
+const corals=[];
+function populateReef(){
+  for(let i=0;i<34;i++){
+    const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-2, POND_R-3);
+    const c=makeCoral(); c.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(c); corals.push(c);
+  }
+  for(let i=0;i<22;i++){
+    const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-1, POND_R-3);
+    const k=makeKelp(); k.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(k); kelps.push(k);
+  }
+}
+populateReef();
+
+// --- hidden treasure ---
+const treasures=[];
+function pickTreasure(){
+  // weighted by rarity (reuse RARITY weights)
+  const rar = rollRarity();
+  const pool = TREASURES.filter(t=>t.rarity===rar);
+  return pool[(Math.random()*pool.length)|0] || TREASURES[0];
+}
+function makeTreasureMesh(t){
+  const g=new THREE.Group();
+  if(t.id==='chest'){
+    const box=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.55,0.6),new THREE.MeshStandardMaterial({color:0x8a5a2c,roughness:0.7}));
+    box.position.y=0.27; g.add(box);
+    const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.31,0.31,0.9,12,1,false,0,Math.PI),new THREE.MeshStandardMaterial({color:0xa06a34}));
+    lid.rotation.z=Math.PI/2; lid.position.y=0.55; g.add(lid);
+    const lock=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.18,0.06),new THREE.MeshStandardMaterial({color:0xffd24a,metalness:0.7,roughness:0.3})); lock.position.set(0,0.32,0.31); g.add(lock);
+  } else if(t.id==='crown'){
+    const band=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.22,12,1,true),new THREE.MeshStandardMaterial({color:0xffd24a,metalness:0.8,roughness:0.25,side:THREE.DoubleSide})); band.position.y=0.3; g.add(band);
+    for(let i=0;i<6;i++){ const sp=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.25,4),new THREE.MeshStandardMaterial({color:0xffe07a,metalness:0.8,roughness:0.2})); const a=i/6*Math.PI*2; sp.position.set(Math.cos(a)*0.3,0.5,Math.sin(a)*0.3); g.add(sp); }
+  } else if(t.id==='gem'){
+    const gem=new THREE.Mesh(new THREE.OctahedronGeometry(0.34,0),new THREE.MeshStandardMaterial({color:t.col,metalness:0.4,roughness:0.1,emissive:t.col,emissiveIntensity:0.4})); gem.position.y=0.4; g.add(gem);
+  } else if(t.id==='pearl'){
+    const sh=new THREE.Mesh(new THREE.SphereGeometry(0.4,14,8,0,Math.PI*2,0,Math.PI*0.5),new THREE.MeshStandardMaterial({color:0xe7c0d6,roughness:0.4,side:THREE.DoubleSide})); sh.position.y=0.18; g.add(sh);
+    const pearl=new THREE.Mesh(new THREE.SphereGeometry(0.16,12,12),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.1,metalness:0.2,emissive:0x99bbdd,emissiveIntensity:0.3})); pearl.position.y=0.2; g.add(pearl);
+  } else { // coins
+    for(let i=0;i<5;i++){ const c=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.04,12),new THREE.MeshStandardMaterial({color:0xffd24a,metalness:0.7,roughness:0.3})); c.position.set(rand(-0.2,0.2),0.04+i*0.05,rand(-0.2,0.2)); c.rotation.x=rand(-0.3,0.3); g.add(c); }
+  }
+  // glint sparkle so treasure is spottable
+  const glint=new THREE.Mesh(new THREE.SphereGeometry(0.6,10,8),new THREE.MeshBasicMaterial({color:t.col,transparent:true,opacity:0.18,blending:THREE.AdditiveBlending,depthWrite:false}));
+  glint.position.y=0.4; g.add(glint);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
+function spawnTreasure(){
+  const t=pickTreasure();
+  const mesh=makeTreasureMesh(t);
+  const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, POND_R-4);
+  mesh.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r);
+  mesh.rotation.y=Math.random()*Math.PI*2;
+  underwater.add(mesh);
+  treasures.push({ mesh, t, bob:Math.random()*Math.PI*2, collected:false });
+}
+
+// --- deep / reef fish (live in the underwater group) ---
+const deepFish=[];
+function spawnDeepFish(sp){
+  sp = sp || pickFishSpecies(true);
+  const mesh = makeFishMesh(sp, rand(0.9,1.4));
+  const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, POND_R-3);
+  mesh.position.set(Math.cos(a)*r, SEABED_Y+rand(1.0,3.2), Math.sin(a)*r);
+  underwater.add(mesh);
+  deepFish.push({ mesh, sp, heading:Math.random()*Math.PI*2, speed:rand(1.8,3.6), bob:Math.random()*Math.PI*2, flee:0, depth:mesh.position.y, t:0 });
+}
+
+// ---------- Boat (surface home / dive station) ----------
+function makeBoat(){
+  const g=new THREE.Group();
+  const woodM=new THREE.MeshStandardMaterial({color:0x9a5f33,roughness:0.8});
+  const woodL=new THREE.MeshStandardMaterial({color:0xc78a52,roughness:0.8});
+  // hull (open-top half capsule)
+  const hull=new THREE.Mesh(new THREE.CapsuleGeometry(0.9,2.0,6,12),woodM);
+  hull.rotation.z=Math.PI/2; hull.scale.set(1,1,0.55); hull.position.y=0.35; g.add(hull);
+  const inner=new THREE.Mesh(new THREE.CapsuleGeometry(0.62,1.8,6,12),new THREE.MeshStandardMaterial({color:0x6b4324,roughness:0.9}));
+  inner.rotation.z=Math.PI/2; inner.scale.set(1,1,0.5); inner.position.y=0.55; g.add(inner);
+  // rim plank
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(1.45,0.1,8,18),woodL); rim.rotation.x=Math.PI/2; rim.scale.set(1,0.55,1); rim.position.y=0.7; g.add(rim);
+  // mast + flag
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,2.2,6),woodL); mast.position.set(0,1.6,0); g.add(mast);
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(0.7,0.45),new THREE.MeshStandardMaterial({color:0xff7e7e,side:THREE.DoubleSide})); flag.position.set(0.36,2.4,0); g.add(flag);
+  // life ring
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.26,0.09,8,14),new THREE.MeshStandardMaterial({color:0xffffff})); ring.position.set(-1.2,0.7,0); ring.rotation.y=Math.PI/2; g.add(ring);
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; } });
+  g.userData.flag=flag;
+  return g;
+}
+const boat = makeBoat();
+boat.position.set(ISLAND_R+6, 0.25, 0);
+scene.add(boat);
+
+// ---------- Bubbles (rising, while diving) ----------
+const bubbles=[];
+function spawnBubble(pos){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(rand(0.06,0.16),7,6),
+    new THREE.MeshBasicMaterial({color:0xcdfaff,transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false}));
+  m.position.copy(pos); scene.add(m);
+  bubbles.push({ m, vy:rand(1.4,2.6), wob:Math.random()*Math.PI*2, life:0, max:rand(1.4,2.4) });
+}
+
 // ---------- Particles (collection burst) ----------
 const burstPool = [];
 function spawnBurst(pos, color){
@@ -935,6 +1232,9 @@ function updateResHUD(flashKey){
   // raw fish (feedstock) chip
   const fEl = $('#res-fish'); fEl.querySelector('.n').textContent = state.fish;
   if(flashKey==='fish'){ fEl.classList.remove('pop'); void fEl.offsetWidth; fEl.classList.add('pop'); }
+  // coins chip
+  const cEl = $('#res-coins'); cEl.querySelector('.n').textContent = state.coins;
+  if(flashKey==='coins'){ cEl.classList.remove('pop'); void cEl.offsetWidth; cEl.classList.add('pop'); }
   renderDock();
 }
 function updateStatsHUD(){
@@ -945,20 +1245,23 @@ function updateStatsHUD(){
   $('#xpBar').style.width = Math.min(100, (state.xp/need)*100) + '%';
 }
 
+const CURRENCY_IC = { coins:'💰' };
+function ic(k){ return (RES[k] && RES[k].ic) || CURRENCY_IC[k] || '?'; }
+function have(k){ return k==='coins' ? state.coins : state.res[k]; }
+function spend(k, v){ if(k==='coins') state.coins-=v; else state.res[k]-=v; }
 function expandCost(){
-  // scales up with each expansion
-  const m = 1 + state.expands;
-  return { stone: 10*m, reed: 8*m };
+  // buy land with coins — price climbs each purchase
+  return { coins: 30 + state.expands*25 };
 }
 function effectiveCost(b){ return b.special==='expand' ? expandCost() : b.cost; }
 function canAfford(b){
   const cost = effectiveCost(b);
-  for(const k in cost){ if(state.res[k] < cost[k]) return false; }
+  for(const k in cost){ if(have(k) < cost[k]) return false; }
   return true;
 }
 function costStr(b){
   if(b.special==='expand' && ISLAND_R>=ISLAND_MAX) return 'MAX';
-  return Object.entries(effectiveCost(b)).map(([k,v])=>`${RES[k].ic}${v}`).join(' ');
+  return Object.entries(effectiveCost(b)).map(([k,v])=>`${ic(k)}${v}`).join(' ');
 }
 function renderDock(){
   const dock = $('#buildDock');
@@ -992,7 +1295,7 @@ function toast(msg){
 }
 
 const producers = [];   // { building, def, timer } for manufacture facilities
-function pay(cost){ for(const k in cost) state.res[k]-=cost[k]; }
+function pay(cost){ for(const k in cost) spend(k, cost[k]); }
 
 function tryBuild(b){
   if(state.level < b.lvl){ toast(`🔒 Reach Village Lv ${b.lvl} first!`); return; }
@@ -1134,6 +1437,40 @@ function catchFish(sw){
   beep(f0,0.07,'triangle',0.06); setTimeout(()=>beep(f0*1.5,0.09,'triangle',0.05),70);
 }
 
+// catch a reef fish while diving
+function catchDeepFish(df, idx){
+  const sp=df.sp, rar=RARITY[sp.rarity];
+  state.fish++;
+  state.caught[sp.id]=(state.caught[sp.id]||0)+1;
+  underwater.remove(df.mesh); deepFish.splice(idx,1);
+  updateResHUD('fish');
+  const tEl=$('#toast'); tEl.style.color=rar.css;
+  toast(`${sp.emoji} ${rar.name} ${sp.name} caught!`);
+  setTimeout(()=>{ tEl.style.color=''; }, 1900);
+  spawnBurst(df.mesh.position.clone(), rar.col);
+  spawnRing(df.mesh.position.clone(), rar.col, 1.6+rar.glow*2);
+  if(rar.glow>=0.5) confettiAt(df.mesh.position.clone(), 16);
+  const f0=rar.glow>=0.5?560:440; beep(f0,0.07,'triangle',0.06); setTimeout(()=>beep(f0*1.5,0.09,'triangle',0.05),70);
+}
+
+// collect a hidden treasure → coins
+function collectTreasure(tr, idx){
+  const t=tr.t, rar=RARITY[t.rarity];
+  state.coins += t.coins;
+  state.treasures[t.id]=(state.treasures[t.id]||0)+1;
+  state.treasuresFound=(state.treasuresFound||0)+1;
+  underwater.remove(tr.mesh); treasures.splice(idx,1);
+  updateResHUD('coins');
+  const tEl=$('#toast'); tEl.style.color=rar.css;
+  toast(`${t.emoji} ${t.name}! +💰${t.coins}`);
+  setTimeout(()=>{ tEl.style.color=''; }, 1900);
+  spawnBurst(tr.mesh.position.clone().setY(tr.mesh.position.y+0.4), t.col);
+  spawnRing(tr.mesh.position.clone().setY(SEABED_Y+0.1), t.col, 2+rar.glow*2.5);
+  confettiAt(tr.mesh.position.clone().setY(tr.mesh.position.y+0.6), 10+Math.round(rar.glow*20));
+  gainXP(4+Math.round(t.coins/4));
+  const f0=440+rar.glow*220; beep(f0,0.08,'triangle',0.06); setTimeout(()=>beep(f0*1.4,0.1,'triangle',0.05),80); setTimeout(()=>beep(f0*1.8,0.12,'sine',0.05),170);
+}
+
 // ---------- Confetti ----------
 const confetti=[];
 function confettiAt(pos, n=22){
@@ -1160,10 +1497,64 @@ function beep(freq=440, dur=0.1, type='sine', vol=0.06){
   }catch(e){}
 }
 
+// ---------- Diving (Dave-the-Diver style) ----------
+const SKY_BG = new THREE.Color(0xbfeaff);
+const SEA_BG = new THREE.Color(0x0a3b52);
+function setDiving(on){
+  if(on===state.diving) return;
+  state.diving = on;
+  underwater.visible = on;
+  $('#diveHud').classList.toggle('hidden', !on);
+  $('#diveBtn').classList.toggle('under', on);
+  $('#diveBtn').textContent = on ? '🌊' : '🤿';
+  if(on){
+    scene.background = SEA_BG;
+    scene.fog.color.copy(SEA_BG); scene.fog.near = 14; scene.fog.far = 48;
+    hemi.intensity = 0.55; sun.intensity = 0.6;
+    toast('🤿 Diving! Watch your oxygen — surface before it runs out!');
+    beep(330,0.12,'sine'); setTimeout(()=>beep(247,0.16,'sine'),120);
+  } else {
+    scene.background = SKY_BG;
+    scene.fog.color.copy(SKY_BG); scene.fog.near = 60; scene.fog.far = 130;
+    hemi.intensity = 0.85; sun.intensity = 1.25;
+    state.oxygen = MAX_OXYGEN;
+    toast('🌊 Surfaced! Air refilled. Treasure banked.');
+    beep(523,0.1); setTimeout(()=>beep(784,0.14),110);
+  }
+}
+function toggleDive(){
+  if(!state.running) return;
+  if(!state.diving){
+    const onLand = Math.hypot(otter.position.x, otter.position.z) < ISLAND_R+1.5;
+    if(onLand){ toast('🏝️ Swim onto the water to dive!'); return; }
+    setDiving(true);
+  } else setDiving(false);
+}
+
+// ---------- Dash ----------
+let dashCD=0, dashTime=0;
+const otterVel = new THREE.Vector3();
+function tryDash(){
+  if(!state.running || dashCD>0) return;
+  if(state.diving && state.oxygen<1.2){ toast('Too little air to dash!'); return; }
+  dashTime=0.30; dashCD=0.85;
+  if(state.diving) state.oxygen=Math.max(0,state.oxygen-1.2);
+  // impulse along current facing (normalized for a consistent burst)
+  const dir = facing.lengthSq()>0.01 ? facing.clone().normalize() : new THREE.Vector3(0,0,1);
+  otterVel.addScaledVector(dir, 18);
+  spawnRing(otter.position.clone().setY(otter.position.y+0.1), state.diving?0x9be0ff:0xffffff, 2.2);
+  beep(620,0.08,'sawtooth',0.05);
+}
+
 // ---------- Input ----------
 const move = new THREE.Vector2(0,0); // x,z desired direction (-1..1)
 const keys = {};
-window.addEventListener('keydown',e=>{ keys[e.key.toLowerCase()]=true; });
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k===' '||k==='shift'){ if(!e.repeat) tryDash(); }
+  if(k==='f'){ if(!e.repeat) toggleDive(); }
+  keys[k]=true;
+});
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 
 // joystick
@@ -1195,12 +1586,20 @@ joyZone.addEventListener('mousedown',e=>{ mouseDown=true; joyStart(e.clientX,e.c
 window.addEventListener('mousemove',e=>{ if(mouseDown&&joyId==='m') joyMove(e.clientX,e.clientY); });
 window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; joyEnd(); } });
 
+// action buttons
+$('#dashBtn').addEventListener('click', tryDash);
+$('#diveBtn').addEventListener('click', toggleDive);
+// double-tap the joystick zone to dash
+let lastJoyTap=0;
+joyZone.addEventListener('touchstart',()=>{ const now=performance.now(); if(now-lastJoyTap<260) tryDash(); lastJoyTap=now; });
+
 // ---------- Game loop ----------
 const clock = new THREE.Clock();
 let collectCooldown = 0;
 let splashTimer = 0;
 const facing = new THREE.Vector3(0,0,1);
 let camAngle = 0;
+let diveCamK = 0;
 
 function getKeyDir(){
   let x=0,z=0;
@@ -1218,53 +1617,82 @@ function animate(){
   waterUniforms.uTime.value = t;
 
   if(state.running){
-    // ----- movement -----
+    // ----- movement (momentum + dash) -----
+    if(dashCD>0) dashCD-=dt;
+    if(dashTime>0) dashTime-=dt;
+    $('#dashBtn').classList.toggle('cooling', dashCD>0);
     let dx=move.x, dz=move.y;
     const k=getKeyDir(); dx+=k.x; dz+=k.z;
-    const len=Math.hypot(dx,dz);
+    const inLen=Math.hypot(dx,dz);
     let moving=false;
-    if(len>0.05){
-      dx/=Math.max(len,1); dz/=Math.max(len,1);
-      const sp = OTTER_SPEED*dt*Math.min(1,len);
-      let nx = otter.position.x + dx*sp;
-      let nz = otter.position.z + dz*sp;
-      // keep within pond
-      const dist=Math.hypot(nx,nz);
-      if(dist>POND_R-1.2){ const s=(POND_R-1.2)/dist; nx*=s; nz*=s; }
-      otter.position.x=nx; otter.position.z=nz;
+    const maxSpeed = state.diving ? DIVE_SPEED : OTTER_SPEED;
+    if(inLen>0.05){
+      dx/=Math.max(inLen,1); dz/=Math.max(inLen,1);
+      const want = maxSpeed*Math.min(1,inLen);
+      otterVel.x += (dx*want - otterVel.x)*Math.min(1,dt*8);
+      otterVel.z += (dz*want - otterVel.z)*Math.min(1,dt*8);
       facing.set(dx,0,dz);
-      const targetRot=Math.atan2(dx,dz);
-      otter.rotation.y += ((targetRot-otter.rotation.y+Math.PI*3)%(Math.PI*2)-Math.PI)*Math.min(1,dt*12);
       moving=true;
+    } else {
+      otterVel.x -= otterVel.x*Math.min(1,dt*5);
+      otterVel.z -= otterVel.z*Math.min(1,dt*5);
+      if(otterVel.lengthSq()>0.4) moving=true;
+    }
+    // integrate + clamp to pond
+    let nx = otter.position.x + otterVel.x*dt;
+    let nz = otter.position.z + otterVel.z*dt;
+    const dist=Math.hypot(nx,nz);
+    const lim = POND_R-1.1;
+    if(dist>lim){ const s=lim/dist; nx*=s; nz*=s; otterVel.multiplyScalar(0.5); }
+    otter.position.x=nx; otter.position.z=nz;
+    const vlen=Math.hypot(otterVel.x,otterVel.z);
+    if(vlen>0.3){
+      const targetRot=Math.atan2(otterVel.x,otterVel.z);
+      otter.rotation.y += ((targetRot-otter.rotation.y+Math.PI*3)%(Math.PI*2)-Math.PI)*Math.min(1,dt*12);
     }
 
-    // on land vs water height
+    // ----- height: land / surface / diving depth -----
     const distC = Math.hypot(otter.position.x, otter.position.z);
-    const onLand = distC < ISLAND_R+1.5;
-    const baseY = onLand ? 1.55 : 0.15;
-    otter.position.y += (baseY - otter.position.y)*Math.min(1,dt*8);
+    const onLand = !state.diving && distC < ISLAND_R+1.5;
+    let baseY;
+    if(state.diving) baseY = DIVE_SWIM_Y + Math.sin(t*1.6)*0.25;
+    else baseY = onLand ? 1.55 : 0.15;
+    otter.position.y += (baseY - otter.position.y)*Math.min(1,dt*(state.diving?2.5:8));
 
     // ----- otter anim -----
     const swim = Math.sin(t*9);
-    if(!onLand){
-      otter.position.y += Math.sin(t*3)*0.04;
-      otter.rotation.z = Math.sin(t*3)*0.05;
-    } else otter.rotation.z *= 0.9;
+    if(state.diving){
+      otter.rotation.z = Math.sin(t*2.2)*0.06;
+      otter.rotation.x = -0.25 + Math.sin(t*2)*0.05;   // nose-down diving pose
+    } else {
+      otter.rotation.x *= 0.85;
+      if(!onLand){ otter.position.y += Math.sin(t*3)*0.04; otter.rotation.z = Math.sin(t*3)*0.05; }
+      else otter.rotation.z *= 0.9;
+    }
     if(otter.userData.tail) otter.userData.tail.rotation.z = swim*(moving?0.5:0.2);
     if(otter.userData.head) otter.userData.head.rotation.z = swim*0.06;
     if(otter.userData.arms){
-      otter.userData.arms[0].rotation.x = swim*(moving?0.8:0.3);
-      otter.userData.arms[1].rotation.x = -swim*(moving?0.8:0.3);
+      const sp2 = dashTime>0 ? 1.2 : (moving?0.8:0.3);
+      otter.userData.arms[0].rotation.x = swim*sp2;
+      otter.userData.arms[1].rotation.x = -swim*sp2;
     }
 
     // bouncy squash & stretch — faster, springier bounce while moving
     const bounceSpd = moving ? 13 : 5.5;
-    const bounceAmt = moving ? 1.0 : 0.45;
+    const bounceAmt = (moving ? 1.0 : 0.45) * (state.diving?0.6:1);
     otter.userData.bouncePhase += dt*bounceSpd;
     applyBounce(otter, Math.sin(otter.userData.bouncePhase), bounceAmt);
-    // little hop on land + extra squash at the bottom of each bounce
     if(onLand && moving){
       otter.position.y = baseY + Math.max(0, Math.sin(otter.userData.bouncePhase))*0.22;
+    }
+
+    // ----- oxygen + bubbles while diving -----
+    if(state.diving){
+      state.oxygen -= dt*(1 + (dashTime>0?2:0));
+      if(Math.random()<0.35) spawnBubble(otter.position.clone().add(new THREE.Vector3(rand(-0.3,0.3),0.5,rand(-0.3,0.3))));
+      if(dashTime>0 && Math.random()<0.7) spawnBubble(otter.position.clone().add(new THREE.Vector3(rand(-0.5,0.5),0.2,rand(-0.5,0.5))));
+      if(state.oxygen<=0){ state.oxygen=0; setDiving(false); toast('😮‍💨 Out of air — surfaced!'); }
+      else if(state.oxygen<5 && Math.floor(state.oxygen*2)%2===0 && Math.random()<0.05) beep(880,0.05,'square',0.05);
     }
 
     // ----- water splash trail behind a swimming otter -----
@@ -1305,9 +1733,9 @@ function animate(){
       // damp & wander
       it.vel.multiplyScalar(0.995);
       if(Math.random()<0.01){ it.vel.x+=rand(-0.2,0.2); it.vel.z+=rand(-0.2,0.2); }
-      // collect check
+      // collect check (surface only)
       const cd=Math.hypot(m.position.x-otter.position.x, m.position.z-otter.position.z);
-      if(cd<1.6 && collectCooldown<=0){
+      if(cd<1.6 && collectCooldown<=0 && !state.diving){
         it.collecting=true; collectCooldown=0.05;
         spawnBurst(m.position.clone().setY(m.position.y+0.4), RES[it.type].color);
         beep(520+Math.random()*120,0.07,'triangle',0.05);
@@ -1353,12 +1781,51 @@ function animate(){
       m.rotation.y = -sw.heading + Math.PI/2;
       m.rotation.z = Math.sin(sw.t*8)*0.12;               // wiggle
       if(m.userData.parts && m.userData.parts.tail) m.userData.parts.tail.rotation.y = Math.sin(sw.t*12)*0.5;
-      // catch
-      if(od<1.5 && collectCooldown<=0){ collectCooldown=0.05; catchFish(sw); }
+      // catch (surface only)
+      if(od<1.5 && collectCooldown<=0 && !state.diving){ collectCooldown=0.05; catchFish(sw); }
     }
     // maintain fish population (scaled by level)
     const fishTarget = 5 + Math.min(7, state.level);
     if(swimmers.length < fishTarget && Math.random()<0.04) spawnFish();
+
+    // ----- DEEP DIVE: reef fish, kelp sway & hidden treasure -----
+    if(state.diving){
+      for(const kp of kelps){ kp.userData.phase += dt*1.4; kp.rotation.z = Math.sin(kp.userData.phase)*0.18; }
+      // reef fish
+      for(let i=deepFish.length-1;i>=0;i--){
+        const df=deepFish[i], m=df.mesh; df.t+=dt;
+        const toX=otter.position.x-m.position.x, toZ=otter.position.z-m.position.z;
+        const od=Math.hypot(toX,toZ);
+        const fleeR=3.0 + RARITY[df.sp.rarity].glow*1.6;
+        if(od<fleeR){ df.heading=Math.atan2(-toZ,-toX); df.flee=1; } else df.flee*=0.96;
+        df.heading += Math.sin(df.t*1.1+df.bob)*dt*1.1;
+        const spd=df.speed*(1+df.flee*1.2);
+        m.position.x += Math.cos(df.heading)*spd*dt;
+        m.position.z += Math.sin(df.heading)*spd*dt;
+        const d=Math.hypot(m.position.x,m.position.z);
+        if(d>POND_R-2.5) df.heading += Math.PI*0.6;
+        if(d<ISLAND_R-1){ const nx=m.position.x/d,nz=m.position.z/d; df.heading=Math.atan2(nz,nx); }
+        m.position.y = df.depth + Math.sin(df.t*2+df.bob)*0.3;
+        m.rotation.y = -df.heading + Math.PI/2;
+        m.rotation.z = Math.sin(df.t*8)*0.12;
+        if(m.userData.parts && m.userData.parts.tail) m.userData.parts.tail.rotation.y=Math.sin(df.t*12)*0.5;
+        const dy=Math.abs(otter.position.y-m.position.y);
+        if(od<1.8 && dy<1.8 && collectCooldown<=0){ collectCooldown=0.05; catchDeepFish(df,i); }
+      }
+      const dTarget = 6 + Math.min(8, state.level);
+      if(deepFish.length < dTarget && Math.random()<0.05) spawnDeepFish();
+      // hidden treasure
+      for(let i=treasures.length-1;i>=0;i--){
+        const tr=treasures[i], m=tr.mesh; tr.bob+=dt*2;
+        m.position.y = SEABED_Y + 0.05 + Math.abs(Math.sin(tr.bob))*0.1;
+        m.rotation.y += dt*0.5;
+        const od=Math.hypot(m.position.x-otter.position.x, m.position.z-otter.position.z);
+        const dy=Math.abs(otter.position.y - (m.position.y+0.5));
+        if(od<1.9 && dy<2.6 && collectCooldown<=0){ collectCooldown=0.05; collectTreasure(tr,i); }
+      }
+      const tTarget = 5 + state.expands;
+      if(treasures.length < tTarget && Math.random()<0.03) spawnTreasure();
+    }
 
     // ----- pets follow the player in a bouncy conga line -----
     for(let pi=0; pi<pets.length; pi++){
@@ -1465,16 +1932,38 @@ function animate(){
     c.m.rotation.x+=c.rot.x*dt; c.m.rotation.y+=c.rot.y*dt; c.m.rotation.z+=c.rot.z*dt;
     if(c.life>1.6){ scene.remove(c.m); c.m.geometry.dispose(); c.m.material.dispose(); confetti.splice(i,1); }
   }
+  // ----- bubbles -----
+  for(let i=bubbles.length-1;i>=0;i--){
+    const bb=bubbles[i]; bb.life+=dt; bb.wob+=dt*4;
+    bb.m.position.y += bb.vy*dt;
+    bb.m.position.x += Math.sin(bb.wob)*dt*0.4;
+    bb.m.material.opacity = 0.5*(1-bb.life/bb.max);
+    if(bb.life>=bb.max || bb.m.position.y>0.2){ scene.remove(bb.m); bb.m.geometry.dispose(); bb.m.material.dispose(); bubbles.splice(i,1); }
+  }
+  // ----- boat bob + flag wave -----
+  boat.position.y = 0.25 + Math.sin(t*1.4)*0.12;
+  boat.rotation.z = Math.sin(t*1.1)*0.04;
+  boat.rotation.x = Math.sin(t*0.9+1)*0.03;
+  if(boat.userData.flag) boat.userData.flag.rotation.y = Math.sin(t*5)*0.4;
 
-  // ----- camera follow -----
+  // ----- oxygen HUD -----
+  if(state.running && state.diving){
+    const frac = Math.max(0, state.oxygen/MAX_OXYGEN);
+    const bar=$('#oxyBar'); bar.style.height = (frac*100)+'%';
+    bar.classList.toggle('low', frac<0.25);
+    $('#oxyTxt').textContent = Math.ceil(state.oxygen);
+    $('#depthNum').textContent = Math.max(0, Math.round(-otter.position.y));
+  }
+
+  // ----- camera follow (pulls in & lower while diving) -----
   const camTarget = otter.position;
-  const desired = new THREE.Vector3(
-    camTarget.x + Math.sin(camAngle)*1.0,
-    14.5,
-    camTarget.z + 18
-  );
+  diveCamK += ((state.diving?1:0) - diveCamK)*Math.min(1,dt*2.5);
+  const kk = diveCamK;
+  const camH = (1-kk)*14.5 + kk*(camTarget.y+5.5);
+  const camD = (1-kk)*18   + kk*11;
+  const desired = new THREE.Vector3(camTarget.x, camH, camTarget.z + camD);
   camera.position.lerp(desired, Math.min(1,dt*3.2));
-  camera.lookAt(camTarget.x, camTarget.y+1.5, camTarget.z);
+  camera.lookAt(camTarget.x, camTarget.y + (1-kk)*1.5 + kk*0.3, camTarget.z);
   // sun follows for shadow coverage
   sun.target.position.copy(otter.position);
 
@@ -1508,6 +1997,8 @@ function openFishDex(){ renderFishDex(); $('#fishDex').classList.remove('hidden'
 function init(){
   for(let i=0;i<10;i++) spawnDrift();
   for(let i=0;i<5;i++) spawnFish();
+  for(let i=0;i<8;i++) spawnDeepFish();
+  for(let i=0;i<6;i++) spawnTreasure();
   updateResHUD(); updateStatsHUD();
 }
 init();
