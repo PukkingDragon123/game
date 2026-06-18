@@ -2792,11 +2792,11 @@ window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; joyEnd()
 // action buttons
 $('#dashBtn').addEventListener('click', tryDash);
 $('#diveBtn').addEventListener('click', toggleDive);
-$('#editBtn').addEventListener('click', toggleEdit);
-$('#pickBtn').addEventListener('click', pickUpHere);
+$('#editBtn')?.addEventListener('click', toggleEdit);
+$('#pickBtn')?.addEventListener('click', pickUpHere);
 $('#placeBtn').addEventListener('click', placeSelected);
 $('#collectBtn').addEventListener('click', interact);
-$('#craftBtn').addEventListener('click', ()=> $('#craftPanel').classList.contains('hidden') ? openCraft() : closeCraft());
+$('#craftBtn')?.addEventListener('click', ()=> $('#craftPanel').classList.contains('hidden') ? openCraft() : closeCraft());
 $('#craftClose').addEventListener('click', closeCraft);
 $('#craftPanel').addEventListener('click', e=>{ if(e.target.id==='craftPanel') closeCraft(); });
 $('#bpClose').addEventListener('click', closeBlueprint);
@@ -2813,7 +2813,7 @@ function toggleInv(){
     openInv(chest);
   } else closeInv();
 }
-$('#bagBtn').addEventListener('click', toggleInv);
+$('#bagBtn')?.addEventListener('click', toggleInv);
 $('#invClose').addEventListener('click', closeInv);
 $('#invPanel').addEventListener('click', e=>{ if(e.target.id==='invPanel') closeInv(); });
 // fishing mini-game taps
@@ -2828,8 +2828,8 @@ $('#hotbar').addEventListener('pointerdown', e=>{ const el=e.target.closest('.sl
 function toggleEdit(){
   if(!state.running) return;
   state.editMode = !state.editMode;
-  $('#editBtn').classList.toggle('on', state.editMode);
-  $('#pickBtn').classList.toggle('hidden', !state.editMode);
+  $('#editBtn')?.classList.toggle('on', state.editMode);
+  $('#pickBtn')?.classList.toggle('hidden', !state.editMode);
   gridGroup.visible = state.editMode;
   tileCursor.visible = state.editMode;
   if(state.editMode){ toast('🛠️ Edit mode — stand on a placed item & tap ♻️ to pick it up'); }
@@ -3616,10 +3616,10 @@ $('#startBtn').addEventListener('click',()=>{
   toast('🤚 Press E (green button) to collect • ⛵ board your boat to sail to new isles!');
 });
 
-$('#hintBtn').addEventListener('click',()=>{
-  toast('Catch 🐟 fish → 🏭 Fish Factory makes 🍣 food → 🐾 adopt pets & 🏝️ expand!');
+$('#hintBtn')?.addEventListener('click',()=>{
+  toast('🌳 Gather wood/rock → build on plots · 🎣 fish & 🍳 cook to charm villagers!');
 });
-$('#fishBtn').addEventListener('click', openFishDex);
+$('#fishBtn')?.addEventListener('click', openFishDex);
 $('#fishClose').addEventListener('click',()=> $('#fishDex').classList.add('hidden'));
 $('#fishDex').addEventListener('click',(e)=>{ if(e.target.id==='fishDex') $('#fishDex').classList.add('hidden'); });
 
