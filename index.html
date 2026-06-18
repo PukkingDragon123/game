@@ -310,6 +310,11 @@
   #cookPanel { position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); backdrop-filter:blur(4px); padding:18px; }
   #cookPanel.hidden { display:none; }
   #cookList { display:flex; flex-direction:column; gap:6px; max-height:62vh; overflow-y:auto; }
+  #swimHud { position:absolute; left:50%; transform:translateX(-50%); top: calc(max(12px, env(safe-area-inset-top)) + 62px); display:flex; align-items:center; gap:7px; background:var(--panel); border:1.5px solid rgba(255,238,210,.2); border-radius:16px; padding:5px 12px; z-index:6; }
+  #swimHud.hidden { display:none; }
+  #swimBarWrap { width:120px; height:9px; background:rgba(0,0,0,.4); border-radius:6px; overflow:hidden; }
+  #swimBar { height:100%; width:100%; background:linear-gradient(90deg,#6fd0e8,#bff0ff); border-radius:6px; }
+  #swimBar.low { background:linear-gradient(90deg,#e0533a,#ff8a5a); }
   #bpPanel { position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); backdrop-filter:blur(4px); padding:18px; }
   #bpPanel.hidden { display:none; }
   #bpList { display:flex; flex-direction:column; gap:6px; }
@@ -502,6 +507,9 @@
     <div id="depthTag">▼ <span id="depthNum">0</span>m</div>
   </div>
 
+  <!-- swim stamina (shows in open water) -->
+  <div id="swimHud" class="hidden"><span>💨</span><div id="swimBarWrap"><div id="swimBar"></div></div></div>
+
   <!-- Fish collection / Aquarium log -->
   <div id="fishDex" class="hidden">
     <div class="dexCard">
@@ -532,22 +540,9 @@
     </div>
   </div>
 
-  <!-- Workbench crafting -->
-  <button id="craftBtn" title="Craft (C)">🔨 Craft</button>
-  <div id="craftPanel" class="hidden">
-    <div class="craftCard">
-      <div class="invHead"><span id="craftTitle">🔨 Workbench</span><button id="craftClose" class="invX">✕</button></div>
-      <div id="craftTabs"></div>
-      <div id="craftList"></div>
-      <p class="craftHint">Crafted items go to your bag — select one in the hotbar and tap <b>Place</b>.</p>
-    </div>
-  </div>
-
-  <!-- Action buttons (right side) -->
+  <!-- Action buttons (right side) — one interact button + dash + dive -->
   <div id="actBtns">
-    <button id="collectBtn" class="actBtn big" title="Collect / Interact (E)">🤚</button>
-    <button id="placeBtn" class="actBtn" title="Place selected item">📍</button>
-    <button id="pickBtn" class="actBtn hidden" title="Pick up">♻️</button>
+    <button id="collectBtn" class="actBtn big" title="Interact (E)">🤚</button>
     <button id="dashBtn" class="actBtn" title="Dash">⚡</button>
     <button id="diveBtn" class="actBtn" title="Dive / Surface">🤿</button>
   </div>
@@ -679,6 +674,7 @@ const RES = {
   food:  { ic:'🍣', name:'Food',      color:0xff9d4d },  // processed from fish
 };
 const RES_KEYS = ['wood','reed','stone','shell'];        // only these drift in the water
+const SWIM_TIME = 16;     // seconds you can swim in open water before tiring out
 
 // ---------- Item registry (Stardew-style inventory) ----------
 const ITEMS = {
@@ -809,6 +805,7 @@ const state = {
   mail: { has:false, msg:'' },
   pantry: { fish:0, berry:0, fruit:0 },   // cooking ingredients
   cooked: 0,
+  swim: 1,           // swim stamina (open water); empties -> paddle back to shore
   oxygen: MAX_OXYGEN,
   editMode: false,   // Animal-Crossing edit/decorate mode
   dockTab: 'build',  // 'build' | 'decor'
@@ -1202,31 +1199,34 @@ function makeOtter(scaleScale=1, furColor=0x9b6a43, shirtColor){
   const eyeMat= new THREE.MeshBasicMaterial({ color:0x141414 });
   const cheek = new THREE.MeshBasicMaterial({ color:0xff9bb0, transparent:true, opacity:0.55 });
 
-  // --- little torso (wears a coloured shirt) ---
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.32, 5, 12), shirt);
-  torso.position.y = 0.6; torso.castShadow = true; g.add(torso);
-  const bp = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10), belly);
-  bp.position.set(0, 0.58, 0.18); bp.scale.set(0.8, 0.95, 0.5); g.add(bp);
+  // --- chubby round torso (wears a coloured shirt) ---
+  const torso = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 14), shirt);
+  torso.scale.set(1, 0.94, 0.92); torso.position.y = 0.56; torso.castShadow = true; g.add(torso);
+  const bp = new THREE.Mesh(new THREE.SphereGeometry(0.27, 12, 10), belly);
+  bp.position.set(0, 0.54, 0.17); bp.scale.set(0.82, 0.92, 0.5); g.add(bp);
 
-  // --- big head (the AC signature) ---
-  const head = new THREE.Group(); head.position.set(0, 1.16, 0);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.46, 18, 16), fur);
-  skull.scale.set(1, 0.97, 0.97); skull.castShadow = true; head.add(skull);
-  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), belly);
-  muzzle.position.set(0, -0.08, 0.36); muzzle.scale.set(1.15, 0.78, 0.78); head.add(muzzle);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), dark);
-  nose.position.set(0, -0.02, 0.55); head.add(nose);
+  // --- big round head ---
+  const head = new THREE.Group(); head.position.set(0, 1.18, 0);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.48, 18, 16), fur);
+  skull.scale.set(1, 0.98, 0.98); skull.castShadow = true; head.add(skull);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10), belly);
+  muzzle.position.set(0, -0.09, 0.38); muzzle.scale.set(1.15, 0.8, 0.78); head.add(muzzle);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), dark);
+  nose.position.set(0, -0.03, 0.57); head.add(nose);
   for(const sx of [-1,1]){
-    const ew = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 14), eyeW);
-    ew.position.set(0.17*sx, 0.05, 0.36); ew.scale.set(0.78, 1.05, 0.55); head.add(ew);
-    const pu = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 12), eyeMat);
-    pu.position.set(0.185*sx, 0.04, 0.45); pu.scale.set(1, 1.1, 0.6); head.add(pu);
-    const sh = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), eyeW);
-    sh.position.set(0.205*sx, 0.09, 0.5); head.add(sh);
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), fur);
-    ear.position.set(0.34*sx, 0.33, -0.02); ear.scale.set(1, 0.9, 0.5); ear.castShadow=true; head.add(ear);
-    const ci = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), cheek);
-    ci.position.set(0.29*sx, -0.06, 0.33); ci.rotation.y = 0.5*sx; head.add(ci);
+    // small simple dot eyes + a tiny shine
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 10), eyeMat);
+    eye.position.set(0.155*sx, 0.04, 0.43); eye.scale.set(1, 1.2, 0.7); head.add(eye);
+    const sh = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 8), eyeW);
+    sh.position.set(0.17*sx, 0.08, 0.47); head.add(sh);
+    // little eyebrow
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.022, 0.03), dark);
+    brow.position.set(0.155*sx, 0.155, 0.44); brow.rotation.z = 0.16*sx; head.add(brow);
+    // ears + rosy cheeks
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.135, 12, 10), fur);
+    ear.position.set(0.35*sx, 0.34, -0.02); ear.scale.set(1, 0.9, 0.5); ear.castShadow=true; head.add(ear);
+    const ci = new THREE.Mesh(new THREE.CircleGeometry(0.062, 12), cheek);
+    ci.position.set(0.3*sx, -0.07, 0.35); ci.rotation.y = 0.5*sx; head.add(ci);
   }
   g.add(head); g.userData.head = head;
 
@@ -2257,8 +2257,8 @@ function renderCraft(){
     list.appendChild(row);
   });
 }
-function openCraft(){ if(!RECIPES.length) buildRecipes(); $('#craftPanel').classList.remove('hidden'); renderCraft(); }
-function closeCraft(){ $('#craftPanel').classList.add('hidden'); }
+function openCraft(){ const p=$('#craftPanel'); if(!p) return; if(!RECIPES.length) buildRecipes(); p.classList.remove('hidden'); renderCraft(); }
+function closeCraft(){ $('#craftPanel')?.classList.add('hidden'); }
 function craftRecipe(r){
   if(state.level<r.lvl){ toast(`🔒 Reach Village Lv ${r.lvl} first!`); beep(180,0.08,'square'); return; }
   if(r.act==='land' && ISLAND_R>=ISLAND_MAX){ toast('🏝️ Island is fully expanded!'); return; }
@@ -2272,7 +2272,7 @@ function craftRecipe(r){
   updateResHUD(); updateStatsHUD(); renderCraft();
 }
 // kept as a no-op-ish hook so updateResHUD can refresh the open craft panel
-function renderDock(){ if(!$('#craftPanel').classList.contains('hidden')) renderCraft(); }
+function renderDock(){ const p=$('#craftPanel'); if(p && !p.classList.contains('hidden')) renderCraft(); }
 
 let toastT=null;
 function toast(msg){
@@ -2678,6 +2678,15 @@ function disembark(){
   toast('⚓ Docked at '+best.name+(best.type==='village'?' — walk up to villagers & press 🤚 to recruit!':best.type==='treasure'?' — dig up the chests!':''));
   beep(523,0.1); setTimeout(()=>beep(392,0.1),110);
 }
+function drownToShore(){
+  let best=ISLANDS[0], bd=1e9;
+  for(const is of ISLANDS){ const dd=Math.hypot(otter.position.x-is.x, otter.position.z-is.z)-islandR(is); if(dd<bd){ bd=dd; best=is; } }
+  const r=islandR(best), ang=Math.atan2(otter.position.z-best.z, otter.position.x-best.x);
+  otter.position.set(best.x+Math.cos(ang)*(r-1), GRASS_Y, best.z+Math.sin(ang)*(r-1));
+  otterVel.set(0,0,0);
+  const tEl=$('#toast'); tEl.style.color='#9be0ff'; toast('😮‍💨 Too tired to swim — paddled back to shore!'); setTimeout(()=>{ tEl.style.color=''; },2000);
+  beep(330,0.12,'sine'); spawnRing(otter.position.clone().setY(0.2), 0x9be0ff, 2.6); addShake(0.15);
+}
 
 // ---------- E / 🤚 to collect & interact (context sensitive) ----------
 function nearestOf(list, range, getPos){ let b=null,bd=range; for(const e of list){ const p=getPos(e); const d=Math.hypot(p.x-otter.position.x, p.z-otter.position.z); if(d<bd){ bd=d; b=e; } } return b; }
@@ -2701,6 +2710,7 @@ function contextHint(){
   if(!state.running) return '🤚';
   if(!state.diving && boatNear()) return '⛵';
   if(mailboxNear()) return '📬';
+  if(walrusNear()) return '🔨';
   if(bakeryNear()) return '🍳';
   if(nearestNPCInRange()) return '🧑';
   if(nearestChestPickup()) return '🏴‍☠️';
@@ -2718,6 +2728,7 @@ function interact(){
   if(state.sailing){ disembark(); return; }
   if(!state.diving && boatNear()){ boardBoat(); return; }
   if(mailboxNear()){ readMail(); return; }
+  if(walrusNear()){ toast('🔨 Sven: "What shall I build for ye today?"'); openForge(); return; }
   if(bakeryNear()){ openCookMenu(); return; }
   const npc=nearestNPCInRange(); if(npc){ recruitNPC(npc); return; }
   const cp=nearestChestPickup(); if(cp){ openChestPickup(cp); return; }
@@ -2752,9 +2763,9 @@ window.addEventListener('keydown',e=>{
   if(k==='f'){ if(!e.repeat) toggleDive(); }
   if(k==='e'){ if(!e.repeat){ e.preventDefault(); interact(); } }
   if(k==='i'||k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
-  if(k==='c'){ if(!e.repeat){ $('#craftPanel').classList.contains('hidden') ? openCraft() : closeCraft(); } }
+  if(k==='c'){ if(!e.repeat) openForge(); }
   if(k==='q'||k==='enter'){ if(!e.repeat) placeSelected(); }
-  if(k==='escape'){ if(!$('#invPanel').classList.contains('hidden')) closeInv(); if(!$('#craftPanel').classList.contains('hidden')) closeCraft(); }
+  if(k==='escape'){ $('#invPanel')&&!$('#invPanel').classList.contains('hidden')&&closeInv(); closeBlueprint(); closeCook(); }
   if(k>='1'&&k<='8'){ state.hotsel=(+k)-1; renderHotbar(); }
   keys[k]=true;
 });
@@ -2794,11 +2805,10 @@ $('#dashBtn').addEventListener('click', tryDash);
 $('#diveBtn').addEventListener('click', toggleDive);
 $('#editBtn')?.addEventListener('click', toggleEdit);
 $('#pickBtn')?.addEventListener('click', pickUpHere);
-$('#placeBtn').addEventListener('click', placeSelected);
+$('#placeBtn')?.addEventListener('click', placeSelected);
 $('#collectBtn').addEventListener('click', interact);
-$('#craftBtn')?.addEventListener('click', ()=> $('#craftPanel').classList.contains('hidden') ? openCraft() : closeCraft());
-$('#craftClose').addEventListener('click', closeCraft);
-$('#craftPanel').addEventListener('click', e=>{ if(e.target.id==='craftPanel') closeCraft(); });
+$('#craftClose')?.addEventListener('click', closeCraft);
+$('#craftPanel')?.addEventListener('click', e=>{ if(e.target.id==='craftPanel') closeCraft(); });
 $('#bpClose').addEventListener('click', closeBlueprint);
 $('#bpPanel').addEventListener('click', e=>{ if(e.target.id==='bpPanel') closeBlueprint(); });
 $('#cookClose').addEventListener('click', closeCook);
@@ -2934,6 +2944,14 @@ function frame(){
       if(state.diving) baseY = DIVE_SWIM_Y + Math.sin(t*1.6)*0.25;
       else baseY = onLand ? GRASS_Y : 0.15;
       otter.position.y += (baseY - otter.position.y)*Math.min(1,dt*(state.diving?2.5:8));
+
+      // ----- swim stamina: tire out in open water, paddle back to shore -----
+      if(!onLand && !state.diving){
+        state.swim -= dt/SWIM_TIME;
+        if(state.swim<=0){ state.swim=1; drownToShore(); }
+      } else {
+        state.swim = Math.min(1, state.swim + dt*0.7);
+      }
 
       // ----- villager animation: upright walk on land, freestyle swim in water -----
       const legs = otter.userData.legs, arms = otter.userData.arms, head = otter.userData.head;
@@ -3221,6 +3239,11 @@ function frame(){
     } else carryVis.visible=false;
     if(carryLift>0) carryLift-=dt;
 
+    // ----- swim stamina HUD (open water only) -----
+    { const sh=$('#swimHud'); if(sh){ const show = !state.sailing && !state.diving && !onLand && state.swim<0.999;
+        sh.classList.toggle('hidden', !show);
+        if(show){ const b=$('#swimBar'); b.style.width=(Math.max(0,state.swim)*100)+'%'; b.classList.toggle('low', state.swim<0.3); } } }
+
     // ----- daily time: a new day brings a visitor or a letter -----
     dayTimer += dt;
     if(dayTimer >= DAY_LEN){ dayTimer = 0; advanceDay(); }
@@ -3505,18 +3528,26 @@ function completeSite(s){
   doPlaceBuild(BUILD_BY_ID[s.bp.bid], s.tile);
 }
 // blueprint picker overlay
-function openBlueprintPicker(tile){
-  const list=$('#bpList'); list.innerHTML='';
+function renderBlueprints(placeFn){
+  const list=$('#bpList'); if(!list) return; list.innerHTML='';
   BLUEPRINTS.forEach(bp=>{
     const locked=state.level<bp.lvl;
     const row=document.createElement('button'); row.className='recipe'+(locked?' locked':' ok');
     row.innerHTML=`<span class="rIcon">${bp.icon}</span><span class="rMid"><span class="rName">${bp.name}</span><span class="rCost">${needStr(bp.need)}</span></span>`+(locked?`<span class="rLock">Lv${bp.lvl}</span>`:'');
-    row.addEventListener('click',()=>{ if(locked){ toast(`🔒 Reach Village Lv ${bp.lvl}`); return; } closeBlueprint(); startSite(tile, bp); });
+    row.addEventListener('click',()=>{ if(locked){ toast(`🔒 Reach Village Lv ${bp.lvl}`); return; } closeBlueprint(); placeFn(bp); });
     list.appendChild(row);
   });
-  $('#bpPanel').classList.remove('hidden');
+  $('#bpPanel')?.classList.remove('hidden');
 }
-function closeBlueprint(){ $('#bpPanel').classList.add('hidden'); }
+function openBlueprintPicker(tile){ renderBlueprints(bp=>startSite(tile, bp)); }
+function openForge(){
+  renderBlueprints(bp=>{
+    const t=nearestEmptyTile(otter.position);
+    if(!t){ toast('🏝️ No free plot near you — clear space or Buy Land!'); return; }
+    startSite(t, bp);
+  });
+}
+function closeBlueprint(){ $('#bpPanel')?.classList.add('hidden'); }
 
 // HUD: pearls (currency), carried items, day
 function updateEconomyHUD(flash){
@@ -3556,6 +3587,49 @@ function makeBakery(){
 }
 let homeBakery=null;
 function buildBakery(){ homeBakery=makeBakery(); homeBakery.position.set(-4, GRASS_Y, ISLAND_R-4.5); homeBakery.rotation.y=0.5; scene.add(homeBakery); }
+
+// ---------- Sven the Walrus: talk to him at the forge to build things (AC-style) ----------
+function makeWalrus(){
+  const g=new THREE.Group();
+  const skin =new THREE.MeshStandardMaterial({color:0x8c7e9c, roughness:0.85});
+  const belly=new THREE.MeshStandardMaterial({color:0xc3b6cf, roughness:0.85});
+  const dark =new THREE.MeshStandardMaterial({color:0x201826});
+  const white=new THREE.MeshStandardMaterial({color:0xfff4e0, roughness:0.5});
+  const apron=new THREE.MeshStandardMaterial({color:0x9a5a35, roughness:0.8});
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.7,16,14), skin); body.scale.set(1,0.95,1.05); body.position.y=0.7; g.add(body);
+  const ap=new THREE.Mesh(new THREE.SphereGeometry(0.55,14,12), apron); ap.scale.set(0.85,0.9,0.45); ap.position.set(0,0.62,0.42); g.add(ap);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.5,16,14), skin); head.position.set(0,1.4,0.12); g.add(head);
+  const snout=new THREE.Mesh(new THREE.SphereGeometry(0.33,12,10), belly); snout.position.set(0,1.24,0.5); snout.scale.set(1.15,0.82,0.8); g.add(snout);
+  for(const sx of [-1,1]){
+    const tk=new THREE.Mesh(new THREE.ConeGeometry(0.055,0.4,8), white); tk.position.set(0.13*sx,0.98,0.62); tk.rotation.x=Math.PI; g.add(tk);
+    const e=new THREE.Mesh(new THREE.SphereGeometry(0.052,9,9), dark); e.position.set(0.17*sx,1.5,0.5); g.add(e);
+    const brow=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.032,0.04), dark); brow.position.set(0.17*sx,1.62,0.5); brow.rotation.z=0.22*sx; g.add(brow);
+    const wh=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.012,0.012), dark); wh.position.set(0.2*sx,1.2,0.62); g.add(wh);
+    const fl=new THREE.Mesh(new THREE.SphereGeometry(0.24,10,8), skin); fl.position.set(0.62*sx,0.5,0.12); fl.scale.set(0.5,0.32,1); g.add(fl);
+  }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.userData.head=head;
+  return g;
+}
+function makeForge(){
+  const g=new THREE.Group();
+  const stone=new THREE.MeshStandardMaterial({color:0x55505a, roughness:1});
+  const metal=new THREE.MeshStandardMaterial({color:0x3a3a42, metalness:0.6, roughness:0.4});
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.5,0.55,10), stone); base.position.y=0.28; g.add(base);
+  const anvil=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.22,0.34), metal); anvil.position.y=0.66; g.add(anvil);
+  const horn=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.3,8), metal); horn.rotation.z=Math.PI/2; horn.position.set(0.42,0.7,0); g.add(horn);
+  const ember=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8), new THREE.MeshBasicMaterial({color:0xff8a3a,transparent:true,opacity:0.85})); ember.position.set(0,0.6,0); g.add(ember);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.userData.ember=ember;
+  return g;
+}
+let homeWalrus=null, homeForge=null;
+function buildWalrus(){
+  homeWalrus=makeWalrus(); homeWalrus.position.set(6, GRASS_Y, ISLAND_R-6.5); homeWalrus.rotation.y=-0.7; scene.add(homeWalrus);
+  homeForge=makeForge(); homeForge.position.set(7.4, GRASS_Y, ISLAND_R-6); homeForge.rotation.y=-0.7; scene.add(homeForge);
+  const mark=makeTextSprite('🔨','#ffd166'); mark.position.set(6, GRASS_Y+2.2, ISLAND_R-6.5); mark.scale.set(0.9,0.9,0.9); scene.add(mark); homeWalrus.userData.mark=mark;
+}
+function walrusNear(){ return homeWalrus && !state.diving && !state.sailing && Math.hypot(otter.position.x-homeWalrus.position.x, otter.position.z-homeWalrus.position.z)<3.2; }
 function bakeryNear(){ return homeBakery && !state.diving && !state.sailing && Math.hypot(otter.position.x-homeBakery.position.x, otter.position.z-homeBakery.position.z)<3.0; }
 function dishHas(need){ for(const k in need){ if((state.pantry[k]||0) < need[k]) return false; } return true; }
 function dishStr(need){ return Object.entries(need).map(([k,v])=>FOOD_ICON[k]+v).join(' '); }
@@ -3592,6 +3666,7 @@ function init(){
   buildExtraIslands();       // village isle (recruit villagers) + treasure isle (sail to them)
   buildHomeDockAndMail();    // pier by the boat + a mailbox for daily letters
   buildBakery();             // village kitchen — cook dishes to charm new villagers
+  buildWalrus();             // Sven the Walrus at his forge — talk to him to build
   for(let i=0;i<6;i++) spawnFish();
   // deep-sea reef/fish/treasure are built lazily on first dive (keeps boot fast)
   scatterForage();           // 🌳 trees (wood) & 🪨 rocks (rock) to gather
