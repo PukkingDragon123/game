@@ -642,7 +642,7 @@ window.addEventListener('error', (ev)=>{
 });
 
 // ---------- Config ----------
-const POND_R = 92;          // water radius (open ocean to sail across)
+const POND_R = 124;         // big open ocean to sail across
 const PLAY_R = 60;          // collectibles/reef cluster near home (rest of ocean is for sailing)
 let   ISLAND_R = 22;        // central grassy (home) island radius (grows on expansion)
 const ISLAND_MAX = 40;      // expansion cap
@@ -650,8 +650,8 @@ const ISLAND_MAX = 40;      // expansion cap
 // other islands you can sail to (home is the central, growable one)
 const ISLANDS = [
   { type:'home',     x:0,   z:0,   r:0,  name:'Home' },
-  { type:'village',  x:-52, z:-42, r:15, name:'Village Isle' },
-  { type:'treasure', x:50,  z:-52, r:12, name:'Treasure Isle' },
+  { type:'village',  x:-74, z:-58, r:16, name:'Village Isle' },
+  { type:'treasure', x:70,  z:-76, r:13, name:'Treasure Isle' },
 ];
 function islandR(is){ return is.type==='home' ? ISLAND_R : is.r; }
 function landAt(x,z){ for(const is of ISLANDS){ if(Math.hypot(x-is.x, z-is.z) < islandR(is)+1.0) return is; } return null; }
@@ -853,7 +853,7 @@ $('#app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xbfeaff);
-scene.fog = new THREE.Fog(0xbfeaff, 85, 180);
+scene.fog = new THREE.Fog(0xbfeaff, 95, 230);
 
 const camera = new THREE.PerspectiveCamera(52, window.innerWidth/window.innerHeight, 0.1, 400);
 
@@ -938,7 +938,7 @@ function updateTitle(t,dt){
 // ---------- Water ----------
 // a finely subdivided plane (clipped to a disc in the shader) so the whole
 // surface ripples with smooth, fluid, layered waves
-const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 90, 90);
+const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 104, 104);
 const waterUniforms = {
   uTime: { value: 0 },
   uColorDeep:    { value: new THREE.Color(0x0a3d6e) },
@@ -1636,25 +1636,59 @@ function makeBoat(){
   const g=new THREE.Group();
   const woodM=new THREE.MeshStandardMaterial({color:0x9a5f33,roughness:0.8});
   const woodL=new THREE.MeshStandardMaterial({color:0xc78a52,roughness:0.8});
-  // hull (open-top half capsule)
-  const hull=new THREE.Mesh(new THREE.CapsuleGeometry(0.9,2.0,6,12),woodM);
-  hull.rotation.z=Math.PI/2; hull.scale.set(1,1,0.55); hull.position.y=0.35; g.add(hull);
-  const inner=new THREE.Mesh(new THREE.CapsuleGeometry(0.62,1.8,6,12),new THREE.MeshStandardMaterial({color:0x6b4324,roughness:0.9}));
-  inner.rotation.z=Math.PI/2; inner.scale.set(1,1,0.5); inner.position.y=0.55; g.add(inner);
-  // rim plank
-  const rim=new THREE.Mesh(new THREE.TorusGeometry(1.45,0.1,8,18),woodL); rim.rotation.x=Math.PI/2; rim.scale.set(1,0.55,1); rim.position.y=0.7; g.add(rim);
-  // mast + flag
-  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,2.2,6),woodL); mast.position.set(0,1.6,0); g.add(mast);
-  const flag=new THREE.Mesh(new THREE.PlaneGeometry(0.7,0.45),new THREE.MeshStandardMaterial({color:0xff7e7e,side:THREE.DoubleSide})); flag.position.set(0.36,2.4,0); g.add(flag);
-  // life ring
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.26,0.09,8,14),new THREE.MeshStandardMaterial({color:0xffffff})); ring.position.set(-1.2,0.7,0); ring.rotation.y=Math.PI/2; g.add(ring);
+  const sailM=new THREE.MeshStandardMaterial({color:0xfff3df,roughness:0.92,side:THREE.DoubleSide});
+  // hull runs along +Z (the way it sails)
+  const hull=new THREE.Mesh(new THREE.CapsuleGeometry(0.72,2.4,8,16),woodM);
+  hull.rotation.x=Math.PI/2; hull.scale.set(1,1,0.6); hull.position.y=0.42; g.add(hull);
+  const inner=new THREE.Mesh(new THREE.CapsuleGeometry(0.52,2.1,6,12),new THREE.MeshStandardMaterial({color:0x6b4324,roughness:0.9}));
+  inner.rotation.x=Math.PI/2; inner.scale.set(1,1,0.55); inner.position.y=0.62; g.add(inner);
+  // pointed bow + stern trim
+  const bow=new THREE.Mesh(new THREE.ConeGeometry(0.5,1.0,12),woodM); bow.rotation.x=-Math.PI/2; bow.position.set(0,0.46,1.85); bow.scale.set(1,1,0.55); g.add(bow);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(0.8,0.09,8,22),woodL); rim.rotation.x=Math.PI/2; rim.scale.set(1,1.85,1); rim.position.y=0.74; g.add(rim);
+  // mast + billowing sail + flag
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,2.7,6),woodL); mast.position.set(0,1.75,0.05); g.add(mast);
+  const sail=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.7,8,6),sailM); sail.position.set(0,1.8,0.07);
+  { const pa=sail.geometry.attributes.position; for(let i=0;i<pa.count;i++){ const x=pa.getX(i); pa.setZ(i, -Math.cos((x/0.75)*Math.PI*0.5)*0.34 - 0.12); } sail.geometry.computeVertexNormals(); }
+  g.add(sail);
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.34),new THREE.MeshStandardMaterial({color:0xff7e7e,side:THREE.DoubleSide})); flag.position.set(0.3,3.0,0.05); g.add(flag);
+  const ringB=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.08,8,14),new THREE.MeshStandardMaterial({color:0xffffff})); ringB.position.set(0.6,0.72,-0.7); ringB.rotation.y=Math.PI/2; g.add(ringB);
   g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; } });
-  g.userData.flag=flag;
+  g.userData.flag=flag; g.userData.sail=sail;
   return g;
 }
 const boat = makeBoat();
 boat.position.set(ISLAND_R+6, 0.25, 0);
 scene.add(boat);
+
+// ---------- Ocean rocks/hazards (the boat bounces off them) + drifting clouds ----------
+const hazards=[];
+function makeRockHazard(){
+  const g=new THREE.Group();
+  const m=new THREE.MeshStandardMaterial({color:0x6f6c75, roughness:1});
+  const m2=new THREE.MeshStandardMaterial({color:0x86838c, roughness:1});
+  const n=2+(Math.random()*3|0);
+  for(let i=0;i<n;i++){ const r=new THREE.Mesh(new THREE.DodecahedronGeometry(rand(0.6,1.5),0), i%2?m2:m); r.position.set(rand(-1,1), rand(-0.1,0.7), rand(-1,1)); r.rotation.set(rand(0,3),rand(0,3),rand(0,3)); r.scale.y=rand(0.7,1.1); r.castShadow=true; g.add(r); }
+  const foam=new THREE.Mesh(new THREE.RingGeometry(1.6,2.3,20), new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.35,side:THREE.DoubleSide,depthWrite:false}));
+  foam.rotation.x=-Math.PI/2; foam.position.y=0.16; g.add(foam);
+  return g;
+}
+function scatterHazards(){
+  for(let i=0;i<14;i++){
+    const a=Math.random()*Math.PI*2, r=rand(PLAY_R+8, POND_R-8);
+    const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    let ok=true; for(const is of ISLANDS){ if(Math.hypot(x-is.x,z-is.z) < islandR(is)+9) ok=false; }
+    if(!ok) continue;
+    const h=makeRockHazard(); h.position.set(x, 0.1, z); h.rotation.y=Math.random()*Math.PI*2; scene.add(h);
+    hazards.push({ x, z, r:2.0 });
+  }
+}
+const clouds=[];
+function makeCloud(){
+  const g=new THREE.Group(); const m=new THREE.MeshStandardMaterial({color:0xffffff, roughness:1, transparent:true, opacity:0.92, fog:false});
+  for(let i=0;i<4;i++){ const p=new THREE.Mesh(new THREE.IcosahedronGeometry(rand(2.2,4),0), m); p.position.set(rand(-4,4), rand(-0.6,0.6), rand(-2,2)); p.scale.y=0.6; g.add(p); }
+  return g;
+}
+for(let i=0;i<6;i++){ const c=makeCloud(); c.position.set(rand(-POND_R,POND_R), rand(34,46), rand(-POND_R,POND_R)); c.userData.spd=rand(0.6,1.4); scene.add(c); clouds.push(c); }
 
 // ---------- Other islands, villagers to recruit & treasure ----------
 function makeTextSprite(text, color='#ffd166'){
@@ -2580,7 +2614,7 @@ function setDiving(on){
     beep(330,0.12,'sine'); setTimeout(()=>beep(247,0.16,'sine'),120);
   } else {
     scene.background = SKY_BG;
-    scene.fog.color.copy(SKY_BG); scene.fog.near = 85; scene.fog.far = 180;
+    scene.fog.color.copy(SKY_BG); scene.fog.near = 95; scene.fog.far = 230;
     hemi.intensity = 0.85; sun.intensity = 1.25; hemi.groundColor.set(0x6fa8c7);
     state.oxygen = MAX_OXYGEN;
     toast('🌊 Surfaced! Air refilled. Treasure banked.');
@@ -2641,14 +2675,22 @@ function updateBoat(dt, t, dx, dz, inLen){
     const ddx=nx-is.x, ddz=nz-is.z, di=Math.hypot(ddx,ddz), rr=islandR(is)+3.2;
     if(di<rr){ const s=rr/Math.max(di,0.001); nx=is.x+ddx*s; nz=is.z+ddz*s; boatVel.multiplyScalar(0.5); }
   }
+  // bounce off rock hazards
+  for(const hz of hazards){
+    const ddx=nx-hz.x, ddz=nz-hz.z, di=Math.hypot(ddx,ddz), rr=hz.r+1.7;
+    if(di<rr){ const s=rr/Math.max(di,0.001); nx=hz.x+ddx*s; nz=hz.z+ddz*s; boatVel.multiplyScalar(0.45);
+      if(!hz._hit){ hz._hit=0.6; addShake(0.2); beep(140,0.1,'square',0.06); spawnRing(new THREE.Vector3(nx,0.2,nz),0xffffff,2.2); } }
+    if(hz._hit){ hz._hit-=dt; if(hz._hit<0) hz._hit=0; }
+  }
   boat.position.set(nx, 0.25 + Math.sin(t*1.5)*0.08, nz);
   const vlen=Math.hypot(boatVel.x,boatVel.z);
   if(vlen>0.4){
     const tr=Math.atan2(boatVel.x,boatVel.z);
     const dR=((tr-boat.rotation.y+Math.PI*3)%(Math.PI*2)-Math.PI);
-    boat.rotation.y += dR*Math.min(1,dt*3);
+    boat.rotation.y += dR*Math.min(1,dt*3.6);   // snappier steering
   }
   boat.rotation.z = Math.sin(t*1.1)*0.05;
+  if(boat.userData.sail) boat.userData.sail.rotation.z = Math.sin(t*2.4)*0.05;   // wind in the sail
   // the villager rides on deck (neutral standing pose)
   otter.position.set(boat.position.x, boat.position.y+0.78, boat.position.z);
   otter.rotation.set(0, boat.rotation.y, 0);
@@ -2853,7 +2895,7 @@ joyZone.addEventListener('touchstart',()=>{ const now=performance.now(); if(now-
 const clock = new THREE.Clock();
 let collectCooldown = 0;
 let splashTimer = 0;
-let ctxTick = 0, miniTick = 0;
+let ctxTick = 0, miniTick = 0, windT = 0;
 const facing = new THREE.Vector3(0,0,1);
 let camAngle = 0;
 let diveCamK = 0;
@@ -2885,6 +2927,10 @@ function frame(){
     gl.rotation.y=-u.ang+Math.PI/2; u.ph+=dt*8; const f=Math.sin(u.ph)*0.6;
     u.wL.rotation.z=f; u.wR.rotation.z=-f;
   }
+  // wind: drifting clouds + flag flap (tree sway handled in the forage loop)
+  windT += dt;
+  for(const c of clouds){ c.position.x += c.userData.spd*dt; if(c.position.x > POND_R+12) c.position.x = -POND_R-12; }
+  if(boat.userData.flag) boat.userData.flag.rotation.z = Math.sin(windT*5)*0.3;
   if(titleMode) updateTitle(t,dt);
 
   if(state.running){
@@ -3055,7 +3101,7 @@ function frame(){
     // ----- forage nodes: harvest on contact, regrow, idle wobble -----
     for(const nd of forageNodes){
       if(nd.shake>0){ nd.shake-=dt; nd.mesh.rotation.z = Math.sin(performance.now()*0.04)*nd.shake*0.4; }
-      else nd.mesh.rotation.z *= 0.9;
+      else nd.mesh.rotation.z = (nd.type==='tree'||nd.type==='fruit') ? Math.sin(windT*1.4 + nd.mesh.position.x*0.5)*0.05 : 0;  // gentle wind sway
       if(!nd.ready){
         nd.regrow-=dt;
         const k=1 - Math.max(0,nd.regrow)/nd.def.regrow;   // grow back from a sprout
@@ -3667,6 +3713,7 @@ function init(){
   buildHomeDockAndMail();    // pier by the boat + a mailbox for daily letters
   buildBakery();             // village kitchen — cook dishes to charm new villagers
   buildWalrus();             // Sven the Walrus at his forge — talk to him to build
+  scatterHazards();          // rock hazards out in the open ocean
   for(let i=0;i<6;i++) spawnFish();
   // deep-sea reef/fish/treasure are built lazily on first dive (keeps boot fast)
   scatterForage();           // 🌳 trees (wood) & 🪨 rocks (rock) to gather
