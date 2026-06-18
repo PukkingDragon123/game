@@ -310,6 +310,18 @@
   #cookPanel { position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); backdrop-filter:blur(4px); padding:18px; }
   #cookPanel.hidden { display:none; }
   #cookList { display:flex; flex-direction:column; gap:6px; max-height:62vh; overflow-y:auto; }
+  /* villager dialogue */
+  #dlgPanel { position:fixed; left:0; right:0; bottom:0; z-index:64; display:flex; justify-content:center; padding:0 12px calc(env(safe-area-inset-bottom) + 16px); pointer-events:none; }
+  #dlgPanel.hidden { display:none; }
+  .dlgCard { pointer-events:auto; width:100%; max-width:460px; background:var(--panel); border:2px solid rgba(255,238,210,.25); border-radius:18px; padding:14px 16px; box-shadow:0 18px 50px rgba(0,0,0,.5); }
+  .dlgTop { display:flex; align-items:center; gap:10px; }
+  #dlgFace { font-size:38px; }
+  #dlgName { font-family:var(--hand-title); font-size:24px; font-weight:700; flex:1; }
+  .dlgText { font-size:18px; line-height:1.4; margin:10px 2px; min-height:46px; }
+  .dlgActions { display:flex; flex-wrap:wrap; gap:8px; }
+  .dlgBtn { pointer-events:auto; cursor:pointer; flex:1 1 40%; border:1.5px solid rgba(255,255,255,.2); border-radius:14px; background:var(--panel-lite); color:#fff; font-family:var(--hand); font-size:16px; padding:9px 10px; }
+  .dlgBtn small { opacity:.75; font-size:12px; }
+  .dlgBtn:active { transform:scale(.95); }
   #swimHud { position:absolute; left:50%; transform:translateX(-50%); top: calc(max(12px, env(safe-area-inset-top)) + 62px); display:flex; align-items:center; gap:7px; background:var(--panel); border:1.5px solid rgba(255,238,210,.2); border-radius:16px; padding:5px 12px; z-index:6; }
   #swimHud.hidden { display:none; }
   #swimBarWrap { width:120px; height:9px; background:rgba(0,0,0,.4); border-radius:6px; overflow:hidden; }
@@ -531,6 +543,15 @@
     </div>
   </div>
 
+  <!-- Villager dialogue / quests / jobs -->
+  <div id="dlgPanel" class="hidden">
+    <div class="dlgCard">
+      <div class="dlgTop"><div id="dlgFace">🦦</div><div id="dlgName">Villager</div><button id="dlgClose" class="invX">✕</button></div>
+      <div id="dlgText" class="dlgText"></div>
+      <div id="dlgActions" class="dlgActions"></div>
+    </div>
+  </div>
+
   <!-- Build-plot blueprint picker -->
   <div id="bpPanel" class="hidden">
     <div class="craftCard">
@@ -540,10 +561,9 @@
     </div>
   </div>
 
-  <!-- Action buttons (right side) — one interact button + dash + dive -->
+  <!-- Action buttons (right side) — one interact button + dive -->
   <div id="actBtns">
     <button id="collectBtn" class="actBtn big" title="Interact (E)">🤚</button>
-    <button id="dashBtn" class="actBtn" title="Dash">⚡</button>
     <button id="diveBtn" class="actBtn" title="Dive / Surface">🤿</button>
   </div>
 
@@ -594,13 +614,13 @@
     <details class="howtoBox">
       <summary>📖 How to play</summary>
       <div class="howto">
-        🕹️ <b>Move:</b> drag on the left (or <b>WASD</b>). <b>⚡ Dash:</b> button, <b>Shift</b>/<b>Space</b>, or double-tap.<br>
-        🤚 <b>Do (E):</b> tap the green button (or press <b>E</b>) for everything — chop 🌳 trees &amp; mine 🪨 rocks, build, fish, read 📬 mail, recruit villagers.<br>
-        🤲 <b>Carry &amp; build:</b> you can hold <b>3</b> resources at once. Stand on an empty plot → pick a <b>blueprint</b> → carry 🪵 wood &amp; 🪨 rock to the 🚧 site to build it!<br>
-        🦪 <b>Pearls</b> are your money — earn them from fishing &amp; treasure.<br>
-        🍳 <b>Cook:</b> gather 🫐 berries &amp; 🍎 fruit, catch 🐟 fish, then cook at the 🍳 Kitchen — the aroma <b>charms new villagers</b> to move in!<br>
-        🎣 <b>Fishing:</b> hook a fish, then tap <b>REEL!</b> fast — the bar drains as it fights back. Fill it to land the catch!<br>
-        ⛵ <b>Sail</b> to 🏘️ Village Isle (recruit villagers) &amp; 🏴‍☠️ Treasure Isle. <b>Dive</b> (🤿/F) for reef fish &amp; treasure.<br>
+        🕹️ <b>Move:</b> drag on the left (or <b>WASD</b>). One <b>🤚 button</b> (or <b>E</b>) does everything you're near.<br>
+        🤚 <b>Interact (E):</b> chop 🌳 trees &amp; mine 🪨 rocks, fish, read 📬 mail, and <b>talk to villagers</b>.<br>
+        🔨 <b>Build:</b> talk to <b>Sven the Walrus</b> at his forge, pick a 🏗️ blueprint, then carry 🪵 wood &amp; 🪨 rock (3 at a time) to the 🚧 site. Fancier builds unlock as your village levels up!<br>
+        💬 <b>Villagers:</b> talk to them — do their little <b>quest</b> (bring resources) and they'll move in. Then give them a <b>job</b> (🪓/🎣/🍳) for village bonuses!<br>
+        🍳 <b>Cook:</b> gather 🫐 berries &amp; 🍎 fruit, catch 🐟 fish, then cook at the 🍳 Kitchen — the aroma <b>charms new villagers</b>.<br>
+        🎣 <b>Fishing:</b> hook a fish, then tap <b>REEL!</b> fast — the bar drains as it fights back. 🦪 Pearls are your money.<br>
+        ⛵ <b>Sail</b> to other isles (dodge the rocks!) &amp; <b>Dive</b> (🤿/F) for reef fish &amp; treasure. 💨 Don't swim too long or you'll tire out!<br>
       </div>
     </details>
     <button class="btn" id="startBtn">▶  Play</button>
@@ -805,6 +825,7 @@ const state = {
   mail: { has:false, msg:'' },
   pantry: { fish:0, berry:0, fruit:0 },   // cooking ingredients
   cooked: 0,
+  jobs: { gatherer:0, fisher:0, cook:0 }, // assigned villager jobs (passive bonuses)
   swim: 1,           // swim stamina (open water); empties -> paddle back to shore
   oxygen: MAX_OXYGEN,
   editMode: false,   // Animal-Crossing edit/decorate mode
@@ -1186,18 +1207,30 @@ let islandPop = 1.0; // 0..1 scrub used for a quick squash when expanding
 
 // ---------- Otter (slim, cute quadruped) ----------
 const SHIRT_COLS = [0xff8f6b, 0x6bc0f0, 0x9be86a, 0xffd166, 0xc89bf0, 0xff9bc0];
-// Animal-Crossing-style villager: a big round head on a tiny body, standing upright
+// Villager species — each is a cute chubby biped, varied by colour/ears/features.
+const SPECIES = {
+  otter:    { name:'Otter',     emoji:'🦦', fur:0x9b6a43, belly:0xf3ddb6, ear:'round' },
+  seal:     { name:'Seal',      emoji:'🦭', fur:0x8b94a3, belly:0xd9dee6, ear:'none',  whisker:true },
+  sealion:  { name:'Sea Lion',  emoji:'🦭', fur:0xa9763f, belly:0xe7c89a, ear:'tiny',  whisker:true },
+  puffin:   { name:'Puffin',    emoji:'🐧', fur:0x26262c, belly:0xffffff, ear:'none',  beak:true },
+  polarbear:{ name:'Polar Bear',emoji:'🐻‍❄️', fur:0xeef2f6, belly:0xffffff, ear:'round', big:1.2 },
+  penguin:  { name:'Penguin',   emoji:'🐧', fur:0x2b2f3a, belly:0xfdf3df, ear:'none',  beak:true },
+};
+const SPECIES_KEYS = Object.keys(SPECIES);
+function randSpecies(){ return SPECIES[SPECIES_KEYS[(Math.random()*SPECIES_KEYS.length)|0]]; }
+
+// Animal-Crossing-style villager: a big round head on a chubby body, standing upright
 // with stubby swinging arms & two stepping legs. Forward = +Z.
-function makeOtter(scaleScale=1, furColor=0x9b6a43, shirtColor){
+function makeOtter(scaleScale=1, furColor=0x9b6a43, shirtColor, sp){
+  sp = sp || SPECIES.otter;
+  scaleScale *= (sp.big||1);
   shirtColor = shirtColor ?? SHIRT_COLS[(Math.random()*SHIRT_COLS.length)|0];
   const g = new THREE.Group();
-  const fur   = new THREE.MeshStandardMaterial({ color:furColor, roughness:0.82 });
+  const fur   = new THREE.MeshStandardMaterial({ color: sp.fur, roughness:0.82 });
   const shirt = new THREE.MeshStandardMaterial({ color:shirtColor, roughness:0.68 });
-  const belly = new THREE.MeshStandardMaterial({ color:0xf3ddb6, roughness:0.82 });
-  const dark  = new THREE.MeshStandardMaterial({ color:0x2a1c12, roughness:0.5 });
-  const eyeW  = new THREE.MeshBasicMaterial({ color:0xffffff });
-  const eyeMat= new THREE.MeshBasicMaterial({ color:0x141414 });
-  const cheek = new THREE.MeshBasicMaterial({ color:0xff9bb0, transparent:true, opacity:0.55 });
+  const belly = new THREE.MeshStandardMaterial({ color: sp.belly, roughness:0.82 });
+  const dark  = new THREE.MeshStandardMaterial({ color:0x201826, roughness:0.5 });
+  const cheek = new THREE.MeshBasicMaterial({ color:0xff9bb0, transparent:true, opacity:0.5 });
 
   // --- chubby round torso (wears a coloured shirt) ---
   const torso = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 14), shirt);
@@ -1211,24 +1244,25 @@ function makeOtter(scaleScale=1, furColor=0x9b6a43, shirtColor){
   skull.scale.set(1, 0.98, 0.98); skull.castShadow = true; head.add(skull);
   const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 10), belly);
   muzzle.position.set(0, -0.09, 0.38); muzzle.scale.set(1.15, 0.8, 0.78); head.add(muzzle);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), dark);
-  nose.position.set(0, -0.03, 0.57); head.add(nose);
+  if(sp.beak){
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.32, 4), new THREE.MeshStandardMaterial({color:0xffab33, roughness:0.6}));
+    beak.rotation.x = Math.PI/2; beak.position.set(0, -0.04, 0.62); head.add(beak);
+  } else {
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), dark); nose.position.set(0, -0.03, 0.57); head.add(nose);
+  }
   for(const sx of [-1,1]){
-    // small simple dot eyes + a tiny shine
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 10), eyeMat);
-    eye.position.set(0.155*sx, 0.04, 0.43); eye.scale.set(1, 1.2, 0.7); head.add(eye);
-    const sh = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 8), eyeW);
-    sh.position.set(0.17*sx, 0.08, 0.47); head.add(sh);
-    // little eyebrow
+    // a single small black dot eye
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 10), dark);
+    eye.position.set(0.155*sx, 0.04, 0.44); eye.scale.set(1, 1.15, 0.7); head.add(eye);
     const brow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.022, 0.03), dark);
-    brow.position.set(0.155*sx, 0.155, 0.44); brow.rotation.z = 0.16*sx; head.add(brow);
-    // ears + rosy cheeks
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.135, 12, 10), fur);
-    ear.position.set(0.35*sx, 0.34, -0.02); ear.scale.set(1, 0.9, 0.5); ear.castShadow=true; head.add(ear);
+    brow.position.set(0.155*sx, 0.16, 0.44); brow.rotation.z = 0.16*sx; head.add(brow);
     const ci = new THREE.Mesh(new THREE.CircleGeometry(0.062, 12), cheek);
     ci.position.set(0.3*sx, -0.07, 0.35); ci.rotation.y = 0.5*sx; head.add(ci);
+    if(sp.ear==='round'){ const ear=new THREE.Mesh(new THREE.SphereGeometry(0.135,12,10), fur); ear.position.set(0.35*sx,0.34,-0.02); ear.scale.set(1,0.9,0.5); ear.castShadow=true; head.add(ear); }
+    else if(sp.ear==='tiny'){ const ear=new THREE.Mesh(new THREE.SphereGeometry(0.07,10,8), fur); ear.position.set(0.33*sx,0.37,0.02); head.add(ear); }
+    if(sp.whisker){ const wh=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.012,0.012), dark); wh.position.set(0.24*sx,-0.08,0.5); wh.rotation.z=-0.1*sx; head.add(wh); }
   }
-  g.add(head); g.userData.head = head;
+  g.add(head); g.userData.head = head; g.userData.species = sp;
 
   // --- stubby arms (pivot at shoulder, swing while walking) ---
   const armGeo = new THREE.CapsuleGeometry(0.085, 0.22, 4, 8);
@@ -1353,15 +1387,17 @@ function makeFishMesh(sp, scale=1){
   const rar = RARITY[sp.rarity];
   const g = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: sp.body, roughness:0.5, metalness: rar.glow>0?0.3:0.05, flatShading:true,
+    color: sp.body, roughness:0.42, metalness: rar.glow>0?0.35:0.12,
     emissive: rar.glow>0 ? new THREE.Color(sp.body) : 0x000000, emissiveIntensity: rar.glow*0.5,
   });
-  const finMat = new THREE.MeshStandardMaterial({ color: sp.fin, roughness:0.6, flatShading:true, side:THREE.DoubleSide });
+  const finMat = new THREE.MeshStandardMaterial({ color: sp.fin, roughness:0.55, flatShading:true, side:THREE.DoubleSide });
 
-  // body — a clean faceted diamond (low-poly "origami", not a blobby AI shape)
-  let bx = sp.long ? 1.55 : 1.2, by = sp.tall ? 1.15 : 0.85, bz = sp.puff ? 0.85 : 0.5;
-  const body = new THREE.Mesh(new THREE.OctahedronGeometry(0.44, 0), bodyMat);
+  // body — smooth rounded teardrop (clean & cute, with a pale belly)
+  let bx = sp.long ? 1.6 : 1.25, by = sp.tall ? 1.1 : 0.82, bz = sp.puff ? 0.8 : 0.52;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 18, 14), bodyMat);
   body.scale.set(bx, by, bz); g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:0.28, roughness:0.6}));
+  belly.scale.set(bx*0.98, by*0.6, bz*1.01); belly.position.y=-0.18*by; g.add(belly);
   const grp = { body };
 
   // tail — a single flat triangle
@@ -1726,11 +1762,13 @@ function makeTreasureChest(){
 const npcs=[];
 const NPC_NAMES=['Pip','Momo','Hazel','Bru','Coco','Tilly','Otto','Nori','Sora','Juno'];
 function spawnNPC(is, ang, rad){
-  const m=makeOtter(rand(0.92,1.05), new THREE.Color().setHSL(rand(0.04,0.1),0.45,rand(0.34,0.46)).getHex());
+  const sp=randSpecies();
+  const m=makeOtter(rand(1.3,1.55), 0, undefined, sp);          // villagers are big
   const x=is.x+Math.cos(ang)*rad, z=is.z+Math.sin(ang)*rad;
   m.position.set(x, GRASS_Y, z); m.rotation.y=rand(0,Math.PI*2); scene.add(m);
-  const mark=makeTextSprite('❗','#ffe14d'); mark.position.set(x, GRASS_Y+2.3, z); mark.scale.set(0.9,0.9,0.9); scene.add(mark);
-  npcs.push({ mesh:m, mark, name:NPC_NAMES[(Math.random()*NPC_NAMES.length)|0], bob:Math.random()*6.28 });
+  const mark=makeTextSprite('💬','#ffe14d'); mark.position.set(x, GRASS_Y+2.9, z); mark.scale.set(1,1,1); scene.add(mark);
+  const res=Math.random()<0.5?'wood':'rock', need=2+(Math.random()*3|0);
+  npcs.push({ mesh:m, mark, sp, name:NPC_NAMES[(Math.random()*NPC_NAMES.length)|0], bob:Math.random()*6.28, quest:{res,need,got:0}, accepted:false });
 }
 const chestPickups=[];
 function spawnChestPickup(is, ang, rad){
@@ -1756,14 +1794,56 @@ function buildExtraIslands(){
     }
   }
 }
-function recruitNPC(npc){
+function recruitNPC(npc, job){
   const idx=npcs.indexOf(npc); if(idx<0) return;
   scene.remove(npc.mesh); scene.remove(npc.mark); npcs.splice(idx,1);
-  addFollower(); state.pop=(state.pop||0)+1; state.recruits=(state.recruits||0)+1;
-  toast(`🧑 ${npc.name} joined your village! (+1 pop)`);
-  confettiAt(npc.mesh.position, 20); beep(700,0.08); setTimeout(()=>beep(950,0.1),90); addShake(0.15);
+  addFollower(npc.sp); state.pop=(state.pop||0)+1; state.recruits=(state.recruits||0)+1;
+  if(job){ state.jobs[job]=(state.jobs[job]||0)+1; }
+  toast(`🎉 ${npc.name} the ${npc.sp.name} joined your village${job?` as a ${JOBS[job].name}`:''}! (+1 pop)`);
+  confettiAt(npc.mesh.position, 24); beep(700,0.08); setTimeout(()=>beep(950,0.1),90); setTimeout(()=>beep(1180,0.12),180); addShake(0.18);
   updateStatsHUD();
 }
+// ---------- Dialogue + quests + jobs ----------
+const JOBS = {
+  gatherer:{ name:'Gatherer', emoji:'🪓', blurb:'trees & rocks regrow faster' },
+  fisher:  { name:'Fisher',   emoji:'🎣', blurb:'fishing pays more pearls' },
+  cook:    { name:'Cook',     emoji:'🍳', blurb:'dishes charm extra villagers' },
+};
+const HELLOS = ['Ahoy! Lovely day, isn’t it?','Oh, a visitor!','This little isle could be home…','I do love the sea breeze here.','Got any snacks? Hehe.'];
+let dialogueNPC=null;
+function openDialogue(npc){ dialogueNPC=npc; npc.greet = npc.greet || HELLOS[(Math.random()*HELLOS.length)|0]; renderDialogue(); $('#dlgPanel').classList.remove('hidden'); beep(620,0.05,'triangle',0.04); }
+function closeDialogue(){ dialogueNPC=null; $('#dlgPanel')?.classList.add('hidden'); }
+function carriedCount(res){ let n=0; for(const c of carry) if(c===res) n++; return n; }
+function depositToNPC(){
+  const npc=dialogueNPC; if(!npc) return; const q=npc.quest;
+  let moved=0;
+  for(let i=carry.length-1;i>=0 && q.got<q.need;i--){ if(carry[i]===q.res){ carry.splice(i,1); q.got++; moved++; } }
+  if(moved){ rebuildCarryVis(); updateEconomyHUD(); beep(540,0.06); spawnBurst(npc.mesh.position.clone().setY(GRASS_Y+1.2), RES3[q.res].col); }
+  else toast(`Carry some ${RES3[q.res].icon} ${q.res} first (chop 🌳 / mine 🪨)!`);
+  renderDialogue();
+}
+function renderDialogue(){
+  const npc=dialogueNPC; if(!npc) return;
+  const q=npc.quest;
+  $('#dlgFace').textContent=npc.sp.emoji;
+  $('#dlgName').textContent=`${npc.name} the ${npc.sp.name}`;
+  const acts=$('#dlgActions'); acts.innerHTML='';
+  const addBtn=(label,fn)=>{ const b=document.createElement('button'); b.className='dlgBtn'; b.innerHTML=label; b.addEventListener('click',fn); acts.appendChild(b); };
+  if(!npc.accepted){
+    $('#dlgText').innerHTML=`“${npc.greet}<br>Bring me <b>${q.need} ${RES3[q.res].icon} ${q.res}</b> and I’ll move to your village!”`;
+    addBtn('✓ Accept quest', ()=>{ npc.accepted=true; npc.mark.material.map && (npc.mark.visible=true); renderDialogue(); });
+    addBtn('Maybe later', closeDialogue);
+  } else if(q.got < q.need){
+    $('#dlgText').innerHTML=`“Quest: <b>${q.got}/${q.need} ${RES3[q.res].icon}</b> delivered. You’re carrying ${carriedCount(q.res)} ${RES3[q.res].icon}.”`;
+    addBtn(`🤲 Deposit ${RES3[q.res].icon}`, depositToNPC);
+    addBtn('Bye 👋', closeDialogue);
+  } else {
+    $('#dlgText').innerHTML=`“You did it! I’d love a job — what should I do?”`;
+    for(const k of Object.keys(JOBS)) addBtn(`${JOBS[k].emoji} ${JOBS[k].name}<br><small>${JOBS[k].blurb}</small>`, ()=>{ const n=npc; closeDialogue(); state.coins+=10; updateEconomyHUD('pearl'); recruitNPC(n,k); });
+  }
+}
+function nearestForageReadyAny(){ return null; } // (placeholder kept for safety)
+
 function openChestPickup(cp){
   if(!cp.ready) return;
   cp.ready=false; cp.regrow=45;
@@ -1923,7 +2003,7 @@ function harvestNode(nd){
     toast(`${FOOD_ICON[y]} +1 ${y} for the kitchen!`);
     beep(560,0.06,'triangle',0.05);
   }
-  nd.ready=false; nd.regrow=nd.def.regrow; nd.shake=0.45;
+  nd.ready=false; nd.regrow=nd.def.regrow * (1 - Math.min(0.5, (state.jobs.gatherer||0)*0.1)); nd.shake=0.45;
   addShake(0.14);
   beep(nd.type==='rock'?180:300, 0.07, nd.type==='rock'?'square':'triangle', 0.05);
 }
@@ -2412,8 +2492,8 @@ function gainXP(n){
   }
 }
 
-function addFollower(){
-  const f = makeOtter(rand(0.55,0.72), new THREE.Color().setHSL(rand(0.05,0.09),0.45,rand(0.32,0.42)).getHex());
+function addFollower(sp){
+  const f = makeOtter(rand(0.78,0.95), 0, undefined, sp||randSpecies());
   f.userData.angle = Math.random()*Math.PI*2;
   f.userData.rad = rand(2.2,4.0);
   f.userData.speed = rand(0.4,0.8)*(Math.random()<0.5?-1:1);
@@ -2468,7 +2548,7 @@ function catchFish(sw){
   const sp = sw.sp, rar = RARITY[sp.rarity];
   state.caught[sp.id] = (state.caught[sp.id]||0)+1;
   state.pantry.fish++; updateEconomyHUD();
-  addPearls(2 + Math.round(rar.glow*8));
+  addPearls(2 + Math.round(rar.glow*8) + (state.jobs.fisher||0));
   fishGroup.remove(sw.mesh);
   const idx = swimmers.indexOf(sw); if(idx>=0) swimmers.splice(idx,1);
   updateResHUD('fish');
@@ -2490,7 +2570,7 @@ function catchDeepFish(df, idx){
   const sp=df.sp, rar=RARITY[sp.rarity];
   state.caught[sp.id]=(state.caught[sp.id]||0)+1;
   state.pantry.fish++; updateEconomyHUD();
-  addPearls(3 + Math.round(rar.glow*10));
+  addPearls(3 + Math.round(rar.glow*10) + (state.jobs.fisher||0));
   underwater.remove(df.mesh); deepFish.splice(idx,1);
   updateResHUD('fish');
   const tEl=$('#toast'); tEl.style.color=rar.css;
@@ -2754,7 +2834,7 @@ function contextHint(){
   if(mailboxNear()) return '📬';
   if(walrusNear()) return '🔨';
   if(bakeryNear()) return '🍳';
-  if(nearestNPCInRange()) return '🧑';
+  if(nearestNPCInRange()) return '💬';
   if(nearestChestPickup()) return '🏴‍☠️';
   if(nearestForageReady()) return '🪓';
   if(!state.diving){
@@ -2772,7 +2852,7 @@ function interact(){
   if(mailboxNear()){ readMail(); return; }
   if(walrusNear()){ toast('🔨 Sven: "What shall I build for ye today?"'); openForge(); return; }
   if(bakeryNear()){ openCookMenu(); return; }
-  const npc=nearestNPCInRange(); if(npc){ recruitNPC(npc); return; }
+  const npc=nearestNPCInRange(); if(npc){ openDialogue(npc); return; }
   const cp=nearestChestPickup(); if(cp){ openChestPickup(cp); return; }
   // delivering to a construction site takes priority when standing on one
   if(!state.diving){
@@ -2801,13 +2881,11 @@ const keys = {};
 window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(fishing){ if(k===' '||k==='e'||k==='enter'){ e.preventDefault(); fishingClick(); } return; }
-  if(k===' '||k==='shift'){ if(!e.repeat) tryDash(); }
+  if(k==='e'||k==='enter'||k===' '){ if(!e.repeat){ e.preventDefault(); interact(); } }
   if(k==='f'){ if(!e.repeat) toggleDive(); }
-  if(k==='e'){ if(!e.repeat){ e.preventDefault(); interact(); } }
   if(k==='i'||k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
   if(k==='c'){ if(!e.repeat) openForge(); }
-  if(k==='q'||k==='enter'){ if(!e.repeat) placeSelected(); }
-  if(k==='escape'){ $('#invPanel')&&!$('#invPanel').classList.contains('hidden')&&closeInv(); closeBlueprint(); closeCook(); }
+  if(k==='escape'){ $('#invPanel')&&!$('#invPanel').classList.contains('hidden')&&closeInv(); closeBlueprint(); closeCook(); closeDialogue&&closeDialogue(); }
   if(k>='1'&&k<='8'){ state.hotsel=(+k)-1; renderHotbar(); }
   keys[k]=true;
 });
@@ -2843,7 +2921,6 @@ window.addEventListener('mousemove',e=>{ if(mouseDown&&joyId==='m') joyMove(e.cl
 window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; joyEnd(); } });
 
 // action buttons
-$('#dashBtn').addEventListener('click', tryDash);
 $('#diveBtn').addEventListener('click', toggleDive);
 $('#editBtn')?.addEventListener('click', toggleEdit);
 $('#pickBtn')?.addEventListener('click', pickUpHere);
@@ -2855,6 +2932,7 @@ $('#bpClose').addEventListener('click', closeBlueprint);
 $('#bpPanel').addEventListener('click', e=>{ if(e.target.id==='bpPanel') closeBlueprint(); });
 $('#cookClose').addEventListener('click', closeCook);
 $('#cookPanel').addEventListener('click', e=>{ if(e.target.id==='cookPanel') closeCook(); });
+$('#dlgClose').addEventListener('click', closeDialogue);
 
 // ----- inventory wiring -----
 function toggleInv(){
@@ -2887,10 +2965,6 @@ function toggleEdit(){
   if(state.editMode){ toast('🛠️ Edit mode — stand on a placed item & tap ♻️ to pick it up'); }
   else { tileCursor.visible=false; toast('✅ Done decorating!'); }
 }
-// double-tap the joystick zone to dash
-let lastJoyTap=0;
-joyZone.addEventListener('touchstart',()=>{ const now=performance.now(); if(now-lastJoyTap<260) tryDash(); lastJoyTap=now; });
-
 // ---------- Game loop ----------
 const clock = new THREE.Clock();
 let collectCooldown = 0;
@@ -2936,9 +3010,7 @@ function frame(){
   if(state.running){
     updateFishing(dt);          // reeling mini-game (when a fish is hooked)
     // ----- movement: sail the boat, or walk/swim on foot -----
-    if(dashCD>0) dashCD-=dt;
     if(dashTime>0) dashTime-=dt;
-    $('#dashBtn').classList.toggle('cooling', dashCD>0);
     let dx=move.x, dz=move.y;
     const k=getKeyDir(); dx+=k.x; dz+=k.z;
     const inLen=Math.hypot(dx,dz);
@@ -3301,7 +3373,7 @@ function frame(){
       n.mesh.position.y = GRASS_Y + Math.abs(Math.sin(n.bob*1.6))*0.06;
       applyBounce(n.mesh, Math.sin(n.bob*1.6), 0.5);
       n.mesh.rotation.y += Math.sin(n.bob*0.5)*dt*0.4;
-      n.mark.position.set(n.mesh.position.x, GRASS_Y+2.3 + Math.sin(n.bob*3)*0.12, n.mesh.position.z);
+      n.mark.position.set(n.mesh.position.x, GRASS_Y+2.9 + Math.sin(n.bob*3)*0.12, n.mesh.position.z);
     }
     // ----- treasure-isle chests: spin/bob & slowly respawn after opening -----
     for(const cp of chestPickups){
@@ -3520,13 +3592,14 @@ function addPearls(n){ state.coins+=n; updateEconomyHUD('pearl'); }
 
 // blueprints reuse the existing building meshes; costs are wood/rock only
 const BLUEPRINTS = [
-  { bid:'hut',    icon:'🛖', name:'Otter Hut',    need:{wood:4},        lvl:1 },
-  { bid:'garden', icon:'🌷', name:'Garden',       need:{wood:2,rock:1}, lvl:1 },
-  { bid:'house',  icon:'🏠', name:'Cozy House',   need:{wood:6,rock:3}, lvl:1 },
-  { bid:'well',   icon:'⛲', name:'Stone Well',    need:{rock:6,wood:2}, lvl:2 },
-  { bid:'dock',   icon:'⛵', name:'Little Dock',   need:{wood:6,rock:2}, lvl:2 },
-  { bid:'tree',   icon:'🌳', name:'Big Tree',      need:{wood:5},        lvl:2 },
-  { bid:'tower',  icon:'🏯', name:'Lantern Tower', need:{rock:8,wood:6}, lvl:3 },
+  { bid:'hut',     icon:'🛖', name:'Otter Hut',    need:{wood:4},          lvl:1 },
+  { bid:'garden',  icon:'🌷', name:'Garden',       need:{wood:2,rock:1},   lvl:1 },
+  { bid:'house',   icon:'🏠', name:'Cozy House',   need:{wood:6,rock:3},   lvl:1 },
+  { bid:'well',    icon:'⛲', name:'Stone Well',    need:{rock:6,wood:2},   lvl:2 },
+  { bid:'dock',    icon:'⛵', name:'Little Dock',   need:{wood:6,rock:2},   lvl:2 },
+  { bid:'tree',    icon:'🌳', name:'Big Tree',      need:{wood:5},          lvl:2 },
+  { bid:'aquarium',icon:'🐠', name:'Aquarium',      need:{rock:8,wood:6},   lvl:3 },
+  { bid:'tower',   icon:'🏯', name:'Lantern Tower', need:{rock:10,wood:8},  lvl:4 },
 ];
 const sites = [];
 function needStr(need){ return Object.entries(need).map(([k,v])=>RES3[k].icon+v).join(' '); }
@@ -3698,7 +3771,7 @@ function cook(d){
   addPearls(d.pearl); gainXP(6); state.cooked=(state.cooked||0)+1;
   const t=$('#toast'); t.style.color='#ffd166'; toast(`${d.icon} Cooked ${d.name}! The aroma charmed ${d.charm} villager${d.charm>1?'s':''} to visit 🧑`); setTimeout(()=>{ t.style.color=''; },2400);
   beep(523,0.08); setTimeout(()=>beep(659,0.09),90); setTimeout(()=>beep(784,0.12),180); addShake(0.12);
-  for(let i=0;i<d.charm;i++) charmVillager();
+  for(let i=0;i<d.charm + (state.jobs.cook>0?1:0);i++) charmVillager();
   updateEconomyHUD(); updateStatsHUD(); openCookMenu();
 }
 function charmVillager(){
