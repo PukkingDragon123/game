@@ -302,6 +302,14 @@
     border:1.5px dashed rgba(255,255,255,.3); background:rgba(0,0,0,.18);
   }
   #carrySlots .cSlot.full { border-style:solid; border-color:rgba(255,255,255,.5); background:rgba(255,255,255,.12); }
+  #pantryHud {
+    position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 150px); right:12px;
+    background:var(--panel); border:1.5px solid rgba(255,238,210,.18); padding:5px 11px; z-index:6;
+    font-size:15px; color:#fff; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.28);
+  }
+  #cookPanel { position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); backdrop-filter:blur(4px); padding:18px; }
+  #cookPanel.hidden { display:none; }
+  #cookList { display:flex; flex-direction:column; gap:6px; max-height:62vh; overflow-y:auto; }
   #bpPanel { position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); backdrop-filter:blur(4px); padding:18px; }
   #bpPanel.hidden { display:none; }
   #bpList { display:flex; flex-direction:column; gap:6px; }
@@ -447,6 +455,23 @@
   #loader .b { width: 180px; height: 9px; background: rgba(255,255,255,.35); border-radius:0; overflow:hidden; border:1px solid rgba(255,255,255,.4); }
   #loader .bf { height:100%; width: 30%; background:#fff; border-radius:0; animation: load 1.3s ease-in-out infinite; }
   @keyframes load { 0%{margin-left:-30%} 100%{margin-left:100%} }
+
+  /* ---------- cozy theme pass: warmer panels & soft rounded corners ---------- */
+  :root{
+    --panel: linear-gradient(150deg, rgba(52,44,66,0.84), rgba(34,28,44,0.9));
+    --panel-lite: linear-gradient(150deg, rgba(255,247,235,0.18), rgba(255,247,235,0.06));
+    --accent: linear-gradient(120deg,#ffd592,#ff9d5c);
+  }
+  body { background:#1a2740; }
+  #topLeft,#moneyChip,#carryHud,#diveHud,#oxyWrap,#depthTag,.actBtn,#craftBtn,#fishBtn,#editBtn,#bagBtn,
+  .craftCard,.fgCard,.dexCard,.howtoBox,.recipe,.ctab,#xpWrap,#carrySlots .cSlot,#hintBtn,.btn,.lockTag,.rLock,#toast,.fgBarWrap,.fgBtn,.fgFill,#bpList .recipe{
+    border-radius:16px !important;
+  }
+  .actBtn{ border-radius:22px !important; border-width:2px; }
+  #miniMap{ border-radius:50% !important; border-color:rgba(255,238,210,.55) !important; }
+  #topLeft,#moneyChip,#carryHud{ box-shadow:0 6px 18px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.16) !important; border-color:rgba(255,238,210,.18) !important; }
+  #moneyChip{ background:linear-gradient(150deg,#3a3550,#272036) !important; }
+  .btn,#craftBtn{ box-shadow:0 8px 22px rgba(255,160,80,.45), inset 0 1px 0 rgba(255,255,255,.4) !important; }
 </style>
 </head>
 <body>
@@ -466,6 +491,8 @@
 
   <!-- carried resources (max 3) -->
   <div id="carryHud"><span class="cLabel">🤲</span><div id="carrySlots"></div></div>
+  <!-- pantry (cooking ingredients) -->
+  <div id="pantryHud">🐟 0 · 🫐 0 · 🍎 0</div>
 
   <button id="fishBtn" title="Fish Collection">🐠</button>
 
@@ -486,6 +513,15 @@
   </div>
 
   <div id="toast"></div>
+
+  <!-- Village kitchen / cooking -->
+  <div id="cookPanel" class="hidden">
+    <div class="craftCard">
+      <div class="invHead"><span id="craftTitle">🍳 Village Kitchen</span><button id="cookClose" class="invX">✕</button></div>
+      <div id="cookList"></div>
+      <p class="craftHint">Cook dishes from 🐟 fish, 🫐 berries &amp; 🍎 fruit — the aroma charms new villagers to your island!</p>
+    </div>
+  </div>
 
   <!-- Build-plot blueprint picker -->
   <div id="bpPanel" class="hidden">
@@ -566,7 +602,8 @@
         🕹️ <b>Move:</b> drag on the left (or <b>WASD</b>). <b>⚡ Dash:</b> button, <b>Shift</b>/<b>Space</b>, or double-tap.<br>
         🤚 <b>Do (E):</b> tap the green button (or press <b>E</b>) for everything — chop 🌳 trees &amp; mine 🪨 rocks, build, fish, read 📬 mail, recruit villagers.<br>
         🤲 <b>Carry &amp; build:</b> you can hold <b>3</b> resources at once. Stand on an empty plot → pick a <b>blueprint</b> → carry 🪵 wood &amp; 🪨 rock to the 🚧 site to build it!<br>
-        🦪 <b>Pearls</b> are your money — earn them from fishing &amp; treasure, then Buy Land to grow the island.<br>
+        🦪 <b>Pearls</b> are your money — earn them from fishing &amp; treasure.<br>
+        🍳 <b>Cook:</b> gather 🫐 berries &amp; 🍎 fruit, catch 🐟 fish, then cook at the 🍳 Kitchen — the aroma <b>charms new villagers</b> to move in!<br>
         🎣 <b>Fishing:</b> hook a fish, then tap <b>REEL!</b> fast — the bar drains as it fights back. Fill it to land the catch!<br>
         ⛵ <b>Sail</b> to 🏘️ Village Isle (recruit villagers) &amp; 🏴‍☠️ Treasure Isle. <b>Dive</b> (🤿/F) for reef fish &amp; treasure.<br>
       </div>
@@ -601,16 +638,16 @@ if(!window.THREE){
 const $ = (s) => document.querySelector(s);
 
 // ---------- Config ----------
-const POND_R = 108;         // water radius (big open ocean to sail across)
-const PLAY_R = 64;          // collectibles/reef cluster near home (rest of ocean is for sailing)
+const POND_R = 92;          // water radius (open ocean to sail across)
+const PLAY_R = 60;          // collectibles/reef cluster near home (rest of ocean is for sailing)
 let   ISLAND_R = 22;        // central grassy (home) island radius (grows on expansion)
-const ISLAND_MAX = 42;      // expansion cap
+const ISLAND_MAX = 40;      // expansion cap
 
 // other islands you can sail to (home is the central, growable one)
 const ISLANDS = [
   { type:'home',     x:0,   z:0,   r:0,  name:'Home' },
-  { type:'village',  x:-62, z:-50, r:16, name:'Village Isle' },
-  { type:'treasure', x:58,  z:-66, r:13, name:'Treasure Isle' },
+  { type:'village',  x:-52, z:-42, r:15, name:'Village Isle' },
+  { type:'treasure', x:50,  z:-52, r:12, name:'Treasure Isle' },
 ];
 function islandR(is){ return is.type==='home' ? ISLAND_R : is.r; }
 function landAt(x,z){ for(const is of ISLANDS){ if(Math.hypot(x-is.x, z-is.z) < islandR(is)+1.0) return is; } return null; }
@@ -761,6 +798,8 @@ const state = {
   recruits: 0,
   day: 1,
   mail: { has:false, msg:'' },
+  pantry: { fish:0, berry:0, fruit:0 },   // cooking ingredients
+  cooked: 0,
   oxygen: MAX_OXYGEN,
   editMode: false,   // Animal-Crossing edit/decorate mode
   dockTab: 'build',  // 'build' | 'decor'
@@ -852,9 +891,9 @@ function makeGull(){
   return g;
 }
 const gulls=[];
-for(let i=0;i<6;i++){
+for(let i=0;i<4;i++){
   const gl=makeGull();
-  gl.userData.cx=rand(-25,25); gl.userData.cz=rand(-25,25); gl.userData.rad=rand(22,55);
+  gl.userData.cx=rand(-25,25); gl.userData.cz=rand(-25,25); gl.userData.rad=rand(22,48);
   gl.userData.h=rand(17,30); gl.userData.spd=rand(0.08,0.2)*(Math.random()<0.5?-1:1); gl.userData.ang=rand(0,6.28);
   gl.scale.setScalar(rand(0.8,1.6)); scene.add(gl); gulls.push(gl);
 }
@@ -893,7 +932,7 @@ function updateTitle(t,dt){
 // ---------- Water ----------
 // a finely subdivided plane (clipped to a disc in the shader) so the whole
 // surface ripples with smooth, fluid, layered waves
-const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 128, 128);
+const waterGeo = new THREE.PlaneGeometry(POND_R*2, POND_R*2, 90, 90);
 const waterUniforms = {
   uTime: { value: 0 },
   uColorDeep:    { value: new THREE.Color(0x0a3d6e) },
@@ -1484,15 +1523,15 @@ function makeStarfish(){
 // scatter coral + kelp + critters around the floor (off the island footprint)
 const corals=[];
 function populateReef(){
-  for(let i=0;i<42;i++){
+  for(let i=0;i<24;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-2, PLAY_R);
     const c=makeCoral(); c.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); c.rotation.y=Math.random()*Math.PI*2; underwater.add(c); corals.push(c);
   }
-  for(let i=0;i<28;i++){
+  for(let i=0;i<16;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-1, PLAY_R);
     const k=makeKelp(); k.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(k); kelps.push(k);
   }
-  for(let i=0;i<11;i++){
+  for(let i=0;i<7;i++){
     const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, PLAY_R);
     const an=makeAnemone(); an.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(an); anemones.push(an);
   }
@@ -1506,7 +1545,7 @@ populateReef();
 // --- ambient: marine snow + sunbeam light shafts (alive, dreamy water) ---
 let marineSnow=null;
 (function buildMarineSnow(){
-  const n=150; const geo=new THREE.BufferGeometry(); const arr=new Float32Array(n*3);
+  const n=90; const geo=new THREE.BufferGeometry(); const arr=new Float32Array(n*3);
   for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, r=Math.random()*(POND_R-2);
     arr[i*3]=Math.cos(a)*r; arr[i*3+1]=SEABED_Y+Math.random()*9; arr[i*3+2]=Math.sin(a)*r; }
   geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
@@ -1776,8 +1815,10 @@ function spawnDrop(id, pos, count=1){
 // ---------- Foraging / harvest nodes on the island ----------
 const forageNodes=[];
 const FORAGE = {
-  tree: { yield:'wood', n:[1,1], regrow:18, build:'tree' },
-  rock: { yield:'rock', n:[1,1], regrow:22, build:'rock' },
+  tree:  { yield:'wood',  n:[1,1], regrow:18, build:'tree' },
+  rock:  { yield:'rock',  n:[1,1], regrow:22, build:'rock' },
+  berry: { yield:'berry', n:[1,1], regrow:16, build:'berry' },   // → pantry (cooking)
+  fruit: { yield:'fruit', n:[1,1], regrow:20, build:'fruit' },   // → pantry (cooking)
 };
 function makeForageMesh(type){
   const g=new THREE.Group();
@@ -1790,6 +1831,10 @@ function makeForageMesh(type){
   } else if(type==='berry'){
     for(let i=0;i<3;i++){ const b=new THREE.Mesh(new THREE.IcosahedronGeometry(0.34,0),new THREE.MeshStandardMaterial({color:0x3f7a3f,roughness:1})); b.position.set(rand(-0.2,0.2),0.4+i*0.15,rand(-0.2,0.2)); g.add(b); }
     for(let i=0;i<5;i++){ const d=new THREE.Mesh(new THREE.SphereGeometry(0.07,7,7),new THREE.MeshStandardMaterial({color:0x6a6ad9})); d.position.set(rand(-0.3,0.3),rand(0.4,0.7),rand(-0.3,0.3)); g.add(d); }
+  } else if(type==='fruit'){
+    const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.18,0.8,7),new THREE.MeshStandardMaterial({color:0x9a6b3f,roughness:0.9})); tr.position.y=0.4; g.add(tr);
+    const crown=new THREE.Mesh(new THREE.IcosahedronGeometry(0.6,0),new THREE.MeshStandardMaterial({color:0x55a84f,roughness:1})); crown.position.y=1.0; g.add(crown);
+    for(let i=0;i<5;i++){ const ap=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8),new THREE.MeshStandardMaterial({color:0xe7483f,roughness:0.6})); ap.position.set(rand(-0.45,0.45),rand(0.8,1.2),rand(-0.45,0.45)); g.add(ap); }
   } else if(type==='mushroom'){
     for(const sx of [-0.18,0.18]){ const st=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.09,0.3,6),new THREE.MeshStandardMaterial({color:0xf0e6d0})); st.position.set(sx,0.15,0); g.add(st);
       const cap=new THREE.Mesh(new THREE.SphereGeometry(0.17,10,8,0,Math.PI*2,0,Math.PI*0.5),new THREE.MeshStandardMaterial({color:0xd96a5a})); cap.position.set(sx,0.3,0); g.add(cap); }
@@ -1810,19 +1855,29 @@ function spawnForageNode(type, x, z){
   forageNodes.push({ mesh, type, def:FORAGE[type], ready:true, regrow:0, shake:0, baseY:GRASS_Y });
 }
 function scatterForage(){
-  const types=['tree','tree','tree','rock','rock'];
-  for(let i=0;i<20;i++){
+  const types=['tree','tree','tree','rock','rock','berry','berry','fruit'];
+  for(let i=0;i<24;i++){
     const a=Math.random()*Math.PI*2, r=rand(2, ISLAND_R-2.5);
     spawnForageNode(types[(Math.random()*types.length)|0], Math.cos(a)*r, Math.sin(a)*r);
   }
 }
+const FOOD_ICON = { fish:'🐟', berry:'🫐', fruit:'🍎' };
 function harvestNode(nd){
   if(!nd.ready) return;
-  if(!canCarryMore()){ toast('🙌 Hands full (3) — deliver to a plot first!'); beep(180,0.08,'square'); return; }
-  nd.ready=false; nd.regrow=nd.def.regrow; nd.shake=0.45;
-  pickUpRes(nd.def.yield);
+  const y=nd.def.yield;
   const p=nd.mesh.position.clone().setY(GRASS_Y+0.6);
-  spawnBurst(p, RES3[nd.def.yield].col); addShake(0.16);
+  if(y==='wood'||y==='rock'){
+    if(!canCarryMore()){ toast('🙌 Hands full (3) — deliver to a plot first!'); beep(180,0.08,'square'); return; }
+    pickUpRes(y);
+    spawnBurst(p, RES3[y].col);
+  } else {                                   // berry / fruit → pantry (cooking)
+    state.pantry[y] = (state.pantry[y]||0)+1; updateEconomyHUD();
+    spawnBurst(p, y==='berry'?0x6a6ad9:0xe7483f);
+    toast(`${FOOD_ICON[y]} +1 ${y} for the kitchen!`);
+    beep(560,0.06,'triangle',0.05);
+  }
+  nd.ready=false; nd.regrow=nd.def.regrow; nd.shake=0.45;
+  addShake(0.14);
   beep(nd.type==='rock'?180:300, 0.07, nd.type==='rock'?'square':'triangle', 0.05);
 }
 
@@ -2365,6 +2420,7 @@ function adoptPet(){
 function catchFish(sw){
   const sp = sw.sp, rar = RARITY[sp.rarity];
   state.caught[sp.id] = (state.caught[sp.id]||0)+1;
+  state.pantry.fish++; updateEconomyHUD();
   addPearls(2 + Math.round(rar.glow*8));
   fishGroup.remove(sw.mesh);
   const idx = swimmers.indexOf(sw); if(idx>=0) swimmers.splice(idx,1);
@@ -2386,6 +2442,7 @@ function catchFish(sw){
 function catchDeepFish(df, idx){
   const sp=df.sp, rar=RARITY[sp.rarity];
   state.caught[sp.id]=(state.caught[sp.id]||0)+1;
+  state.pantry.fish++; updateEconomyHUD();
   addPearls(3 + Math.round(rar.glow*10));
   underwater.remove(df.mesh); deepFish.splice(idx,1);
   updateResHUD('fish');
@@ -2630,6 +2687,7 @@ function contextHint(){
   if(!state.running) return '🤚';
   if(!state.diving && boatNear()) return '⛵';
   if(mailboxNear()) return '📬';
+  if(bakeryNear()) return '🍳';
   if(nearestNPCInRange()) return '🧑';
   if(nearestChestPickup()) return '🏴‍☠️';
   if(nearestForageReady()) return '🪓';
@@ -2646,6 +2704,7 @@ function interact(){
   if(state.sailing){ disembark(); return; }
   if(!state.diving && boatNear()){ boardBoat(); return; }
   if(mailboxNear()){ readMail(); return; }
+  if(bakeryNear()){ openCookMenu(); return; }
   const npc=nearestNPCInRange(); if(npc){ recruitNPC(npc); return; }
   const cp=nearestChestPickup(); if(cp){ openChestPickup(cp); return; }
   // delivering to a construction site takes priority when standing on one
@@ -2728,6 +2787,8 @@ $('#craftClose').addEventListener('click', closeCraft);
 $('#craftPanel').addEventListener('click', e=>{ if(e.target.id==='craftPanel') closeCraft(); });
 $('#bpClose').addEventListener('click', closeBlueprint);
 $('#bpPanel').addEventListener('click', e=>{ if(e.target.id==='bpPanel') closeBlueprint(); });
+$('#cookClose').addEventListener('click', closeCook);
+$('#cookPanel').addEventListener('click', e=>{ if(e.target.id==='cookPanel') closeCook(); });
 
 // ----- inventory wiring -----
 function toggleInv(){
@@ -2786,6 +2847,9 @@ function getKeyDir(){
 
 function animate(){
   requestAnimationFrame(animate);
+  try { frame(); } catch(e){ if(!animate._warned){ console.error('frame error', e); animate._warned=true; } }
+}
+function frame(){
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
   waterUniforms.uTime.value = t;
@@ -3447,12 +3511,73 @@ function updateEconomyHUD(flash){
   const dn=$('#dayNum'); if(dn) dn.textContent=state.day;
   const slots=$('#carrySlots');
   if(slots){ for(let i=0;i<CARRY_MAX;i++){ let el=slots.children[i]; if(!el){ el=document.createElement('div'); el.className='cSlot'; slots.appendChild(el); } el.textContent = carry[i] ? RES3[carry[i]].icon : ''; el.classList.toggle('full', !!carry[i]); } }
+  const ph=$('#pantryHud'); if(ph) ph.innerHTML = `🐟 ${state.pantry.fish} · 🫐 ${state.pantry.berry} · 🍎 ${state.pantry.fruit}`;
+}
+
+// ---------- Cooking: the village Kitchen (10 dishes that charm villagers) ----------
+const DISHES = [
+  { name:'Grilled Fish',  icon:'🐟', need:{fish:1},               pearl:4,  lvl:1, charm:1 },
+  { name:'Berry Bowl',    icon:'🥣', need:{berry:2},              pearl:4,  lvl:1, charm:1 },
+  { name:'Fruit Salad',   icon:'🥗', need:{fruit:2},              pearl:4,  lvl:1, charm:1 },
+  { name:'Sushi Roll',    icon:'🍣', need:{fish:2},               pearl:6,  lvl:1, charm:1 },
+  { name:'Fish Taco',     icon:'🌮', need:{fish:1,fruit:1},       pearl:6,  lvl:1, charm:1 },
+  { name:'Berry Pie',     icon:'🥧', need:{berry:2,fruit:1},      pearl:8,  lvl:2, charm:1 },
+  { name:'Seafood Stew',  icon:'🍲', need:{fish:2,berry:1},       pearl:8,  lvl:2, charm:1 },
+  { name:'Fruit Tart',    icon:'🧁', need:{fruit:2,berry:1},      pearl:8,  lvl:2, charm:1 },
+  { name:'Sushi Platter', icon:'🍱', need:{fish:3,fruit:1},       pearl:12, lvl:3, charm:1 },
+  { name:'Grand Feast',   icon:'🎏', need:{fish:2,berry:2,fruit:2},pearl:18,lvl:3, charm:2 },
+];
+function makeBakery(){
+  const g=new THREE.Group();
+  const wood=new THREE.MeshStandardMaterial({color:0xb9844f,roughness:0.85});
+  const cream=new THREE.MeshStandardMaterial({color:0xf3e2c0,roughness:0.8});
+  const base=new THREE.Mesh(new THREE.BoxGeometry(2.0,1.0,1.2), cream); base.position.y=0.5; g.add(base);
+  const counter=new THREE.Mesh(new THREE.BoxGeometry(2.25,0.18,1.45), wood); counter.position.y=1.04; g.add(counter);
+  for(const sx of [-0.98,0.98]){ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.7,7),wood); p.position.set(sx,1.85,-0.5); g.add(p); }
+  for(let i=0;i<5;i++){ const st=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.14,1.5), new THREE.MeshStandardMaterial({color:i%2?0xe06a6a:0xf3e2c0})); st.position.set(-0.92+i*0.46,2.45,0); st.rotation.x=-0.28; g.add(st); }
+  const pot=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.26,0.4,12), new THREE.MeshStandardMaterial({color:0x4a4a52,metalness:0.5,roughness:0.4})); pot.position.set(-0.5,1.32,0); g.add(pot);
+  const bread=new THREE.Mesh(new THREE.CapsuleGeometry(0.16,0.3,4,8), new THREE.MeshStandardMaterial({color:0xd9a25a,roughness:0.7})); bread.rotation.z=Math.PI/2; bread.position.set(0.5,1.22,0.2); g.add(bread);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
+let homeBakery=null;
+function buildBakery(){ homeBakery=makeBakery(); homeBakery.position.set(-4, GRASS_Y, ISLAND_R-4.5); homeBakery.rotation.y=0.5; scene.add(homeBakery); }
+function bakeryNear(){ return homeBakery && !state.diving && !state.sailing && Math.hypot(otter.position.x-homeBakery.position.x, otter.position.z-homeBakery.position.z)<3.0; }
+function dishHas(need){ for(const k in need){ if((state.pantry[k]||0) < need[k]) return false; } return true; }
+function dishStr(need){ return Object.entries(need).map(([k,v])=>FOOD_ICON[k]+v).join(' '); }
+function openCookMenu(){
+  const list=$('#cookList'); list.innerHTML='';
+  DISHES.forEach(d=>{
+    const locked=state.level<d.lvl, afford=!locked && dishHas(d.need);
+    const row=document.createElement('button'); row.className='recipe'+(afford?' ok':'')+(locked?' locked':'');
+    row.innerHTML=`<span class="rIcon">${d.icon}</span><span class="rMid"><span class="rName">${d.name}</span><span class="rCost">${dishStr(d.need)} → 🦪${d.pearl} · 🧑x${d.charm}</span></span>`+(locked?`<span class="rLock">Lv${d.lvl}</span>`:'');
+    row.addEventListener('click',()=>cook(d));
+    list.appendChild(row);
+  });
+  $('#cookPanel').classList.remove('hidden');
+}
+function closeCook(){ $('#cookPanel').classList.add('hidden'); }
+function cook(d){
+  if(state.level<d.lvl){ toast(`🔒 Reach Village Lv ${d.lvl}`); return; }
+  if(!dishHas(d.need)){ toast(`Need ${dishStr(d.need)} — go fish & forage!`); beep(180,0.08,'square'); return; }
+  for(const k in d.need) state.pantry[k]-=d.need[k];
+  addPearls(d.pearl); gainXP(6); state.cooked=(state.cooked||0)+1;
+  const t=$('#toast'); t.style.color='#ffd166'; toast(`${d.icon} Cooked ${d.name}! The aroma charmed ${d.charm} villager${d.charm>1?'s':''} to visit 🧑`); setTimeout(()=>{ t.style.color=''; },2400);
+  beep(523,0.08); setTimeout(()=>beep(659,0.09),90); setTimeout(()=>beep(784,0.12),180); addShake(0.12);
+  for(let i=0;i<d.charm;i++) charmVillager();
+  updateEconomyHUD(); updateStatsHUD(); openCookMenu();
+}
+function charmVillager(){
+  if(npcs.length>=9) return;
+  spawnNPC(ISLANDS[0], rand(0,Math.PI*2), ISLAND_R*0.55);
+  confettiAt(otter.position, 10);
 }
 
 // ---------- Boot ----------
 function init(){
   buildExtraIslands();       // village isle (recruit villagers) + treasure isle (sail to them)
   buildHomeDockAndMail();    // pier by the boat + a mailbox for daily letters
+  buildBakery();             // village kitchen — cook dishes to charm new villagers
   for(let i=0;i<6;i++) spawnFish();
   for(let i=0;i<8;i++) spawnDeepFish();
   for(let i=0;i<6;i++) spawnTreasure();
@@ -3462,10 +3587,12 @@ function init(){
   updateResHUD(); updateStatsHUD(); updateEconomyHUD(); drawMiniMap();
   startTitleScene();         // cinematic sunset title until the player taps Play
 }
-init();
+// boot — never let a hiccup hang on the loader
+try { init(); }
+catch(e){ console.error('init error', e); try{ toast('⚠️ '+e.message); }catch(_){} }
 
-// hide loader, show start
-setTimeout(()=>{ $('#loader').style.display='none'; $('#start').classList.remove('hidden'); }, 700);
+// hide loader, show start (runs even if init had trouble)
+setTimeout(()=>{ const l=$('#loader'); if(l) l.style.display='none'; $('#start').classList.remove('hidden'); }, 500);
 
 $('#startBtn').addEventListener('click',()=>{
   $('#start').classList.add('hidden');
