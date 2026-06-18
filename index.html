@@ -615,18 +615,15 @@
 </body>
 
 <!-- three.js is vendored locally (vendor/three.min.js) so the game needs NO
-     internet to run. It exposes a global `THREE`, so this is a plain script —
-     which means it also works when opened directly from disk (file://). -->
-<!-- 3D engine: fast public CDN (gzipped & edge-cached) with local fallback -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
-<script>if(!window.THREE){document.write('<scr'+'ipt src="vendor/three.min.js"><\/scr'+'ipt>');}</script>
+     internet to run. It exposes a global `THREE`, so this is a plain script. -->
+<script src="vendor/three.min.js"></script>
 <script>
 if(!window.THREE){
   document.getElementById('loader').innerHTML =
-    '<div style="max-width:340px;text-align:center;font-family:sans-serif;padding:20px">'+
+    '<div style="max-width:340px;text-align:center;font-family:sans-serif;padding:20px;color:#fff">'+
     '<div style="font-size:54px">🦦💦</div>'+
     '<h2>Couldn’t load the 3D engine</h2>'+
-    '<p>Please check your connection and reload.</p></div>';
+    '<p>Please reload the page — it loads the first time it’s opened.</p></div>';
 }
 </script>
 
