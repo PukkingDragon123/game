@@ -617,16 +617,16 @@
 <!-- three.js is vendored locally (vendor/three.min.js) so the game needs NO
      internet to run. It exposes a global `THREE`, so this is a plain script —
      which means it also works when opened directly from disk (file://). -->
-<script src="vendor/three.min.js"></script>
+<!-- 3D engine: fast public CDN (gzipped & edge-cached) with local fallback -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
+<script>if(!window.THREE){document.write('<scr'+'ipt src="vendor/three.min.js"><\/scr'+'ipt>');}</script>
 <script>
 if(!window.THREE){
   document.getElementById('loader').innerHTML =
     '<div style="max-width:340px;text-align:center;font-family:sans-serif;padding:20px">'+
     '<div style="font-size:54px">🦦💦</div>'+
     '<h2>Couldn’t load the 3D engine</h2>'+
-    '<p>vendor/three.min.js didn’t load. Make sure you’re viewing this through a web server '+
-    '(not just opening the raw file), e.g. run <code>python3 -m http.server</code> in this folder '+
-    'and open the shown address.</p></div>';
+    '<p>Please check your connection and reload.</p></div>';
 }
 </script>
 
@@ -637,14 +637,15 @@ if(!window.THREE){
 
 const $ = (s) => document.querySelector(s);
 
-// Never hang on the loader: if anything throws, reveal the error & let the menu show.
+// Never hang on the loader: if anything throws, reveal the error & let you continue.
 window.addEventListener('error', (ev)=>{
   const l=document.getElementById('loader');
   if(l && l.style.display!=='none'){
     l.innerHTML = '<div style="max-width:320px;text-align:center;font-family:sans-serif;padding:20px;color:#fff">'+
       '<div style="font-size:48px">🦦💥</div><h3 style="margin:6px 0">Loading hiccup</h3>'+
       '<p style="opacity:.85;font-size:13px;word-break:break-word">'+((ev&&ev.message)||'unknown error')+'</p>'+
-      '<p style="opacity:.6;font-size:12px">Try reloading the page.</p></div>';
+      '<button onclick="document.getElementById(\'loader\').style.display=\'none\';document.getElementById(\'start\').classList.remove(\'hidden\')" '+
+      'style="margin-top:10px;padding:10px 22px;border:none;border-radius:14px;background:#ffb347;color:#5a3210;font-size:16px;font-weight:700;cursor:pointer">Continue anyway ▶</button></div>';
   }
 });
 
