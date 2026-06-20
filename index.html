@@ -324,6 +324,21 @@
   #cookPanel { position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); backdrop-filter:blur(4px); padding:18px; }
   #cookPanel.hidden { display:none; }
   #cookList { display:flex; flex-direction:column; gap:6px; max-height:62vh; overflow-y:auto; }
+  /* top-down build mode */
+  #buildUI { position:fixed; left:0; right:0; bottom:0; z-index:60; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px 10px calc(env(safe-area-inset-bottom) + 12px); pointer-events:none; }
+  #buildUI.hidden { display:none; }
+  #buildTop { background:var(--panel); border:1.5px solid rgba(255,238,210,.2); border-radius:14px; padding:6px 14px; font-family:var(--hand); font-size:16px; color:#fff; }
+  #buildChips { display:flex; gap:7px; overflow-x:auto; max-width:100%; padding:2px 4px; pointer-events:auto; }
+  .bChip { flex:0 0 auto; pointer-events:auto; cursor:pointer; width:78px; display:flex; flex-direction:column; align-items:center; gap:1px; border:2px solid rgba(255,255,255,.18); border-radius:14px; background:var(--panel); color:#fff; padding:7px 4px; }
+  .bChip.on { border-color:#9be86a; background:linear-gradient(145deg,rgba(155,232,106,.3),rgba(82,191,82,.18)); }
+  .bChip.locked { opacity:.45; filter:grayscale(.6); }
+  .bChip .bcI { font-size:24px; } .bChip .bcN { font-size:12px; } .bChip .bcC { font-size:11px; opacity:.85; }
+  #buildBtns { display:flex; gap:9px; pointer-events:auto; }
+  #buildBtns button { pointer-events:auto; cursor:pointer; border:none; border-radius:16px; font-family:var(--hand-title); font-weight:700; font-size:19px; padding:11px 20px; color:#13360f; }
+  #buildRotate { background:linear-gradient(145deg,#ffe07a,#ff9d3b); color:#5a3210; }
+  #buildPlaceBtn { background:linear-gradient(145deg,#9be86a,#52bf52); }
+  #buildDone { background:var(--panel); color:#fff; border:1.5px solid rgba(255,255,255,.25) !important; }
+  #buildBtns button:active { transform:scale(.94); }
   /* villager dialogue */
   #dlgPanel { position:fixed; left:0; right:0; bottom:0; z-index:64; display:flex; justify-content:center; padding:0 12px calc(env(safe-area-inset-bottom) + 16px); pointer-events:none; }
   #dlgPanel.hidden { display:none; }
@@ -558,6 +573,17 @@
       <div class="invHead"><span id="craftTitle">🍳 Village Kitchen</span><button id="cookClose" class="invX">✕</button></div>
       <div id="cookList"></div>
       <p class="craftHint">Cook dishes from 🐟 fish, 🫐 berries &amp; 🍎 fruit — the aroma charms new villagers to your island!</p>
+    </div>
+  </div>
+
+  <!-- Top-down build mode -->
+  <div id="buildUI" class="hidden">
+    <div id="buildTop">🔨 Build — move to aim, rotate &amp; place</div>
+    <div id="buildChips"></div>
+    <div id="buildBtns">
+      <button id="buildRotate">🔄 Rotate</button>
+      <button id="buildPlaceBtn">✓ Place</button>
+      <button id="buildDone">Done</button>
     </div>
   </div>
 
@@ -1744,6 +1770,30 @@ function makeCloud(){
 }
 for(let i=0;i<6;i++){ const c=makeCloud(); c.position.set(rand(-POND_R,POND_R), rand(34,46), rand(-POND_R,POND_R)); c.userData.spd=rand(0.6,1.4); scene.add(c); clouds.push(c); }
 
+// ---------- Fish schools (ambient shimmering shoals) ----------
+const schools=[];
+function makeSchool(){
+  const g=new THREE.Group();
+  const col=[0x8fb0c4,0xffd28a,0x9be0ff,0xff9d8a,0xb8e986][(Math.random()*5)|0];
+  const m=new THREE.MeshStandardMaterial({color:col, roughness:0.45, emissive:col, emissiveIntensity:0.15});
+  const fish=[]; const n=7+(Math.random()*7|0);
+  for(let i=0;i<n;i++){ const f=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.34,4), m); f.rotation.z=-Math.PI/2; f.position.set(rand(-1.2,1.2),rand(-0.3,0.3),rand(-1.2,1.2)); g.add(f); fish.push(f); }
+  g.userData={ fish, ph:Math.random()*6.28 };
+  return g;
+}
+function spawnSchools(n){
+  for(let i=0;i<n;i++){ const s=makeSchool(); const a=Math.random()*6.28, r=rand(ISLAND_R+6, PLAY_R);
+    s.userData.cx=Math.cos(a)*r; s.userData.cz=Math.sin(a)*r; s.userData.rad=rand(5,13); s.userData.ang=Math.random()*6.28; s.userData.spd=rand(0.12,0.32)*(Math.random()<0.5?-1:1);
+    s.position.set(s.userData.cx, -0.25, s.userData.cz); scene.add(s); schools.push(s); }
+}
+function updateSchools(dt){
+  for(const s of schools){ const u=s.userData; u.ang+=u.spd*dt;
+    s.position.x=u.cx+Math.cos(u.ang)*u.rad; s.position.z=u.cz+Math.sin(u.ang)*u.rad; s.position.y=-0.25+Math.sin(u.ang*2)*0.1;
+    s.rotation.y=-u.ang+Math.PI/2; u.ph+=dt*7;
+    u.fish.forEach((f,i)=>{ f.position.y=Math.sin(u.ph+i*0.7)*0.14; });
+  }
+}
+
 // ---------- Sharks (the open sea is dangerous when you swim) ----------
 const sharks=[]; let sharkCD=0;
 function makeShark(){
@@ -2465,10 +2515,10 @@ const producers = [];   // { building, def, timer } for manufacture facilities
 function pay(cost){ for(const k in cost) spend(k, cost[k]); }
 
 // ----- place a crafted building/furniture item from the inventory onto a tile -----
-function doPlaceBuild(b, tile){
+function doPlaceBuild(b, tile, rot){
   tile.used=true;
   const m = makeBuilding(b.id);
-  m.position.set(tile.x, GRASS_Y, tile.z); m.scale.setScalar(0.01); islandGroup.add(m);
+  m.position.set(tile.x, GRASS_Y, tile.z); m.rotation.y=(rot||0)*Math.PI/2; m.scale.setScalar(0.01); islandGroup.add(m);
   tile.obj=m; state.placed.push({ obj:m, tile, def:b, kind:'build' });
   growAnims.push({ obj:m, t:0 });
   if(b.produces) producers.push({ building:m, def:b.produces, timer:0 });
@@ -2896,7 +2946,7 @@ function nearestDeepFishIdx(){ let bi=-1,bd=2.5; for(let i=0;i<deepFish.length;i
 // returns an emoji describing what E will do right now (for the button label)
 // what pressing E / tapping the prompt will do right now (null = nothing nearby)
 function currentAction(){
-  if(!state.running) return null;
+  if(!state.running || buildMode) return null;
   if(state.sailing) return {icon:'⚓', label:'Dock'};
   if(!state.diving && boatNear()) return {icon:'⛵', label:'Set sail'};
   if(mailboxNear()) return {icon:'📬', label:'Read mail'};
@@ -2918,6 +2968,7 @@ function dropCarry(){
 }
 function interact(){
   if(!state.running) return;
+  if(buildMode){ buildPlace(); return; }
   if(state.sailing){ disembark(); return; }
   if(!state.diving && boatNear()){ boardBoat(); return; }
   if(mailboxNear()){ readMail(); return; }
@@ -2956,7 +3007,8 @@ window.addEventListener('keydown',e=>{
   if(k==='f'){ if(!e.repeat) toggleDive(); }
   if(k==='i'||k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
   if(k==='c'){ if(!e.repeat) openForge(); }
-  if(k==='escape'){ $('#invPanel')&&!$('#invPanel').classList.contains('hidden')&&closeInv(); closeBlueprint(); closeCook(); closeDialogue&&closeDialogue(); }
+  if(k==='r'){ if(!e.repeat && buildMode) buildRotate(); }
+  if(k==='escape'){ if(buildMode){ exitBuildMode(); return; } $('#invPanel')&&!$('#invPanel').classList.contains('hidden')&&closeInv(); closeBlueprint(); closeCook(); closeDialogue&&closeDialogue(); }
   if(k>='1'&&k<='8'){ state.hotsel=(+k)-1; renderHotbar(); }
   keys[k]=true;
 });
@@ -2998,6 +3050,9 @@ $('#pickBtn')?.addEventListener('click', pickUpHere);
 $('#placeBtn')?.addEventListener('click', placeSelected);
 $('#promptBtn').addEventListener('click', interact);
 $('#dropBtn').addEventListener('click', dropCarry);
+$('#buildRotate').addEventListener('click', buildRotate);
+$('#buildPlaceBtn').addEventListener('click', buildPlace);
+$('#buildDone').addEventListener('click', exitBuildMode);
 $('#craftClose')?.addEventListener('click', closeCraft);
 $('#craftPanel')?.addEventListener('click', e=>{ if(e.target.id==='craftPanel') closeCraft(); });
 $('#bpClose').addEventListener('click', closeBlueprint);
@@ -3042,6 +3097,8 @@ const clock = new THREE.Clock();
 let collectCooldown = 0;
 let splashTimer = 0;
 let ctxTick = 0, miniTick = 0, windT = 0;
+let buildMode=false, buildBp=null, buildRot=0, buildGhost=null;
+const buildCursor=new THREE.Vector3();
 const facing = new THREE.Vector3(0,0,1);
 let camAngle = 0;
 let diveCamK = 0;
@@ -3077,6 +3134,7 @@ function frame(){
   windT += dt;
   for(const c of clouds){ c.position.x += c.userData.spd*dt; if(c.position.x > POND_R+12) c.position.x = -POND_R-12; }
   if(boat.userData.flag) boat.userData.flag.rotation.z = Math.sin(windT*5)*0.3;
+  updateSchools(dt);
   if(titleMode) updateTitle(t,dt);
 
   if(state.running){
@@ -3088,7 +3146,10 @@ function frame(){
     const inLen=Math.hypot(dx,dz);
     let moving=false, onLand=false;
 
-    if(state.sailing){
+    if(buildMode){
+      let bx=dx, bz=dz; const bl=Math.hypot(bx,bz); if(bl>1){ bx/=bl; bz/=bl; }
+      updateBuildMode(dt, bx, bz);
+    } else if(state.sailing){
       moving = updateBoat(dt, t, dx, dz, inLen);
       splashTimer -= dt;
       if(moving && splashTimer<=0){ splashTimer=0.12; spawnRing(new THREE.Vector3(boat.position.x - Math.sin(boat.rotation.y)*1.7, 0.12, boat.position.z - Math.cos(boat.rotation.y)*1.7), 0xeafcff, 1.7); }
@@ -3196,7 +3257,7 @@ function frame(){
     }
 
     // ----- build-plot cursor: highlight the empty plot you're standing on -----
-    if(!state.diving && !state.sailing){
+    if(!state.diving && !state.sailing && !buildMode){
       const under = tileAt(otter.position.x, otter.position.z);
       if(under && !under.used){
         tileCursor.visible=true; tileCursor.position.set(under.x, TILE_Y+0.03, under.z); tileCursor.material.color.setHex(0x9be86a);
@@ -3586,8 +3647,15 @@ function frame(){
     $('#depthNum').textContent = Math.max(0, Math.round(-otter.position.y));
   }
 
+  // ----- top-down camera while building -----
+  if(buildMode){
+    const desired = new THREE.Vector3(buildCursor.x, 30, buildCursor.z + 9);
+    camera.position.lerp(desired, Math.min(1,dt*4));
+    camera.lookAt(buildCursor.x, GRASS_Y, buildCursor.z);
+    sun.target.position.copy(buildCursor);
+  }
   // ----- camera follow (pulls in & lower while diving, higher & wider while sailing) -----
-  if(!titleMode){
+  else if(!titleMode){
     const camTarget = state.sailing ? boat.position : otter.position;
     diveCamK += ((state.diving?1:0) - diveCamK)*Math.min(1,dt*2.5);
     const kk = diveCamK;
@@ -3709,12 +3777,12 @@ function setLabel(sp,text){
 function remaining(s){ const r={}; for(const k in s.bp.need) r[k]=s.bp.need[k]-(s.delivered[k]||0); return r; }
 function siteDone(s){ for(const k in s.bp.need){ if((s.delivered[k]||0) < s.bp.need[k]) return false; } return true; }
 function updateSiteLabel(s){ const r=remaining(s); const txt=Object.entries(r).filter(([k,v])=>v>0).map(([k,v])=>RES3[k].icon+v).join(' ')||'✅'; setLabel(s.label, txt); }
-function startSite(tile, bp){
+function startSite(tile, bp, rot){
   tile.used=true;
-  const frame=makeSiteFrame(); frame.position.set(tile.x, GRASS_Y, tile.z); islandGroup.add(frame);
+  const frame=makeSiteFrame(); frame.position.set(tile.x, GRASS_Y, tile.z); frame.rotation.y=(rot||0)*Math.PI/2; islandGroup.add(frame);
   const label=makeLabelSprite(needStr(bp.need)); label.position.set(tile.x, GRASS_Y+1.7, tile.z); scene.add(label);
-  const s={ tile, bp, delivered:{}, frame, label }; tile.obj=frame; sites.push(s); updateSiteLabel(s);
-  toast(`🚧 ${bp.name} started — carry ${needStr(bp.need)} here to build it!`);
+  const s={ tile, bp, rot:rot||0, delivered:{}, frame, label }; tile.obj=frame; sites.push(s); updateSiteLabel(s);
+  toast(`🚧 ${bp.name} site placed — carry ${needStr(bp.need)} here to build it!`);
   beep(440,0.08); flashGrid();
 }
 function deliverToSite(s){
@@ -3730,7 +3798,7 @@ function completeSite(s){
   const i=sites.indexOf(s); if(i>=0) sites.splice(i,1);
   islandGroup.remove(s.frame); scene.remove(s.label);
   s.tile.used=false; s.tile.obj=null;       // doPlaceBuild re-claims it cleanly
-  doPlaceBuild(BUILD_BY_ID[s.bp.bid], s.tile);
+  doPlaceBuild(BUILD_BY_ID[s.bp.bid], s.tile, s.rot);
 }
 // blueprint picker overlay
 function renderBlueprints(placeFn){
@@ -3745,14 +3813,70 @@ function renderBlueprints(placeFn){
   $('#bpPanel')?.classList.remove('hidden');
 }
 function openBlueprintPicker(tile){ renderBlueprints(bp=>startSite(tile, bp)); }
-function openForge(){
-  renderBlueprints(bp=>{
-    const t=nearestEmptyTile(otter.position);
-    if(!t){ toast('🏝️ No free plot near you — clear space or Buy Land!'); return; }
-    startSite(t, bp);
+function closeBlueprint(){ $('#bpPanel')?.classList.add('hidden'); }
+
+// ---------- Top-down build mode (select • rotate • place) ----------
+function openForge(){ enterBuildMode(); }
+function enterBuildMode(){
+  if(buildMode) return;
+  if(state.diving||state.sailing){ toast('Come ashore to build!'); return; }
+  buildMode=true; buildRot=0;
+  buildCursor.set(otter.position.x*0.4, GRASS_Y, Math.min(otter.position.z, ISLAND_R-3));
+  if(Math.hypot(buildCursor.x,buildCursor.z) > ISLAND_R-2) buildCursor.set(0,GRASS_Y,0);
+  buildBp = BLUEPRINTS.find(b=>state.level>=b.lvl) || BLUEPRINTS[0];
+  makeGhost();
+  renderBuildBar();
+  $('#buildUI').classList.remove('hidden');
+  closeBlueprint(); closeCook(); closeDialogue();
+  toast('🔨 Build mode — move to aim, 🔄 rotate, ✓ place.');
+}
+function exitBuildMode(){
+  buildMode=false;
+  if(buildGhost){ scene.remove(buildGhost); buildGhost=null; }
+  $('#buildUI').classList.add('hidden');
+}
+function makeGhost(){
+  if(buildGhost){ scene.remove(buildGhost); buildGhost=null; }
+  buildGhost = makeBuilding(buildBp.bid);
+  buildGhost.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.material=o.material.clone(); o.material.transparent=true; o.material.opacity=0.55; o.material.depthWrite=false; } });
+  buildGhost.rotation.y = buildRot*Math.PI/2;
+  scene.add(buildGhost);
+}
+function setBuildBp(bp){ if(state.level<bp.lvl){ toast(`🔒 Reach Village Lv ${bp.lvl}`); return; } buildBp=bp; makeGhost(); renderBuildBar(); beep(540,0.05,'triangle',0.04); }
+function buildRotate(){ buildRot=(buildRot+1)%4; if(buildGhost) buildGhost.rotation.y=buildRot*Math.PI/2; beep(480,0.05,'triangle',0.04); }
+function buildPlaceTile(){ return tileAt(buildCursor.x, buildCursor.z); }
+function buildPlace(){
+  const tl=buildPlaceTile();
+  if(!tl || tl.used){ toast('🚫 Can’t build there'); beep(180,0.08,'square'); return; }
+  startSite(tl, buildBp, buildRot);
+  spawnRing(new THREE.Vector3(tl.x,GRASS_Y+0.05,tl.z), 0x9be86a, 2.2); addShake(0.1);
+}
+function renderBuildBar(){
+  const bar=$('#buildChips'); if(!bar) return; bar.innerHTML='';
+  BLUEPRINTS.forEach(bp=>{
+    const locked=state.level<bp.lvl;
+    const b=document.createElement('button'); b.className='bChip'+(bp===buildBp?' on':'')+(locked?' locked':'');
+    b.innerHTML=`<span class="bcI">${bp.icon}</span><span class="bcN">${bp.name}</span><span class="bcC">${locked?'Lv'+bp.lvl:needStr(bp.need)}</span>`;
+    b.addEventListener('click',()=>setBuildBp(bp));
+    bar.appendChild(b);
   });
 }
-function closeBlueprint(){ $('#bpPanel')?.classList.add('hidden'); }
+function updateBuildMode(dt, dx, dz){
+  const sp=14;
+  buildCursor.x += dx*sp*dt; buildCursor.z += dz*sp*dt;
+  const d=Math.hypot(buildCursor.x,buildCursor.z), lim=ISLAND_R-1.5;
+  if(d>lim){ const s=lim/d; buildCursor.x*=s; buildCursor.z*=s; }
+  const tl=buildPlaceTile();
+  if(buildGhost){
+    const gx = tl?tl.x:buildCursor.x, gz = tl?tl.z:buildCursor.z;
+    buildGhost.position.set(gx, GRASS_Y, gz);
+    const ok = tl && !tl.used;
+    buildGhost.traverse(o=>{ if(o.isMesh){ o.material.color && o.material.color.setHex(ok?0x9be86a:0xff6b6b); } });
+  }
+  // tile cursor highlight
+  if(tl){ tileCursor.visible=true; tileCursor.position.set(tl.x, TILE_Y+0.03, tl.z); tileCursor.material.color.setHex(tl.used?0xff6b6b:0x9be86a); }
+  else tileCursor.visible=false;
+}
 
 // HUD: pearls (currency), carried items, day
 function updateEconomyHUD(flash){
@@ -3874,6 +3998,7 @@ function init(){
   buildWalrus();             // Sven the Walrus at his forge — talk to him to build
   scatterHazards();          // rock hazards out in the open ocean
   spawnSharks(3);            // hostile sharks patrol the open sea
+  spawnSchools(5);           // ambient shimmering fish shoals
   for(let i=0;i<6;i++) spawnFish();
   // deep-sea reef/fish/treasure are built lazily on first dive (keeps boot fast)
   scatterForage();           // 🌳 trees (wood) & 🪨 rocks (rock) to gather
