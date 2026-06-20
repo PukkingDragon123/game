@@ -709,7 +709,7 @@ window.addEventListener('error', (ev)=>{
 });
 
 // ---------- Config ----------
-const POND_R = 124;         // big open ocean to sail across
+const POND_R = 185;         // huge open ocean — islands are scattered far apart
 const PLAY_R = 60;          // collectibles/reef cluster near home (rest of ocean is for sailing)
 let   ISLAND_R = 22;        // central grassy (home) island radius (grows on expansion)
 const ISLAND_MAX = 40;      // expansion cap
@@ -739,6 +739,36 @@ function deformGeo(geo, factorFn, plane){
   pos.needsUpdate=true; geo.computeVertexNormals();
 }
 function landAt(x,z){ for(const is of ISLANDS){ const dx=x-is.x, dz=z-is.z; if(Math.hypot(dx,dz) < islandShapeR(is, Math.atan2(dz,dx))+1.0) return is; } return null; }
+// procedurally scatter typed islands far apart across the ocean (villages are rare)
+const ISLE_NAMES = {
+  village:['Castaway Cove','Driftwood Bay','Lonely Lagoon','Misty Holm','Pebble Refuge'],
+  resource:['Timber Isle','Quarry Rock','Forageford','Greenwild','Stonebrook'],
+  coral:['Coral Atoll','Reef Ring','Sunny Shoal','Pastel Cay'],
+  pirate:['Skull Isle','Cutlass Cay','Black Reef','Buccaneer Rock'],
+  treasure:['Treasure Isle','Golden Sands','Lost Hoard'],
+};
+function nameFor(type){ const a=ISLE_NAMES[type]||['Mystery Isle']; return a[(Math.random()*a.length)|0]; }
+function generateIslands(){
+  const home=ISLANDS[0]; ISLANDS.length=1;             // keep only home
+  const want=[ {type:'village',n:2,r:[12,15]}, {type:'resource',n:4,r:[13,18]},
+               {type:'coral',n:3,r:[9,13]}, {type:'pirate',n:2,r:[12,16]}, {type:'treasure',n:1,r:[12,14]} ];
+  const placed=[home];
+  for(const w of want){
+    for(let k=0;k<w.n;k++){
+      let pos=null;
+      for(let tries=0;tries<80;tries++){
+        const a=Math.random()*Math.PI*2, dist=rand(55, POND_R-26);
+        const x=Math.cos(a)*dist, z=Math.sin(a)*dist;
+        let ok=true;
+        for(const p of placed){ const pr=(p.type==='home'?ISLAND_R:p.r); if(Math.hypot(x-p.x,z-p.z) < pr + w.r[1] + 30) { ok=false; break; } }
+        if(ok){ pos={x,z}; break; }
+      }
+      if(!pos) continue;
+      const is={ type:w.type, x:pos.x, z:pos.z, r:rand(w.r[0],w.r[1]), name:nameFor(w.type), shape:genIslandShape(), discovered:false };
+      ISLANDS.push(is); placed.push(is);
+    }
+  }
+}
 const OTTER_SPEED = 12;
 const TILE = 1.6;           // tile-based map cell size (Animal-Crossing style)
 const GRASS_Y = 1.55;       // flat island walking surface height
@@ -1776,7 +1806,7 @@ function makeRockHazard(){
   return g;
 }
 function scatterHazards(){
-  for(let i=0;i<14;i++){
+  for(let i=0;i<26;i++){
     const a=Math.random()*Math.PI*2, r=rand(PLAY_R+8, POND_R-8);
     const x=Math.cos(a)*r, z=Math.sin(a)*r;
     let ok=true; for(const is of ISLANDS){ if(Math.hypot(x-is.x,z-is.z) < islandR(is)+9) ok=false; }
@@ -1937,22 +1967,48 @@ function spawnChestPickup(is, ang, rad){
   m.position.set(x, GRASS_Y, z); m.rotation.y=rand(0,6.28); scene.add(m);
   chestPickups.push({ mesh:m, x, z, ready:true, regrow:0, bob:Math.random()*6.28 });
 }
+function makePirateFlag(){
+  const g=new THREE.Group();
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,3,7), new THREE.MeshStandardMaterial({color:0x4a3a2a,roughness:0.9})); pole.position.y=1.5; g.add(pole);
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.7), new THREE.MeshStandardMaterial({color:0x1a1a20,side:THREE.DoubleSide})); flag.position.set(0.6,2.5,0); g.add(flag);
+  const skull=makeTextSprite('☠️','#ffffff'); skull.position.set(0.6,2.5,0.05); skull.scale.set(0.55,0.55,0.55); g.add(skull);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); g.userData.flag=flag;
+  return g;
+}
+const ISLE_EMOJI = { village:'🏘️', resource:'🌲', coral:'🪸', pirate:'🏴‍☠️', treasure:'🏝️' };
 function buildExtraIslands(){
   for(const is of ISLANDS){
     if(is.type==='home') continue;
     makeLandmass(is);
-    const sign=makeTextSprite(is.type==='treasure'?'🏴‍☠️':'🏘️','#ffffff');
-    sign.position.set(is.x, GRASS_Y+3.4, is.z); sign.scale.set(2.4,2.4,2.4); scene.add(sign);
-    is.sign=sign;
+    const sign=makeTextSprite(ISLE_EMOJI[is.type]||'🏝️','#ffffff');
+    sign.position.set(is.x, GRASS_Y+3.6, is.z); sign.scale.set(2.3,2.3,2.3); scene.add(sign); is.sign=sign;
     if(is.type==='village'){
-      for(let i=0;i<5;i++) spawnNPC(is, (i/5)*Math.PI*2, is.r*0.42);
-      for(let i=0;i<3;i++){ const h=makeBuilding('house', i%HOUSE_ROOFS.length); const a=(i/3)*Math.PI*2+0.5; h.position.set(is.x+Math.cos(a)*(is.r*0.7), GRASS_Y, is.z+Math.sin(a)*(is.r*0.7)); h.rotation.y=-a; scene.add(h); }
-      for(let i=0;i<7;i++){ const f=makeFlower(); const a=rand(0,6.28), r=rand(2,is.r-2); f.position.set(is.x+Math.cos(a)*r, GRASS_Y, is.z+Math.sin(a)*r); scene.add(f); }
-    } else {
-      for(let i=0;i<4;i++) spawnChestPickup(is, (i/4)*Math.PI*2+0.3, is.r*0.45);
-      for(let i=0;i<2;i++){ const p=makePalm(); const a=i?2:4.2; p.position.set(is.x+Math.cos(a)*(is.r*0.6), GRASS_Y, is.z+Math.sin(a)*(is.r*0.6)); scene.add(p); }
+      const nV = 1 + (Math.random()<0.5?1:0);                 // rare: only 1–2 villagers
+      for(let i=0;i<nV;i++) spawnNPC(is, rand(0,6.28), is.r*0.38);
+      const h=makeBuilding('house', (Math.random()*HOUSE_ROOFS.length)|0); h.position.set(is.x, GRASS_Y, is.z); h.rotation.y=rand(0,6.28); scene.add(h);
+      for(let i=0;i<6;i++){ const f=makeFlower(); const a=rand(0,6.28), r=rand(2,is.r-2); f.position.set(is.x+Math.cos(a)*r, GRASS_Y, is.z+Math.sin(a)*r); scene.add(f); }
+    } else if(is.type==='resource'){
+      const tps=['tree','tree','tree','rock','rock','berry','fruit'];
+      for(let i=0;i<11;i++){ const a=rand(0,6.28), r=rand(2,is.r-2.5); spawnForageNode(tps[(Math.random()*tps.length)|0], is.x+Math.cos(a)*r, is.z+Math.sin(a)*r); }
+      for(let i=0;i<2;i++){ const p=makePalm(); const a=rand(0,6.28); p.position.set(is.x+Math.cos(a)*(is.r*0.6), GRASS_Y, is.z+Math.sin(a)*(is.r*0.6)); scene.add(p); }
+    } else if(is.type==='coral'){
+      for(let i=0;i<9;i++){ const c=makeCoral(); const a=rand(0,6.28), r=rand(1,is.r-1.5); c.position.set(is.x+Math.cos(a)*r, GRASS_Y, is.z+Math.sin(a)*r); c.scale.setScalar(rand(0.6,1.15)); scene.add(c); }
+    } else if(is.type==='pirate'){
+      const mast=makePirateFlag(); mast.position.set(is.x, GRASS_Y, is.z); scene.add(mast); is.flag=mast;
+      for(let i=0;i<3;i++) spawnChestPickup(is, rand(0,6.28), is.r*0.45);
+      for(let i=0;i<5;i++){ const a=rand(0,6.28), r=rand(2,is.r-2); spawnForageNode(Math.random()<0.5?'tree':'rock', is.x+Math.cos(a)*r, is.z+Math.sin(a)*r); }
+    } else {  // treasure / special
+      for(let i=0;i<4;i++) spawnChestPickup(is, rand(0,6.28), is.r*0.45);
+      for(let i=0;i<2;i++){ const p=makePalm(); const a=rand(0,6.28); p.position.set(is.x+Math.cos(a)*(is.r*0.6), GRASS_Y, is.z+Math.sin(a)*(is.r*0.6)); scene.add(p); }
     }
   }
+}
+function discoverIsle(is){
+  is.discovered=true;
+  const blurb={ village:'a hidden village! 🏘️', resource:'a resource island 🌲', coral:'a coral atoll 🪸', pirate:'a pirate isle 🏴‍☠️', treasure:'treasure island 🏝️' };
+  const tEl=$('#toast'); tEl.style.color='#ffe07a'; toast(`🗺️ Discovered ${is.name} — ${blurb[is.type]||''}`); setTimeout(()=>{ tEl.style.color=''; },2600);
+  beep(523,0.1); setTimeout(()=>beep(784,0.13),110);
+  if(is.type==='village'||is.type==='treasure'){ confettiAt(otter.position, 24); state.coins+=20; updateEconomyHUD('pearl'); setTimeout(()=>beep(1046,0.14),220); addShake(0.2); }
 }
 function recruitNPC(npc, job){
   const idx=npcs.indexOf(npc); if(idx<0) return;
@@ -2138,7 +2194,7 @@ function makeForageMesh(type){
 function spawnForageNode(type, x, z){
   const mesh=makeForageMesh(type);
   mesh.position.set(x, GRASS_Y, z); mesh.rotation.y=Math.random()*Math.PI*2;
-  islandGroup.add(mesh);
+  scene.add(mesh);
   forageNodes.push({ mesh, type, def:FORAGE[type], ready:true, regrow:0, shake:0, baseY:GRASS_Y });
 }
 function scatterForage(){
@@ -3233,7 +3289,9 @@ function frame(){
       otter.userData.bank = (otter.userData.bank||0) + (bankTarget-(otter.userData.bank||0))*Math.min(1,dt*6);
 
       // height: standing on any island / surface / diving depth
-      onLand = !state.diving && !!landAt(otter.position.x, otter.position.z);
+      const landIs = state.diving ? null : landAt(otter.position.x, otter.position.z);
+      onLand = !!landIs;
+      if(landIs && landIs.type!=='home' && !landIs.discovered) discoverIsle(landIs);
       let baseY;
       if(state.diving) baseY = DIVE_SWIM_Y + Math.sin(t*1.6)*0.25;
       else baseY = onLand ? GRASS_Y : (0.32 + Math.sin(t*2.2)*0.05);   // float on the surface
@@ -3751,7 +3809,10 @@ function drawMiniMap(){
   const W=p=>({ x:cx+(p.x/POND_R)*R, y:cy+(p.z/POND_R)*R });
   for(const is of ISLANDS){
     const m=W(is), rr=Math.max(4,(islandR(is)/POND_R)*R);
-    g.fillStyle = is.type==='home'?'#8fe06a':is.type==='village'?'#ffd166':'#ffb14d';
+    g.fillStyle = is.type==='home'?'#8fe06a'
+      : is.type==='village'?(is.discovered?'#ffe14d':'#9bbf7a')
+      : is.type==='resource'?'#7ab86a' : is.type==='coral'?'#ff9ec7'
+      : is.type==='pirate'?'#6b6b78' : '#ffcf6a';
     g.beginPath(); g.arc(m.x,m.y,rr,0,7); g.fill();
     g.lineWidth=1; g.strokeStyle='rgba(255,255,255,.6)'; g.stroke();
   }
@@ -4035,13 +4096,14 @@ function charmVillager(){
 
 // ---------- Boot ----------
 function init(){
-  buildExtraIslands();       // village isle (recruit villagers) + treasure isle (sail to them)
+  generateIslands();         // scatter typed islands far across the ocean (rare villages)
+  buildExtraIslands();       // resource / coral / pirate / village / treasure isles
   buildHomeDockAndMail();    // pier by the boat + a mailbox for daily letters
   buildBakery();             // village kitchen — cook dishes to charm new villagers
   buildWalrus();             // Sven the Walrus at his forge — talk to him to build
   scatterHazards();          // rock hazards out in the open ocean
-  spawnSharks(3);            // hostile sharks patrol the open sea
-  spawnSchools(5);           // ambient shimmering fish shoals
+  spawnSharks(5);            // hostile sharks patrol the open sea
+  spawnSchools(8);           // ambient shimmering fish shoals
   for(let i=0;i<6;i++) spawnFish();
   // deep-sea reef/fish/treasure are built lazily on first dive (keeps boot fast)
   scatterForage();           // 🌳 trees (wood) & 🪨 rocks (rock) to gather
