@@ -721,7 +721,24 @@ const ISLANDS = [
   { type:'treasure', x:70,  z:-76, r:13, name:'Treasure Isle' },
 ];
 function islandR(is){ return is.type==='home' ? ISLAND_R : is.r; }
-function landAt(x,z){ for(const is of ISLANDS){ if(Math.hypot(x-is.x, z-is.z) < islandR(is)+1.0) return is; } return null; }
+// organic coastlines: each island bulges outward by smooth harmonics (never inward,
+// so the inscribed circle — and the tile grid — always stays on solid land)
+function genIslandShape(){ return [
+  {f:2, a:0.17, p:Math.random()*6.28}, {f:3, a:0.11, p:Math.random()*6.28}, {f:5, a:0.06, p:Math.random()*6.28} ]; }
+for(const is of ISLANDS) is.shape = genIslandShape();
+function islandShapeFactor(is, ang){ let p=0; const s=is.shape||[]; for(const h of s) p += h.a*(0.5+0.5*Math.sin(ang*h.f+h.p)); return 1+p; }
+function islandShapeR(is, ang){ return islandR(is)*islandShapeFactor(is, ang); }
+function deformGeo(geo, factorFn, plane){
+  const pos=geo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    let u,v; if(plane==='xy'){ u=pos.getX(i); v=pos.getY(i); } else { u=pos.getX(i); v=pos.getZ(i); }
+    if(Math.hypot(u,v)<0.01) continue;
+    const f=factorFn(Math.atan2(v,u));
+    if(plane==='xy'){ pos.setX(i,u*f); pos.setY(i,v*f); } else { pos.setX(i,u*f); pos.setZ(i,v*f); }
+  }
+  pos.needsUpdate=true; geo.computeVertexNormals();
+}
+function landAt(x,z){ for(const is of ISLANDS){ const dx=x-is.x, dz=z-is.z; if(Math.hypot(dx,dz) < islandShapeR(is, Math.atan2(dz,dx))+1.0) return is; } return null; }
 const OTTER_SPEED = 12;
 const TILE = 1.6;           // tile-based map cell size (Animal-Crossing style)
 const GRASS_Y = 1.55;       // flat island walking surface height
@@ -1100,11 +1117,14 @@ sand.position.y = -0.55; sand.receiveShadow = true;
 islandGroup.add(sand);
 
 function buildIslandGeo(r){
-  // flat-topped island so the tile map sits cleanly (top face at GRASS_Y)
-  const moundGeo = new THREE.CylinderGeometry(r, r+1.8, 2.9, 64, 1);
+  // flat-topped organic island (top face at GRASS_Y) so the tile map sits cleanly
+  const sf = (ang)=> islandShapeFactor(ISLANDS[0], ang);
+  const moundGeo = new THREE.CylinderGeometry(r, r+1.8, 2.9, 96, 1);
+  deformGeo(moundGeo, sf, 'xz');
   island.geometry.dispose(); island.geometry = moundGeo;
-  sand.geometry.dispose();
-  sand.geometry = new THREE.CylinderGeometry(r+1.9, r+2.7, 0.5, 64);
+  const sandGeo = new THREE.CylinderGeometry(r+1.9, r+2.7, 0.5, 96);
+  deformGeo(sandGeo, sf, 'xz');
+  sand.geometry.dispose(); sand.geometry = sandGeo;
 }
 buildIslandGeo(ISLAND_R);
 
@@ -1208,7 +1228,7 @@ function rebuildTiles(){
     if(tl){ tl.used=true; tl.obj=p.obj; p.tile=tl; }
   }
   // resize lawn + checker density
-  lawn.geometry.dispose(); lawn.geometry = new THREE.CircleGeometry(ISLAND_R-0.9, 64);
+  lawn.geometry.dispose(); const lawnGeo=new THREE.CircleGeometry(ISLAND_R-0.9, 96); deformGeo(lawnGeo, (ang)=>islandShapeFactor(ISLANDS[0],ang), 'xy'); lawn.geometry = lawnGeo;
   const cells = (ISLAND_R-0.9)*2/TILE;
   checkerTex.repeat.set(cells/2, cells/2); checkerTex.needsUpdate=true;
   // rebuild edit grid helper
@@ -1451,6 +1471,9 @@ function makeFishMesh(sp, scale=1){
   const tail = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.42, 3), finMat);
   tail.rotation.z = -Math.PI/2; tail.position.x = -0.46*bx; tail.scale.set(1, 1.25, 0.08);
   g.add(tail); grp.tail = tail;
+  // small dorsal fin on top (more fish-like)
+  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.28, 3), finMat);
+  dorsal.position.set(-0.08, 0.34*by, 0); dorsal.rotation.z=-0.35; dorsal.scale.set(1,1,0.06); g.add(dorsal);
   // tiny side fins (flap)
   const pecs=[];
   for(const sz of [-1,1]){
@@ -1798,16 +1821,31 @@ function updateSchools(dt){
 const sharks=[]; let sharkCD=0;
 function makeShark(){
   const g=new THREE.Group();
-  const grey=new THREE.MeshStandardMaterial({color:0x5a6b78, roughness:0.7});
-  const white=new THREE.MeshStandardMaterial({color:0xd6dbe1, roughness:0.7});
-  const dark=new THREE.MeshBasicMaterial({color:0x111317});
-  const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.5,2.2,8,14), grey); body.rotation.x=Math.PI/2; body.scale.set(1,1,0.82); g.add(body);
-  const belly=new THREE.Mesh(new THREE.CapsuleGeometry(0.42,1.8,6,10), white); belly.rotation.x=Math.PI/2; belly.position.y=-0.18; belly.scale.set(1,0.55,0.82); g.add(belly);
-  const dorsal=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.75,4), grey); dorsal.position.set(0,0.55,-0.1); dorsal.scale.set(0.45,1,1); g.add(dorsal);
-  const tail=new THREE.Mesh(new THREE.ConeGeometry(0.46,0.95,4), grey); tail.rotation.x=-Math.PI/2; tail.position.z=-1.55; tail.scale.set(0.4,1.4,1); g.add(tail);
-  for(const sx of [-1,1]){ const f=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.6,4), grey); f.position.set(0.5*sx,-0.12,0.35); f.rotation.set(0,0,sx>0?-1.2:1.2); f.scale.set(0.4,1,1); g.add(f);
-    const e=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,8), dark); e.position.set(0.27*sx,0.13,1.0); g.add(e); }
-  const mouth=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.06,0.22), dark); mouth.position.set(0,-0.12,1.15); g.add(mouth);
+  const grey=new THREE.MeshStandardMaterial({color:0x6a7c8a, roughness:0.6});
+  const white=new THREE.MeshStandardMaterial({color:0xdfe5ea, roughness:0.65});
+  const dark=new THREE.MeshBasicMaterial({color:0x14181d});
+  const eyeW=new THREE.MeshBasicMaterial({color:0xffffff});
+  // smooth tapered body (rounder snout, slimmer tail)
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.55,18,14), grey); body.scale.set(0.78,0.85,2.1); body.position.z=0.1; g.add(body);
+  const belly=new THREE.Mesh(new THREE.SphereGeometry(0.55,14,10), white); belly.scale.set(0.7,0.5,2.0); belly.position.set(0,-0.22,0.1); g.add(belly);
+  // tall triangular dorsal + a little second fin
+  const dorsal=new THREE.Mesh(new THREE.ConeGeometry(0.34,0.85,3), grey); dorsal.position.set(0,0.55,-0.05); dorsal.scale.set(0.4,1,1.1); dorsal.rotation.x=-0.2; g.add(dorsal);
+  // forked crescent tail (two lobes)
+  const tail=new THREE.Group(); tail.position.z=-1.6;
+  const tu=new THREE.Mesh(new THREE.ConeGeometry(0.34,0.9,3), grey); tu.rotation.x=2.5; tu.position.set(0,0.32,-0.2); tu.scale.set(0.4,1,1); tail.add(tu);
+  const td=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.7,3), grey); td.rotation.x=-2.5; td.position.set(0,-0.28,-0.2); td.scale.set(0.4,1,1); tail.add(td);
+  g.add(tail);
+  for(const sx of [-1,1]){
+    const f=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.7,3), grey); f.position.set(0.45*sx,-0.18,0.35); f.rotation.set(0.2,0,sx>0?-1.35:1.35); f.scale.set(0.35,1,1); g.add(f);
+    // gills
+    for(let k=0;k<3;k++){ const gl=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.18,0.02), dark); gl.position.set(0.34*sx,0.05,0.75-k*0.13); g.add(gl); }
+    // small cute eyes with a shine
+    const e=new THREE.Mesh(new THREE.SphereGeometry(0.075,10,10), dark); e.position.set(0.28*sx,0.16,1.15); g.add(e);
+    const sh=new THREE.Mesh(new THREE.SphereGeometry(0.025,6,6), eyeW); sh.position.set(0.3*sx,0.2,1.21); g.add(sh);
+  }
+  // mouth (with a hint of teeth)
+  const mouth=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.07,0.16), dark); mouth.position.set(0,-0.18,1.3); g.add(mouth);
+  const teeth=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.06,0.02), eyeW); teeth.position.set(0,-0.14,1.38); g.add(teeth);
   g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
   g.userData.tail=tail;
   return g;
@@ -1854,13 +1892,18 @@ function makeTextSprite(text, color='#ffd166'){
 }
 function makeLandmass(is){
   const g=new THREE.Group(); g.position.set(is.x,0,is.z); const r=is.r;
-  const sand=new THREE.Mesh(new THREE.CylinderGeometry(r+1.7, r+2.5, 0.5, 48), new THREE.MeshStandardMaterial({color:0xeAd6a0, roughness:1}));
+  const sf=(ang)=>islandShapeFactor(is, ang);
+  const sandG=new THREE.CylinderGeometry(r+1.7, r+2.5, 0.5, 72); deformGeo(sandG, sf, 'xz');
+  const sand=new THREE.Mesh(sandG, new THREE.MeshStandardMaterial({color:0xeAd6a0, roughness:1}));
   sand.position.y=-0.3; sand.receiveShadow=true; g.add(sand);
-  const mound=new THREE.Mesh(new THREE.CylinderGeometry(r, r+1.4, 2.9, 48), new THREE.MeshStandardMaterial({color:0x6b4f2a, roughness:1}));
+  const moundG=new THREE.CylinderGeometry(r, r+1.4, 2.9, 72); deformGeo(moundG, sf, 'xz');
+  const mound=new THREE.Mesh(moundG, new THREE.MeshStandardMaterial({color:0x6b4f2a, roughness:1}));
   mound.position.y=0.1; mound.receiveShadow=true; g.add(mound);
-  const grass=new THREE.Mesh(new THREE.CircleGeometry(r-0.3, 48), new THREE.MeshStandardMaterial({color: is.type==='treasure'?0x8fc15a:0x7ec85a, roughness:1}));
+  const grassG=new THREE.CircleGeometry(r-0.3, 72); deformGeo(grassG, sf, 'xy');
+  const grass=new THREE.Mesh(grassG, new THREE.MeshStandardMaterial({color: is.type==='treasure'?0x8fc15a:0x7ec85a, roughness:1}));
   grass.rotation.x=-Math.PI/2; grass.position.y=GRASS_Y+0.01; grass.receiveShadow=true; g.add(grass);
-  const rim=new THREE.Mesh(new THREE.RingGeometry(r-0.3, r+0.3, 48), new THREE.MeshStandardMaterial({color:0xeAd6a0, roughness:1, side:THREE.DoubleSide}));
+  const rimG=new THREE.RingGeometry(r-0.3, r+0.5, 72); deformGeo(rimG, sf, 'xy');
+  const rim=new THREE.Mesh(rimG, new THREE.MeshStandardMaterial({color:0xeAd6a0, roughness:1, side:THREE.DoubleSide}));
   rim.rotation.x=-Math.PI/2; rim.position.y=GRASS_Y; g.add(rim);
   scene.add(g); return g;
 }
@@ -2869,7 +2912,7 @@ function updateBoat(dt, t, dx, dz, inLen){
   if(d>lim){ const s=lim/d; nx*=s; nz*=s; boatVel.multiplyScalar(0.4); }
   // can't sail onto land — bounce off island shores
   for(const is of ISLANDS){
-    const ddx=nx-is.x, ddz=nz-is.z, di=Math.hypot(ddx,ddz), rr=islandR(is)+3.2;
+    const ddx=nx-is.x, ddz=nz-is.z, di=Math.hypot(ddx,ddz), rr=islandShapeR(is, Math.atan2(ddz,ddx))+3.2;
     if(di<rr){ const s=rr/Math.max(di,0.001); nx=is.x+ddx*s; nz=is.z+ddz*s; boatVel.multiplyScalar(0.5); }
   }
   // bounce off rock hazards
