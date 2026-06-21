@@ -8,7 +8,7 @@
 <title>Otter Village 🦦</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   :root {
     --wood:#b07a45; --stone:#9aa6b2; --reed:#7bbf6a; --shell:#ef9bc0;
@@ -520,6 +520,44 @@
   #topLeft,#moneyChip,#carryHud{ box-shadow:0 6px 18px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.16) !important; border-color:rgba(255,238,210,.18) !important; }
   #moneyChip{ background:linear-gradient(150deg,#3a3550,#272036) !important; }
   .btn,#craftBtn{ box-shadow:0 8px 22px rgba(255,160,80,.45), inset 0 1px 0 rgba(255,255,255,.4) !important; }
+  /* ============ PIXEL UI PASS (crisp, chunky, polished) ============ */
+  :root{
+    --hand: 'VT323', ui-monospace, monospace;
+    --hand-title: 'Press Start 2P', 'VT323', monospace;
+    --pxbd: #2a2230;          /* dark pixel border */
+    --pxlt: rgba(255,255,255,.30);
+  }
+  body { font-family: var(--hand); }
+  /* square everything + crisp chunky borders + hard (blur-free) shadows */
+  #topLeft,#moneyChip,#carryHud,#pantryHud,#swimHud,#diveHud,.actBtn,#promptBtn,#dropBtn,
+  .craftCard,.fgCard,.dexCard,.dlgCard,.howtoBox,.recipe,.ctab,.bChip,#carrySlots .cSlot,
+  #buildTop,#buildBtns button,.dlgBtn,.btn,#bpList .recipe,#xpWrap,#swimBarWrap,.fgBarWrap,
+  #buildChips,#cookList,.lockTag,.rLock,.invX {
+    border-radius:0 !important;
+    image-rendering:pixelated;
+  }
+  #topLeft,#moneyChip,#carryHud,#pantryHud,#swimHud,.actBtn,#promptBtn,#dropBtn,
+  .craftCard,.fgCard,.dexCard,.dlgCard,.bChip,#buildTop,#buildBtns button,.dlgBtn,.btn {
+    border:3px solid var(--pxbd) !important;
+    box-shadow: 0 4px 0 0 var(--pxbd), inset 0 2px 0 0 var(--pxlt) !important;
+  }
+  #miniMap { border-radius:50% !important; border:3px solid var(--pxbd) !important; image-rendering:pixelated; }
+  /* readable pixel body text + chunky pixel titles */
+  #topLeft .lvl, #craftTitle, #dlgName, #buildTop, #start h1, .card h1, #dlgFace {
+    font-family: var(--hand-title);
+  }
+  #start h1 { font-size:30px; line-height:1.5; letter-spacing:0; }
+  #topLeft .lvl { font-size:17px; }
+  #craftTitle, #dlgName { font-size:15px; }
+  /* bump up the (small) pixel body font for legibility */
+  #topLeft .pop, #pantryHud, .howto, .dlgText, .recipe .rName, .recipe .rCost, .bChip .bcN, .bChip .bcC,
+  .craftHint, #buildTop, #moneyChip, #carryHud, .ctab, .dexSub, .dn, .dr, .dlgBtn { font-size:18px; }
+  #promptBtn { font-family:var(--hand-title); font-size:13px; letter-spacing:0; animation:none; }
+  #promptBtn .promptKey { font-family:var(--hand-title); font-size:11px; }
+  .btn, #buildBtns button { font-family:var(--hand-title); font-size:14px; }
+  /* crisp pixel toast */
+  #toast { font-family:var(--hand); font-size:21px; border:3px solid var(--pxbd) !important; border-radius:0 !important; box-shadow:0 4px 0 0 var(--pxbd) !important; }
+  .actBtn:active, #promptBtn:active, .btn:active, #buildBtns button:active, .dlgBtn:active { box-shadow:none !important; transform:translateY(4px) !important; }
 </style>
 </head>
 <body>
@@ -608,7 +646,6 @@
   <!-- Action buttons (right side) -->
   <div id="actBtns">
     <button id="dropBtn" class="actBtn" title="Drop carried item">🗑️</button>
-    <button id="diveBtn" class="actBtn" title="Dive / Surface">🤿</button>
   </div>
 
   <!-- Proximity prompt (appears near you when something is interactable) -->
@@ -667,7 +704,7 @@
         💬 <b>Villagers:</b> talk to them — do their little <b>quest</b> (bring resources) and they'll move in. Then give them a <b>job</b> (🪓/🎣/🍳) for village bonuses!<br>
         🍳 <b>Cook:</b> gather 🫐 berries &amp; 🍎 fruit, catch 🐟 fish, then cook at the 🍳 Kitchen — the aroma <b>charms new villagers</b>.<br>
         🎣 <b>Fishing:</b> hook a fish, then tap <b>REEL!</b> fast — the bar drains as it fights back. 🦪 Pearls are your money.<br>
-        ⛵ <b>Sail</b> to other isles (dodge the rocks!) &amp; <b>Dive</b> (🤿/F) for reef fish &amp; treasure. 💨 Don't swim too long or you'll tire out!<br>
+        ⛵ <b>Sail</b> to other isles to find resources, treasure &amp; rare villages (dodge the rocks &amp; sharks 🦈!). 💨 Don't swim too long in open water or you'll tire out!<br>
       </div>
     </details>
     <button class="btn" id="startBtn">▶  Play</button>
@@ -2957,9 +2994,9 @@ function setDiving(on){
   if(on) ensureUnderwater();        // build the reef the first time we dive (off the boot path)
   state.diving = on;
   underwater.visible = on;
-  $('#diveHud').classList.toggle('hidden', !on);
-  $('#diveBtn').classList.toggle('under', on);
-  $('#diveBtn').textContent = on ? '🌊' : '🤿';
+  $('#diveHud')?.classList.toggle('hidden', !on);
+  $('#diveBtn')?.classList.toggle('under', on);
+  { const db=$('#diveBtn'); if(db) db.textContent = on ? '🌊' : '🤿'; }
   if(on){
     scene.background = SEA_BG;
     scene.fog.color.copy(SEA_BG); scene.fog.near = 18; scene.fog.far = 95;
@@ -3059,7 +3096,7 @@ function boatNear(){ return Math.hypot(otter.position.x-boat.position.x, otter.p
 function boardBoat(){
   if(state.diving){ toast('🤿 Surface before boarding!'); return; }
   state.sailing=true; boatVel.set(0,0,0); otterVel.set(0,0,0);
-  $('#diveBtn').classList.add('hidden');
+  $('#diveBtn')?.classList.add('hidden');
   toast('⛵ Set sail! Steer with the joystick — dash for a speed gust. Tap 🤚 near a shore to dock.');
   beep(440,0.1); setTimeout(()=>beep(660,0.12),100);
 }
@@ -3070,7 +3107,7 @@ function disembark(){
   const r=islandR(best), ang=Math.atan2(boat.position.z-best.z, boat.position.x-best.x);
   otter.position.set(best.x+Math.cos(ang)*(r-0.8), GRASS_Y, best.z+Math.sin(ang)*(r-0.8));
   otterVel.set(0,0,0); state.sailing=false;
-  $('#diveBtn').classList.remove('hidden');
+  $('#diveBtn')?.classList.remove('hidden');
   toast('⚓ Docked at '+best.name+(best.type==='village'?' — walk up to villagers & press 🤚 to recruit!':best.type==='treasure'?' — dig up the chests!':''));
   beep(523,0.1); setTimeout(()=>beep(392,0.1),110);
 }
@@ -3161,7 +3198,6 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(fishing){ if(k===' '||k==='e'||k==='enter'){ e.preventDefault(); fishingClick(); } return; }
   if(k==='e'||k==='enter'||k===' '){ if(!e.repeat){ e.preventDefault(); interact(); } }
-  if(k==='f'){ if(!e.repeat) toggleDive(); }
   if(k==='i'||k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
   if(k==='c'){ if(!e.repeat) openForge(); }
   if(k==='r'){ if(!e.repeat && buildMode) buildRotate(); }
@@ -3201,7 +3237,6 @@ window.addEventListener('mousemove',e=>{ if(mouseDown&&joyId==='m') joyMove(e.cl
 window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; joyEnd(); } });
 
 // action buttons
-$('#diveBtn').addEventListener('click', toggleDive);
 $('#editBtn')?.addEventListener('click', toggleEdit);
 $('#pickBtn')?.addEventListener('click', pickUpHere);
 $('#placeBtn')?.addEventListener('click', placeSelected);
