@@ -558,6 +558,24 @@
   /* crisp pixel toast */
   #toast { font-family:var(--hand); font-size:21px; border:3px solid var(--pxbd) !important; border-radius:0 !important; box-shadow:0 4px 0 0 var(--pxbd) !important; }
   .actBtn:active, #promptBtn:active, .btn:active, #buildBtns button:active, .dlgBtn:active { box-shadow:none !important; transform:translateY(4px) !important; }
+  /* survival HUD */
+  #survHud{ position:absolute; left:12px; top: calc(max(12px, env(safe-area-inset-top)) + 210px); display:flex; flex-direction:column; gap:5px; background:var(--panel); border:3px solid var(--pxbd); padding:7px 9px; z-index:6; box-shadow:0 4px 0 0 var(--pxbd); }
+  .sRow{ display:flex; align-items:center; gap:6px; font-size:16px; }
+  .sBar{ width:88px; height:12px; background:rgba(0,0,0,.5); border:2px solid var(--pxbd); }
+  .sFill{ height:100%; width:100%; }
+  .sFill.h{ background:#ff8a5a; } .sFill.t{ background:#5ec8ff; } .sFill.e{ background:#ffd84a; }
+  .sFill.low{ animation:lowpulse .55s steps(2,end) infinite; }
+  @keyframes lowpulse{ 50%{ opacity:.35; } }
+  .sRow button{ pointer-events:auto; cursor:pointer; border:2px solid var(--pxbd); background:var(--panel-lite); color:#fff; font-family:var(--hand); font-size:16px; padding:0 8px; }
+  .sRow button:active{ transform:translateY(2px); }
+  /* forge panel */
+  .forgeStock{ font-size:18px; margin:8px 0; color:#ffe7b0; text-align:center; }
+  .forgeRow{ display:flex; gap:8px; margin-bottom:8px; }
+  .forgeRow button{ flex:1; pointer-events:auto; cursor:pointer; border:3px solid var(--pxbd); background:var(--panel-lite); color:#fff; font-family:var(--hand); font-size:18px; padding:10px; box-shadow:0 4px 0 0 var(--pxbd); }
+  .forgeRow button:active{ box-shadow:none; transform:translateY(4px); }
+  #forgeTools{ display:flex; flex-direction:column; gap:6px; }
+  #forgePanel{ position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); padding:18px; }
+  #forgePanel.hidden{ display:none; }
 </style>
 </head>
 <body>
@@ -571,6 +589,13 @@
     <div class="lvl">Village Lv <span id="lvlNum">1</span> · 🌅 Day <span id="dayNum">1</span></div>
     <div class="pop">🦦 Pop <span id="popNum">1</span> · 🏠 <span id="bldNum">0</span></div>
     <div id="xpWrap"><div id="xpBar"></div></div>
+  </div>
+
+  <!-- Survival: hunger / thirst / energy -->
+  <div id="survHud">
+    <div class="sRow"><span>🍖</span><div class="sBar"><div id="hungerBar" class="sFill h"></div></div><button id="eatBtn">Eat</button></div>
+    <div class="sRow"><span>💧</span><div class="sBar"><div id="thirstBar" class="sFill t"></div></div><button id="drinkBtn">Drink</button></div>
+    <div class="sRow"><span>⚡</span><div class="sBar"><div id="energyBar" class="sFill e"></div></div></div>
   </div>
 
   <div id="moneyChip"><span class="ic">🦪</span><span id="moneyNum">0</span></div>
@@ -604,6 +629,17 @@
   </div>
 
   <div id="toast"></div>
+
+  <!-- Sven's forge: build / deposit / craft tools -->
+  <div id="forgePanel" class="hidden">
+    <div class="craftCard">
+      <div class="invHead"><span id="craftTitle">🔨 Sven's Forge</span><button id="forgeClose" class="invX">✕</button></div>
+      <div id="forgeStock" class="forgeStock"></div>
+      <div class="forgeRow"><button id="forgeBuild">🏗️ Build</button><button id="forgeDeposit">📦 Deposit carried</button></div>
+      <p class="craftHint">Deposit gathered resources, then craft tools from the stockpile:</p>
+      <div id="forgeTools"></div>
+    </div>
+  </div>
 
   <!-- Village kitchen / cooking -->
   <div id="cookPanel" class="hidden">
@@ -961,6 +997,9 @@ const state = {
   pantry: { fish:0, berry:0, fruit:0 },   // cooking ingredients
   cooked: 0,
   jobs: { gatherer:0, fisher:0, cook:0 }, // assigned villager jobs (passive bonuses)
+  hunger: 100, thirst: 100, energy: 100,  // survival stats
+  stock: { wood:0, rock:0, metal:0, shell:0 },  // home stockpile (deposit at the forge)
+  tools: { axe:false, pickaxe:false, rod:false }, // crafted tools
   swim: 1,           // swim stamina (open water); empties -> paddle back to shore
   oxygen: MAX_OXYGEN,
   editMode: false,   // Animal-Crossing edit/decorate mode
@@ -2288,10 +2327,13 @@ const FOOD_ICON = { fish:'🐟', berry:'🫐', fruit:'🍎' };
 function harvestNode(nd){
   if(!nd.ready) return;
   const y=nd.def.yield;
+  if(nd.type==='ore' && !state.tools.pickaxe){ toast('⛏️ You need a Pickaxe — craft one at Sven’s forge!'); beep(180,0.08,'square'); return; }
+  if(state.energy<=4){ toast('😴 Too tired to work — eat & rest first!'); beep(160,0.1,'square'); return; }
   const p=nd.mesh.position.clone().setY(GRASS_Y+0.6);
   if(RES3[y]){   // carried resource (wood/rock/metal/shell)
-    if(!canCarryMore()){ toast('🙌 Hands full (3) — deliver to a plot first!'); beep(180,0.08,'square'); return; }
+    if(!canCarryMore()){ toast('🙌 Hands full (3) — deliver/deposit first!'); beep(180,0.08,'square'); return; }
     pickUpRes(y);
+    if(y==='wood' && state.tools.axe && canCarryMore() && Math.random()<0.5) pickUpRes('wood');  // axe bonus
     spawnBurst(p, RES3[y].col);
   } else {                                   // berry / fruit → pantry (cooking)
     state.pantry[y] = (state.pantry[y]||0)+1; updateEconomyHUD();
@@ -2299,9 +2341,12 @@ function harvestNode(nd){
     toast(`${FOOD_ICON[y]} +1 ${y} for the kitchen!`);
     beep(560,0.06,'triangle',0.05);
   }
-  nd.ready=false; nd.regrow=nd.def.regrow * (1 - Math.min(0.5, (state.jobs.gatherer||0)*0.1)); nd.shake=0.45;
+  state.energy = Math.max(0, state.energy - 3);          // working costs energy
+  let rg = nd.def.regrow * (1 - Math.min(0.5, (state.jobs.gatherer||0)*0.1));
+  if(state.tools.axe && nd.type==='tree') rg*=0.6;       // axe → trees regrow faster
+  nd.ready=false; nd.regrow=rg; nd.shake=0.45;
   addShake(0.14);
-  beep(nd.type==='rock'?180:300, 0.07, nd.type==='rock'?'square':'triangle', 0.05);
+  beep(nd.type==='rock'||nd.type==='ore'?180:300, 0.07, nd.type==='rock'||nd.type==='ore'?'square':'triangle', 0.05);
 }
 
 // ---------- Particles (collection burst) ----------
@@ -2859,7 +2904,7 @@ function catchFish(sw){
   const sp = sw.sp, rar = RARITY[sp.rarity];
   state.caught[sp.id] = (state.caught[sp.id]||0)+1;
   state.pantry.fish++; updateEconomyHUD();
-  addPearls(2 + Math.round(rar.glow*8) + (state.jobs.fisher||0));
+  addPearls(Math.round((2 + Math.round(rar.glow*8) + (state.jobs.fisher||0)) * (state.tools.rod?1.5:1)));
   fishGroup.remove(sw.mesh);
   const idx = swimmers.indexOf(sw); if(idx>=0) swimmers.splice(idx,1);
   updateResHUD('fish');
@@ -3252,6 +3297,13 @@ $('#bpPanel').addEventListener('click', e=>{ if(e.target.id==='bpPanel') closeBl
 $('#cookClose').addEventListener('click', closeCook);
 $('#cookPanel').addEventListener('click', e=>{ if(e.target.id==='cookPanel') closeCook(); });
 $('#dlgClose').addEventListener('click', closeDialogue);
+// ----- survival & forge wiring -----
+$('#eatBtn')?.addEventListener('click', eat);
+$('#drinkBtn')?.addEventListener('click', drink);
+$('#forgeClose')?.addEventListener('click', closeForge);
+$('#forgePanel')?.addEventListener('click', e=>{ if(e.target.id==='forgePanel') closeForge(); });
+$('#forgeBuild')?.addEventListener('click', ()=>{ closeForge(); enterBuildMode(); });
+$('#forgeDeposit')?.addEventListener('click', depositToStock);
 
 // ----- inventory wiring -----
 function toggleInv(){
@@ -3290,6 +3342,7 @@ let collectCooldown = 0;
 let splashTimer = 0;
 let ctxTick = 0, miniTick = 0, windT = 0;
 let buildMode=false, buildBp=null, buildRot=0, buildGhost=null;
+let drinkCD=0, survTick=0, survMul=1;
 const buildCursor=new THREE.Vector3();
 const facing = new THREE.Vector3(0,0,1);
 let camAngle = 0;
@@ -3347,7 +3400,7 @@ function frame(){
       if(moving && splashTimer<=0){ splashTimer=0.12; spawnRing(new THREE.Vector3(boat.position.x - Math.sin(boat.rotation.y)*1.7, 0.12, boat.position.z - Math.cos(boat.rotation.y)*1.7), 0xeafcff, 1.7); }
       if(boat.userData.flag) boat.userData.flag.rotation.y = Math.sin(t*4)*0.4;
     } else {
-      const maxSpeed = state.diving ? DIVE_SPEED : OTTER_SPEED;
+      const maxSpeed = (state.diving ? DIVE_SPEED : OTTER_SPEED) * survMul;
       const accelK = state.diving ? 6 : 8.5;
       const fricK  = state.diving ? 2.0 : 5;
       if(inLen>0.05){
@@ -3775,6 +3828,26 @@ function frame(){
       const e = 1 - Math.pow(2,-9*islandPop)*Math.cos(islandPop*16);
       islandGroup.scale.set(1, Math.max(0.2, e), 1);
     } else islandGroup.scale.set(1,1,1);
+
+    // ----- survival: hunger / thirst / energy drain over the day -----
+    if(drinkCD>0) drinkCD-=dt;
+    if(!state.sailing){
+      state.hunger = Math.max(0, state.hunger - dt*0.34);   // ~2 days from full
+      state.thirst = Math.max(0, state.thirst - dt*0.46);
+      // working (moving) burns energy; resting on land restores it
+      if(moving) state.energy = Math.max(0, state.energy - dt*(onLand?1.1:1.7));
+      else       state.energy = Math.min(100, state.energy + dt*(onLand?2.4:0.4));
+      // starving / parched saps energy and slows you down
+      if(state.hunger<=0 || state.thirst<=0) state.energy = Math.max(0, state.energy - dt*2.2);
+      // movement penalty when running on empty
+      const lowE = state.energy<25, low = state.hunger<=0 || state.thirst<=0;
+      survMul = low ? 0.45 : (lowE ? 0.7 : 1);
+      // gentle nudges so the player knows to refuel
+      survTick += dt;
+      if(survTick>0.4){ survTick=0; updateSurvivalHUD(); }
+      if(state.hunger<=0 && Math.random()<0.004) toast('🍖 You’re starving — eat something!');
+      else if(state.thirst<=0 && Math.random()<0.004) toast('💧 So thirsty — drink at the shore!');
+    }
   }
 
   // ----- bursts -----
@@ -4019,8 +4092,67 @@ function renderBlueprints(placeFn){
 function openBlueprintPicker(tile){ renderBlueprints(bp=>startSite(tile, bp)); }
 function closeBlueprint(){ $('#bpPanel')?.classList.add('hidden'); }
 
+// ---------- Survival (hunger / thirst / energy) ----------
+function eat(){
+  const order=['fish','fruit','berry']; let f=null;
+  for(const k of order){ if(state.pantry[k]>0){ f=k; break; } }
+  if(!f){ toast('🍽️ No food! Catch 🐟 fish or forage 🫐🍎.'); beep(180,0.07,'square'); return; }
+  state.pantry[f]--; state.hunger=Math.min(100,state.hunger+(f==='fish'?34:24)); state.energy=Math.min(100,state.energy+8);
+  toast(`🍖 Ate ${FOOD_ICON[f]}  (+hunger)`); beep(520,0.06,'triangle',0.05); updateEconomyHUD(); updateSurvivalHUD();
+}
+function nearWater(){
+  if(state.sailing) return true;
+  const li=landAt(otter.position.x,otter.position.z); if(!li) return true;
+  return Math.hypot(otter.position.x-li.x, otter.position.z-li.z) > islandR(li)-7;
+}
+function drink(){
+  if(drinkCD>0) return;
+  if(!nearWater()){ toast('💧 Head to the shore to scoop water.'); beep(180,0.07,'square'); return; }
+  drinkCD=1.4; state.thirst=Math.min(100,state.thirst+42);
+  toast('💧 Refreshing!  (+thirst)'); beep(640,0.06,'sine',0.05); updateSurvivalHUD();
+}
+function updateSurvivalHUD(){
+  const set=(id,v)=>{ const b=$(id); if(b){ b.style.width=Math.max(0,Math.min(100,v))+'%'; b.classList.toggle('low', v<25); } };
+  set('#hungerBar', state.hunger); set('#thirstBar', state.thirst); set('#energyBar', state.energy);
+}
+
+// ---------- Tools & the forge (deposit → stockpile → craft) ----------
+const FORGE_TOOLS = [
+  { id:'axe',     icon:'🪓', name:'Axe',         cost:{wood:3,rock:2},  blurb:'chop faster, extra wood' },
+  { id:'pickaxe', icon:'⛏️', name:'Pickaxe',     cost:{wood:4,rock:3},  blurb:'mine ore for 🔩 metal' },
+  { id:'rod',     icon:'🎣', name:'Fishing Rod', cost:{wood:4,shell:2}, blurb:'+50% pearls fishing' },
+];
+function stockHas(cost){ for(const k in cost){ if((state.stock[k]||0) < cost[k]) return false; } return true; }
+function stockStr(cost){ return Object.entries(cost).map(([k,v])=>`${RES3[k].icon}${v}`).join(' '); }
+function depositToStock(){
+  if(!carry.length){ toast('Nothing to deposit — gather resources first.'); beep(200,0.06,'square'); return; }
+  for(const k of carry) state.stock[k]=(state.stock[k]||0)+1;
+  carry.length=0; rebuildCarryVis(); updateEconomyHUD();
+  beep(520,0.06); setTimeout(()=>beep(680,0.07),60); toast('📦 Deposited into the stockpile'); renderForge();
+}
+function craftTool(t){
+  if(state.tools[t.id]){ return; }
+  if(!stockHas(t.cost)){ toast(`Need ${stockStr(t.cost)} in stock — deposit more!`); beep(180,0.08,'square'); return; }
+  for(const k in t.cost) state.stock[k]-=t.cost[k];
+  state.tools[t.id]=true; gainXP(12);
+  toast(`${t.icon} Crafted ${t.name}!`); beep(523,0.08); setTimeout(()=>beep(784,0.1),90); setTimeout(()=>beep(1046,0.12),180); addShake(0.18); confettiAt(otter.position,14);
+  renderForge();
+}
+function renderForge(){
+  const s=$('#forgeStock'); if(s) s.textContent = `Stockpile —  ${RES3.wood.icon}${state.stock.wood}  ${RES3.rock.icon}${state.stock.rock}  ${RES3.metal.icon}${state.stock.metal}  ${RES3.shell.icon}${state.stock.shell}`;
+  const list=$('#forgeTools'); if(!list) return; list.innerHTML='';
+  FORGE_TOOLS.forEach(t=>{
+    const owned=state.tools[t.id], ok=!owned&&stockHas(t.cost);
+    const row=document.createElement('button'); row.className='recipe'+(owned?' locked':ok?' ok':'');
+    row.innerHTML=`<span class="rIcon">${t.icon}</span><span class="rMid"><span class="rName">${t.name}${owned?' ✓':''}</span><span class="rCost">${owned?t.blurb:stockStr(t.cost)+' · '+t.blurb}</span></span>`;
+    row.addEventListener('click',()=>{ if(!owned) craftTool(t); });
+    list.appendChild(row);
+  });
+}
+function openForge(){ renderForge(); $('#forgePanel').classList.remove('hidden'); }
+function closeForge(){ $('#forgePanel').classList.add('hidden'); }
+
 // ---------- Top-down build mode (select • rotate • place) ----------
-function openForge(){ enterBuildMode(); }
 function enterBuildMode(){
   if(buildMode) return;
   if(state.diving||state.sailing){ toast('Come ashore to build!'); return; }
@@ -4209,7 +4341,7 @@ function init(){
   scatterForage();           // 🌳 trees (wood) & 🪨 rocks (rock) to gather
   // hide the old crafting/inventory UI — the game now uses carry + build-plots
   ['#craftBtn','#placeBtn','#pickBtn','#editBtn','#bagBtn','#hotbar'].forEach(s=>{ const e=$(s); if(e) e.style.display='none'; });
-  updateResHUD(); updateStatsHUD(); updateEconomyHUD(); drawMiniMap();
+  updateResHUD(); updateStatsHUD(); updateEconomyHUD(); updateSurvivalHUD(); drawMiniMap();
   startTitleScene();         // cinematic sunset title until the player taps Play
 }
 // boot — never let a hiccup hang on the loader
