@@ -726,7 +726,7 @@ function islandR(is){ return is.type==='home' ? ISLAND_R : is.r; }
 function genIslandShape(){ return [
   {f:2, a:0.17, p:Math.random()*6.28}, {f:3, a:0.11, p:Math.random()*6.28}, {f:5, a:0.06, p:Math.random()*6.28} ]; }
 for(const is of ISLANDS) is.shape = genIslandShape();
-function islandShapeFactor(is, ang){ let p=0; const s=is.shape||[]; for(const h of s) p += h.a*(0.5+0.5*Math.sin(ang*h.f+h.p)); return 1+p; }
+function islandShapeFactor(is, ang){ return 1; }   // round islands (clean & readable)
 function islandShapeR(is, ang){ return islandR(is)*islandShapeFactor(is, ang); }
 function deformGeo(geo, factorFn, plane){
   const pos=geo.attributes.position;
@@ -862,6 +862,10 @@ const BUILDINGS = [
   { id:'house',   icon:'🏠', name:'Cozy House',  cost:{wood:12,stone:6},         xp:40, pop:1, lvl:2, customizable:true },
   { id:'tree',    icon:'🌳', name:'Big Tree',     cost:{reed:5,wood:5,shell:3},   xp:30, pop:0, lvl:3 },
   { id:'tower',   icon:'🏯', name:'Lantern Tower',cost:{stone:14,wood:10,shell:6},xp:60,pop:2, lvl:4 },
+  // --- industrial (produce pearls each day) ---
+  { id:'sawmill', icon:'🪚', name:'Sawmill',     cost:{},  xp:30, pop:1, lvl:2, dayPearls:8 },
+  { id:'smelter', icon:'🏭', name:'Smelter',     cost:{},  xp:42, pop:1, lvl:3, dayPearls:16 },
+  { id:'workshop',icon:'⚙️', name:'Workshop',    cost:{},  xp:54, pop:1, lvl:4, dayPearls:26 },
   // --- special actions (not placed on a tile) ---
   { id:'pet',     icon:'🐾', name:'Adopt Pet',   cost:{food:6},                  xp:20, lvl:2, special:'pet' },
   { id:'land',    icon:'🏝️', name:'Buy Land',    cost:{coins:30},                xp:25, lvl:1, special:'expand' },
@@ -973,7 +977,7 @@ scene.fog = new THREE.Fog(0xbfeaff, 95, 230);
 const camera = new THREE.PerspectiveCamera(52, window.innerWidth/window.innerHeight, 0.1, 400);
 
 // ---------- Lights ----------
-const hemi = new THREE.HemisphereLight(0xfdf6e3, 0x6fa8c7, 0.85);
+const hemi = new THREE.HemisphereLight(0xfff3e0, 0x86c4d8, 0.96);   // soft cozy fill
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff2cc, 1.25);
 sun.position.set(28, 46, 18);
@@ -1662,25 +1666,51 @@ function makeStarfish(){
   return g;
 }
 
+function makeSeaGrass(){
+  const g=new THREE.Group();
+  const cols=[0x4fbf7a,0x6fd08a,0x3fae8a];
+  const m=new THREE.MeshStandardMaterial({color:cols[(Math.random()*cols.length)|0],roughness:1,side:THREE.DoubleSide});
+  const n=7+(Math.random()*6|0);
+  for(let i=0;i<n;i++){ const bl=new THREE.Mesh(new THREE.ConeGeometry(0.06,rand(0.7,1.5),4), m); bl.position.set(rand(-0.4,0.4),bl.geometry.parameters.height/2,rand(-0.4,0.4)); bl.rotation.set(rand(-0.2,0.2),rand(0,6.28),rand(-0.2,0.2)); g.add(bl); }
+  g.userData.ph=Math.random()*6.28; return g;
+}
+function makeSeahorse(){
+  const g=new THREE.Group();
+  const col=new THREE.Color().setHSL(rand(0.05,0.16),0.7,0.62);
+  const m=new THREE.MeshStandardMaterial({color:col,roughness:0.6});
+  // curved body from stacked shrinking spheres
+  let px=0,py=0; for(let i=0;i<6;i++){ const s=0.2-i*0.022; const b=new THREE.Mesh(new THREE.SphereGeometry(s,8,7),m); py=0.2+i*0.18; px=Math.sin(i*0.5)*0.1; b.position.set(px,py,0); g.add(b); }
+  // curled tail
+  for(let i=0;i<3;i++){ const s=0.06-i*0.012; const b=new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.02,s),6,6),m); b.position.set(px-0.06-i*0.05,0.16-i*0.04,0); g.add(b); }
+  // snout
+  const snout=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.05,0.22,6),m); snout.rotation.z=-1.0; snout.position.set(0.18,1.18,0); g.add(snout);
+  // dorsal fin + eye
+  const fin=new THREE.Mesh(new THREE.PlaneGeometry(0.12,0.3), new THREE.MeshStandardMaterial({color:col,transparent:true,opacity:0.7,side:THREE.DoubleSide})); fin.position.set(-0.1,0.7,0); g.add(fin);
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(0.03,8,8), new THREE.MeshBasicMaterial({color:0x111})); eye.position.set(0.12,1.16,0.08); g.add(eye);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.userData.ph=Math.random()*6.28; return g;
+}
+function makeReefRock(){
+  const g=new THREE.Group(); const m=new THREE.MeshStandardMaterial({color:0x6a6f7a,roughness:1});
+  const m2=new THREE.MeshStandardMaterial({color:0x7e8590,roughness:1});
+  const n=3+(Math.random()*3|0);
+  for(let i=0;i<n;i++){ const r=new THREE.Mesh(new THREE.DodecahedronGeometry(rand(0.8,2.0),0), i%2?m2:m); r.position.set(rand(-1.2,1.2),rand(0,1.6),rand(-1.2,1.2)); r.rotation.set(rand(0,3),rand(0,3),rand(0,3)); r.scale.y=rand(0.7,1.3); g.add(r); }
+  // a splash of coral on the rocks
+  for(let i=0;i<2;i++){ const c=makeCoral(); c.position.set(rand(-1,1),rand(0.5,1.8),rand(-1,1)); c.scale.setScalar(rand(0.5,0.9)); g.add(c); }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
 // scatter coral + kelp + critters around the floor (off the island footprint)
-const corals=[];
+const corals=[]; const seahorses=[];
+function reefSpot(){ const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-2, PLAY_R+6); return [Math.cos(a)*r, Math.sin(a)*r]; }
 function populateReef(){
-  for(let i=0;i<24;i++){
-    const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-2, PLAY_R);
-    const c=makeCoral(); c.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); c.rotation.y=Math.random()*Math.PI*2; underwater.add(c); corals.push(c);
-  }
-  for(let i=0;i<16;i++){
-    const a=Math.random()*Math.PI*2, r=rand(ISLAND_R-1, PLAY_R);
-    const k=makeKelp(); k.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(k); kelps.push(k);
-  }
-  for(let i=0;i<7;i++){
-    const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, PLAY_R);
-    const an=makeAnemone(); an.position.set(Math.cos(a)*r, SEABED_Y, Math.sin(a)*r); underwater.add(an); anemones.push(an);
-  }
-  for(let i=0;i<9;i++){
-    const a=Math.random()*Math.PI*2, r=rand(ISLAND_R, PLAY_R);
-    const sf=makeStarfish(); sf.position.set(Math.cos(a)*r, SEABED_Y+0.04, Math.sin(a)*r); underwater.add(sf);
-  }
+  for(let i=0;i<40;i++){ const[x,z]=reefSpot(); const c=makeCoral(); c.position.set(x,SEABED_Y,z); c.rotation.y=Math.random()*6.28; underwater.add(c); corals.push(c); }
+  for(let i=0;i<24;i++){ const[x,z]=reefSpot(); const k=makeKelp(); k.position.set(x,SEABED_Y,z); underwater.add(k); kelps.push(k); }
+  for(let i=0;i<22;i++){ const[x,z]=reefSpot(); const sg=makeSeaGrass(); sg.position.set(x,SEABED_Y,z); underwater.add(sg); }
+  for(let i=0;i<12;i++){ const[x,z]=reefSpot(); const an=makeAnemone(); an.position.set(x,SEABED_Y,z); underwater.add(an); anemones.push(an); }
+  for(let i=0;i<16;i++){ const[x,z]=reefSpot(); const sf=makeStarfish(); sf.position.set(x,SEABED_Y+0.04,z); underwater.add(sf); }
+  for(let i=0;i<8;i++){ const[x,z]=reefSpot(); const rk=makeReefRock(); rk.position.set(x,SEABED_Y,z); rk.rotation.y=Math.random()*6.28; underwater.add(rk); }
+  for(let i=0;i<7;i++){ const[x,z]=reefSpot(); const sh=makeSeahorse(); sh.position.set(x,SEABED_Y+rand(0.5,2.2),z); sh.rotation.y=Math.random()*6.28; underwater.add(sh); seahorses.push(sh); }
 }
 // --- ambient: marine snow + sunbeam light shafts (built lazily on first dive) ---
 let marineSnow=null;
@@ -1988,15 +2018,16 @@ function buildExtraIslands(){
       const h=makeBuilding('house', (Math.random()*HOUSE_ROOFS.length)|0); h.position.set(is.x, GRASS_Y, is.z); h.rotation.y=rand(0,6.28); scene.add(h);
       for(let i=0;i<6;i++){ const f=makeFlower(); const a=rand(0,6.28), r=rand(2,is.r-2); f.position.set(is.x+Math.cos(a)*r, GRASS_Y, is.z+Math.sin(a)*r); scene.add(f); }
     } else if(is.type==='resource'){
-      const tps=['tree','tree','tree','rock','rock','berry','fruit'];
-      for(let i=0;i<11;i++){ const a=rand(0,6.28), r=rand(2,is.r-2.5); spawnForageNode(tps[(Math.random()*tps.length)|0], is.x+Math.cos(a)*r, is.z+Math.sin(a)*r); }
+      const tps=['tree','tree','tree','rock','rock','ore','berry','fruit'];
+      for(let i=0;i<12;i++){ const a=rand(0,6.28), r=rand(2,is.r-2.5); spawnForageNode(tps[(Math.random()*tps.length)|0], is.x+Math.cos(a)*r, is.z+Math.sin(a)*r); }
       for(let i=0;i<2;i++){ const p=makePalm(); const a=rand(0,6.28); p.position.set(is.x+Math.cos(a)*(is.r*0.6), GRASS_Y, is.z+Math.sin(a)*(is.r*0.6)); scene.add(p); }
     } else if(is.type==='coral'){
       for(let i=0;i<9;i++){ const c=makeCoral(); const a=rand(0,6.28), r=rand(1,is.r-1.5); c.position.set(is.x+Math.cos(a)*r, GRASS_Y, is.z+Math.sin(a)*r); c.scale.setScalar(rand(0.6,1.15)); scene.add(c); }
+      for(let i=0;i<6;i++){ const a=rand(0,6.28), r=rand(2,is.r-2); spawnForageNode('shell', is.x+Math.cos(a)*r, is.z+Math.sin(a)*r); }
     } else if(is.type==='pirate'){
       const mast=makePirateFlag(); mast.position.set(is.x, GRASS_Y, is.z); scene.add(mast); is.flag=mast;
       for(let i=0;i<3;i++) spawnChestPickup(is, rand(0,6.28), is.r*0.45);
-      for(let i=0;i<5;i++){ const a=rand(0,6.28), r=rand(2,is.r-2); spawnForageNode(Math.random()<0.5?'tree':'rock', is.x+Math.cos(a)*r, is.z+Math.sin(a)*r); }
+      for(let i=0;i<6;i++){ const a=rand(0,6.28), r=rand(2,is.r-2); spawnForageNode(['tree','rock','ore'][(Math.random()*3)|0], is.x+Math.cos(a)*r, is.z+Math.sin(a)*r); }
     } else {  // treasure / special
       for(let i=0;i<4;i++) spawnChestPickup(is, rand(0,6.28), is.r*0.45);
       for(let i=0;i<2;i++){ const p=makePalm(); const a=rand(0,6.28); p.position.set(is.x+Math.cos(a)*(is.r*0.6), GRASS_Y, is.z+Math.sin(a)*(is.r*0.6)); scene.add(p); }
@@ -2105,8 +2136,12 @@ const MAIL_MSGS = [
 const DAY_LEN = 150;   // seconds per in-game day
 let dayTimer = 0;
 function advanceDay(){
-  state.day = (state.day||1) + 1; updateEconomyHUD();
-  const t=$('#toast'); t.style.color='#ffe07a'; toast(`🌅 Day ${state.day} — a fresh morning in the village!`); setTimeout(()=>{ t.style.color=''; },1900);
+  state.day = (state.day||1) + 1;
+  // industrial buildings pay out pearls each morning
+  let income=0; for(const p of state.placed){ if(p.def && p.def.dayPearls) income += p.def.dayPearls; }
+  if(income>0){ state.coins+=income; }
+  updateEconomyHUD();
+  const t=$('#toast'); t.style.color='#ffe07a'; toast(`🌅 Day ${state.day}${income>0?` — your factories earned 🦪${income}!`:' — a fresh morning!'}`); setTimeout(()=>{ t.style.color=''; },2100);
   beep(523,0.12,'sine'); setTimeout(()=>beep(659,0.14,'sine'),130);
   if(Math.random()<0.55){
     // a new villager arrives at the home dock to be recruited
@@ -2160,8 +2195,10 @@ const forageNodes=[];
 const FORAGE = {
   tree:  { yield:'wood',  n:[1,1], regrow:18, build:'tree' },
   rock:  { yield:'rock',  n:[1,1], regrow:22, build:'rock' },
-  berry: { yield:'berry', n:[1,1], regrow:16, build:'berry' },   // → pantry (cooking)
-  fruit: { yield:'fruit', n:[1,1], regrow:20, build:'fruit' },   // → pantry (cooking)
+  ore:   { yield:'metal', n:[1,1], regrow:30, build:'ore' },    // → carried (metal)
+  shell: { yield:'shell', n:[1,1], regrow:20, build:'shell' },  // → carried (seashell)
+  berry: { yield:'berry', n:[1,1], regrow:16, build:'berry' },  // → pantry (cooking)
+  fruit: { yield:'fruit', n:[1,1], regrow:20, build:'fruit' },  // → pantry (cooking)
 };
 function makeForageMesh(type){
   const g=new THREE.Group();
@@ -2171,6 +2208,12 @@ function makeForageMesh(type){
   } else if(type==='rock'){
     const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.5,0),new THREE.MeshStandardMaterial({color:0x9aa6b2,roughness:1})); r.position.y=0.4; r.scale.set(1,0.8,1.1); g.add(r);
     const r2=new THREE.Mesh(new THREE.DodecahedronGeometry(0.3,0),new THREE.MeshStandardMaterial({color:0xb4bdc7,roughness:1})); r2.position.set(0.4,0.22,0.1); g.add(r2);
+  } else if(type==='ore'){
+    const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.5,0),new THREE.MeshStandardMaterial({color:0x595f6b,roughness:0.85,metalness:0.3})); r.position.y=0.4; r.scale.set(1,0.85,1.05); g.add(r);
+    for(let i=0;i<4;i++){ const v=new THREE.Mesh(new THREE.IcosahedronGeometry(0.1,0),new THREE.MeshStandardMaterial({color:0xc9a23a,metalness:0.8,roughness:0.3,emissive:0x3a2c00,emissiveIntensity:0.3})); v.position.set(rand(-0.35,0.35),0.35+rand(0,0.35),rand(-0.3,0.3)); g.add(v); }
+  } else if(type==='shell'){
+    const s=new THREE.Mesh(new THREE.SphereGeometry(0.32,12,8,0,Math.PI*2,0,Math.PI*0.55),new THREE.MeshStandardMaterial({color:0xffd9e6,roughness:0.5,side:THREE.DoubleSide})); s.position.y=0.2; g.add(s);
+    for(let i=0;i<4;i++){ const rg=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.22,0.34),new THREE.MeshStandardMaterial({color:0xf2a8c4})); rg.position.y=0.22; rg.rotation.y=(i-1.5)*0.34; g.add(rg); }
   } else if(type==='berry'){
     for(let i=0;i<3;i++){ const b=new THREE.Mesh(new THREE.IcosahedronGeometry(0.34,0),new THREE.MeshStandardMaterial({color:0x3f7a3f,roughness:1})); b.position.set(rand(-0.2,0.2),0.4+i*0.15,rand(-0.2,0.2)); g.add(b); }
     for(let i=0;i<5;i++){ const d=new THREE.Mesh(new THREE.SphereGeometry(0.07,7,7),new THREE.MeshStandardMaterial({color:0x6a6ad9})); d.position.set(rand(-0.3,0.3),rand(0.4,0.7),rand(-0.3,0.3)); g.add(d); }
@@ -2209,7 +2252,7 @@ function harvestNode(nd){
   if(!nd.ready) return;
   const y=nd.def.yield;
   const p=nd.mesh.position.clone().setY(GRASS_Y+0.6);
-  if(y==='wood'||y==='rock'){
+  if(RES3[y]){   // carried resource (wood/rock/metal/shell)
     if(!canCarryMore()){ toast('🙌 Hands full (3) — deliver to a plot first!'); beep(180,0.08,'square'); return; }
     pickUpRes(y);
     spawnBurst(p, RES3[y].col);
@@ -2363,6 +2406,21 @@ function makeBuilding(id, variant=0){
     const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.95,12,1,false,0,Math.PI),new THREE.MeshStandardMaterial({color:0xb87a40})); lid.rotation.z=Math.PI/2; lid.position.y=0.6; g.add(lid);
     for(const yy of [0.3,0.6]){ const band=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.07,0.7),new THREE.MeshStandardMaterial({color:0x5a3a22})); band.position.y=yy; g.add(band); }
     const lock=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.18,0.05),new THREE.MeshStandardMaterial({color:0xffd24a,metalness:0.6,roughness:0.3})); lock.position.set(0,0.34,0.34); g.add(lock);
+  } else if(id==='sawmill'||id==='smelter'||id==='workshop'){
+    // industrial: stone/metal building with a chimney (smoke) + a spinning gear
+    const wallC = id==='smelter'?0x6b5550 : id==='workshop'?0x5a6470 : 0x7a5a3a;
+    const wall=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.3,1.5), new THREE.MeshStandardMaterial({color:wallC,roughness:0.85})); wall.position.y=0.75; g.add(wall);
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(1.85,0.18,1.65), new THREE.MeshStandardMaterial({color:0x3a3f47,metalness:0.4,roughness:0.5})); roof.position.y=1.45; g.add(roof);
+    const metalM=new THREE.MeshStandardMaterial({color:0x9aa0aa,metalness:0.7,roughness:0.35});
+    const chimney=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.2,0.9,10), metalM); chimney.position.set(-0.55,1.9,-0.4); g.add(chimney);
+    // big spinning gear / saw on the front
+    const gear=new THREE.Group();
+    const disc=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,0.08,id==='sawmill'?16:10), metalM); disc.rotation.x=Math.PI/2; gear.add(disc);
+    const teeth=id==='sawmill'?16:8; for(let i=0;i<teeth;i++){ const tt=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.12,0.08), metalM); const a=i/teeth*Math.PI*2; tt.position.set(Math.cos(a)*0.46,Math.sin(a)*0.46,0); tt.rotation.z=a; gear.add(tt); }
+    gear.position.set(0.55,0.85,0.78); g.add(gear); g.userData.spin=gear;
+    const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,1.0,8), metalM); pipe.rotation.z=Math.PI/2; pipe.position.set(0,1.0,0.78); g.add(pipe);
+    const sign=makeTextSprite(id==='smelter'?'🏭':id==='workshop'?'⚙️':'🪚','#ffe7b0'); sign.position.set(0,2.2,0); sign.scale.set(1.1,1.1,1.1); g.add(sign);
+    g.userData.chimney = new THREE.Vector3(-0.55,2.45,-0.4);   // smoke origin
   }
   g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
   return g;
@@ -2904,14 +2962,14 @@ function setDiving(on){
   $('#diveBtn').textContent = on ? '🌊' : '🤿';
   if(on){
     scene.background = SEA_BG;
-    scene.fog.color.copy(SEA_BG); scene.fog.near = 14; scene.fog.far = 82;
-    hemi.intensity = 0.75; sun.intensity = 0.85; hemi.groundColor.set(0x0d5570);
+    scene.fog.color.copy(SEA_BG); scene.fog.near = 18; scene.fog.far = 95;
+    hemi.intensity = 1.05; sun.intensity = 1.0; hemi.color.set(0x9fe8ff); hemi.groundColor.set(0x1a7fa8);
     toast('🤿 Diving! Watch your oxygen — surface before it runs out!');
     beep(330,0.12,'sine'); setTimeout(()=>beep(247,0.16,'sine'),120);
   } else {
     scene.background = SKY_BG;
     scene.fog.color.copy(SKY_BG); scene.fog.near = 95; scene.fog.far = 230;
-    hemi.intensity = 0.85; sun.intensity = 1.25; hemi.groundColor.set(0x6fa8c7);
+    hemi.intensity = 0.96; sun.intensity = 1.25; hemi.color.set(0xfff3e0); hemi.groundColor.set(0x86c4d8);
     state.oxygen = MAX_OXYGEN;
     toast('🌊 Surfaced! Air refilled. Treasure banked.');
     beep(523,0.1); setTimeout(()=>beep(784,0.14),110);
@@ -3309,24 +3367,24 @@ function frame(){
       const legs = otter.userData.legs, arms = otter.userData.arms, head = otter.userData.head;
       const swimming = state.diving || !onLand;
       if(swimming){
-        const gait = (otter.userData.gait += dt*(moving?8:4));
+        const gait = (otter.userData.gait += dt*(moving?9:4.5));
         if(state.diving){
-          // underwater glide: prone, smooth front-crawl + flutter kick
-          otter.rotation.x += (-0.85 - otter.rotation.x)*Math.min(1,dt*5);
-          otter.rotation.z = otter.userData.bank*0.5 + Math.sin(t*1.6)*0.05;
-          if(arms){ arms[0].rotation.set(Math.sin(gait)*1.5, 0, -0.3); arms[1].rotation.set(Math.sin(gait+Math.PI)*1.5, 0, 0.3); }
-          if(legs){ const f=Math.sin(gait*1.4); legs[0].rotation.x=f*0.4; legs[1].rotation.x=-f*0.4; }
-          if(head) head.rotation.x += (0.45 - head.rotation.x)*Math.min(1,dt*5);
+          // underwater: flat torpedo glide, arms reaching ahead, legs flutter behind
+          otter.rotation.x += (-1.25 - otter.rotation.x)*Math.min(1,dt*6);
+          otter.rotation.z += (otter.userData.bank*0.4 - otter.rotation.z)*Math.min(1,dt*6);
+          if(arms){ const a=-2.35+Math.sin(gait)*0.35; arms[0].rotation.set(a,0,-0.22); arms[1].rotation.set(-2.35+Math.sin(gait+Math.PI)*0.35,0,0.22); }
+          if(legs){ const f=Math.sin(gait*1.6); legs[0].rotation.x=0.25+f*0.3; legs[1].rotation.x=0.25-f*0.3; }
+          if(head) head.rotation.x += (0.85 - head.rotation.x)*Math.min(1,dt*6);
         } else {
-          // surface paddle: float upright-ish, breaststroke arms in front, gentle leg kick
-          otter.rotation.x += (-0.28 - otter.rotation.x)*Math.min(1,dt*6);
-          otter.rotation.z = otter.userData.bank*0.4;
-          const s=(Math.sin(gait)*0.5+0.5);                 // 0..1 paddle cycle
-          if(arms){ arms[0].rotation.set(-0.5 - s*0.8, 0, -0.5); arms[1].rotation.set(-0.5 - s*0.8, 0, 0.5); }
-          if(legs){ const f=Math.sin(gait*1.6); legs[0].rotation.x=f*0.3; legs[1].rotation.x=-f*0.3; }
-          if(head) head.rotation.x += (-0.05 - head.rotation.x)*Math.min(1,dt*6);
+          // surface: float just under, gentle doggy-paddle, head up
+          otter.rotation.x += (-0.18 - otter.rotation.x)*Math.min(1,dt*7);
+          otter.rotation.z += (otter.userData.bank*0.35 - otter.rotation.z)*Math.min(1,dt*7);
+          const s=Math.sin(gait);
+          if(arms){ arms[0].rotation.set(-0.75+s*0.55,0,-0.42); arms[1].rotation.set(-0.75-s*0.55,0,0.42); }
+          if(legs){ const f=Math.sin(gait*1.5); legs[0].rotation.x=f*0.32; legs[1].rotation.x=-f*0.32; }
+          if(head) head.rotation.x += (0.08 - head.rotation.x)*Math.min(1,dt*7);
         }
-        if(otter.userData.tail) otter.userData.tail.rotation.z = Math.sin(t*7)*0.25;
+        if(otter.userData.tail) otter.userData.tail.rotation.z = Math.sin(t*8)*0.22;
       } else {
         otter.rotation.x += (0 - otter.rotation.x)*Math.min(1,dt*8);
         otter.rotation.z = otter.userData.bank*0.5;
@@ -3521,6 +3579,7 @@ function frame(){
         for(let bi=0;bi<bl.length;bi++){ const k=(bi+1)/bl.length; bl[bi].position.x = Math.sin(kp.userData.phase + bi*0.6)*0.28*k; bl[bi].rotation.z = Math.cos(kp.userData.phase + bi*0.6)*0.22*k; }
       }
       for(const c of corals){ c.userData.phase += dt*0.8; const s=c.userData.s0; const b=1+Math.sin(c.userData.phase)*0.025; c.scale.set(s*b,s*(2-b),s*b); c.rotation.z = Math.sin(c.userData.phase*0.7)*0.04; }
+      for(const sh of seahorses){ sh.userData.ph += dt*1.4; sh.position.y += Math.sin(sh.userData.ph)*dt*0.25; sh.rotation.y += dt*0.3; sh.rotation.z = Math.sin(sh.userData.ph*0.7)*0.12; }
       for(const an of anemones){ for(const tn of an.userData.tents){ tn.userData.ph += dt*2.2; tn.rotation.x = Math.sin(tn.userData.ph)*0.4; tn.rotation.z = Math.cos(tn.userData.ph*0.8)*0.3; } }
       // marine snow drifts upward & loops
       if(marineSnow){ const pa=marineSnow.geometry.attributes.position; for(let i=0;i<pa.count;i++){ let y=pa.getY(i)+dt*0.4; if(y>SEABED_Y+9.5) y=SEABED_Y; pa.setY(i,y); } pa.needsUpdate=true; marineSnow.rotation.y += dt*0.02; }
@@ -3826,7 +3885,7 @@ function drawMiniMap(){
 }
 
 // ===================== Simple economy: carry & build-plots =====================
-const RES3 = { wood:{icon:'🪵', col:0xb07a45}, rock:{icon:'🪨', col:0x9aa6b2} };
+const RES3 = { wood:{icon:'🪵', col:0xb07a45}, rock:{icon:'🪨', col:0x9aa6b2}, metal:{icon:'🔩', col:0xc9a23a}, shell:{icon:'🐚', col:0xffd9e6} };
 const CARRY_MAX = 3;
 const carry = [];                       // up to 3 of 'wood' | 'rock'
 const carryVis = new THREE.Group(); scene.add(carryVis);
@@ -3840,9 +3899,11 @@ function pickUpRes(kind){
 function rebuildCarryVis(){
   while(carryVis.children.length) carryVis.remove(carryVis.children[0]);
   carry.forEach((k,i)=>{
-    let m;
-    if(k==='wood'){ m=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.5,8), new THREE.MeshStandardMaterial({color:0xb07a45,roughness:0.85})); m.rotation.z=Math.PI/2; }
-    else m=new THREE.Mesh(new THREE.DodecahedronGeometry(0.2,0), new THREE.MeshStandardMaterial({color:0x9aa6b2,roughness:1}));
+    let m; const c=(RES3[k]&&RES3[k].col)||0xffffff;
+    if(k==='wood'){ m=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.5,8), new THREE.MeshStandardMaterial({color:c,roughness:0.85})); m.rotation.z=Math.PI/2; }
+    else if(k==='metal'){ m=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.18,0.22), new THREE.MeshStandardMaterial({color:c,metalness:0.7,roughness:0.35})); }
+    else if(k==='shell'){ m=new THREE.Mesh(new THREE.SphereGeometry(0.2,10,7,0,Math.PI*2,0,Math.PI*0.6), new THREE.MeshStandardMaterial({color:c,roughness:0.5,side:THREE.DoubleSide})); }
+    else m=new THREE.Mesh(new THREE.DodecahedronGeometry(0.2,0), new THREE.MeshStandardMaterial({color:c,roughness:1}));
     m.position.y=i*0.26; m.castShadow=true; carryVis.add(m);
   });
 }
@@ -3856,8 +3917,12 @@ const BLUEPRINTS = [
   { bid:'well',    icon:'⛲', name:'Stone Well',    need:{rock:6,wood:2},   lvl:2 },
   { bid:'dock',    icon:'⛵', name:'Little Dock',   need:{wood:6,rock:2},   lvl:2 },
   { bid:'tree',    icon:'🌳', name:'Big Tree',      need:{wood:5},          lvl:2 },
-  { bid:'aquarium',icon:'🐠', name:'Aquarium',      need:{rock:8,wood:6},   lvl:3 },
+  { bid:'aquarium',icon:'🐠', name:'Aquarium',      need:{rock:8,shell:4},  lvl:3 },
   { bid:'tower',   icon:'🏯', name:'Lantern Tower', need:{rock:10,wood:8},  lvl:4 },
+  // industrial — need 🔩 metal, and earn 🦪 pearls every day
+  { bid:'sawmill', icon:'🪚', name:'Sawmill',       need:{wood:6,metal:2},        lvl:2 },
+  { bid:'smelter', icon:'🏭', name:'Smelter',       need:{rock:6,metal:4},        lvl:3 },
+  { bid:'workshop',icon:'⚙️', name:'Workshop',      need:{wood:6,rock:4,metal:5}, lvl:4 },
 ];
 const sites = [];
 function needStr(need){ return Object.entries(need).map(([k,v])=>RES3[k].icon+v).join(' '); }
