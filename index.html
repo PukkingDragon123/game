@@ -156,6 +156,15 @@
     transition: transform .12s cubic-bezier(.34,1.56,.64,1);
   }
   #industryBtn:active { transform: scale(.86) rotate(-8deg); }
+  #buildBtn {
+    position:absolute; left:12px; bottom: calc(env(safe-area-inset-bottom) + 14px);
+    pointer-events:auto; cursor:pointer; display:flex; align-items:center; gap:7px;
+    border:3px solid var(--pxbd); border-radius:0; background:var(--panel-lite); color:#fff;
+    font-family:var(--hand); font-size:21px; padding:9px 14px; box-shadow:0 5px 0 0 var(--pxbd);
+  }
+  #buildBtn .bbI{ font-size:23px; } #buildBtn .bbT{ letter-spacing:.5px; }
+  #buildBtn:active { box-shadow:none; transform:translateY(5px); }
+  #buildBtn.hidden{ display:none; }
 
   #editBtn {
     position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 104px); right: 12px;
@@ -630,7 +639,7 @@
   <div id="pantryHud">🐟 0 · 🫐 0 · 🍎 0</div>
 
   <button id="fishBtn" title="Fish Collection">🐠</button>
-  <button id="industryBtn" title="Industry (I)">🏭</button>
+  <button id="buildBtn" title="Build (B)"><span class="bbI">🏗️</span><span class="bbT">Build</span></button>
 
   <!-- Oxygen + depth (diving only) -->
   <div id="diveHud" class="hidden">
@@ -3262,8 +3271,6 @@ function currentAction(){
   if(state.sailing) return {icon:'⚓', label:'Dock'};
   if(!state.diving && boatNear()) return {icon:'⛵', label:'Set sail'};
   if(mailboxNear()) return {icon:'📬', label:'Read mail'};
-  if(walrusNear()) return {icon:'🔨', label:'Build'};
-  if(bakeryNear()) return {icon:'🍳', label:'Cook'};
   if(nearestNPCInRange()) return {icon:'💬', label:'Talk'};
   if(nearestChestPickup()) return {icon:'🏴‍☠️', label:'Open'};
   const nd=nearestForageReady();
@@ -3284,8 +3291,6 @@ function interact(){
   if(state.sailing){ disembark(); return; }
   if(!state.diving && boatNear()){ boardBoat(); return; }
   if(mailboxNear()){ readMail(); return; }
-  if(walrusNear()){ toast('🔨 Sven: "What shall I build for ye today?"'); openForge(); return; }
-  if(bakeryNear()){ openCookMenu(); return; }
   const npc=nearestNPCInRange(); if(npc){ openDialogue(npc); return; }
   const cp=nearestChestPickup(); if(cp){ openChestPickup(cp); return; }
   // delivering to a construction site takes priority when standing on one
@@ -3317,8 +3322,8 @@ window.addEventListener('keydown',e=>{
   if(fishing){ if(k===' '||k==='e'||k==='enter'){ e.preventDefault(); fishingClick(); } return; }
   if(k==='e'||k==='enter'||k===' '){ if(!e.repeat){ e.preventDefault(); interact(); } }
   if(k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
-  if(k==='i'){ if(!e.repeat){ e.preventDefault(); if($('#industryPanel').classList.contains('hidden')) openIndustry(); else closeIndustry(); } }
-  if(k==='c'){ if(!e.repeat) openForge(); }
+  if(k==='b'||k==='c'){ if(!e.repeat){ if(buildMode) exitBuildMode(); else enterBuildMode(); } }
+  if(k==='x'){ if(!e.repeat && buildMode) toggleDelete(); }
   if(k==='r'){ if(!e.repeat && buildMode) buildRotate(); }
   if(k==='escape'){ if(buildMode){ exitBuildMode(); return; } $('#invPanel')&&!$('#invPanel').classList.contains('hidden')&&closeInv(); closeBlueprint(); closeCook(); closeForge&&closeForge(); closeIndustry&&closeIndustry(); closeDialogue&&closeDialogue(); }
   if(k>='1'&&k<='8'){ state.hotsel=(+k)-1; renderHotbar(); }
@@ -3378,6 +3383,7 @@ $('#forgeClose')?.addEventListener('click', closeForge);
 $('#forgePanel')?.addEventListener('click', e=>{ if(e.target.id==='forgePanel') closeForge(); });
 $('#forgeBuild')?.addEventListener('click', ()=>{ closeForge(); enterBuildMode(); });
 $('#forgeDeposit')?.addEventListener('click', depositToStock);
+$('#buildBtn')?.addEventListener('click', enterBuildMode);
 $('#industryBtn')?.addEventListener('click', openIndustry);
 $('#indClose')?.addEventListener('click', closeIndustry);
 $('#industryPanel')?.addEventListener('click', e=>{ if(e.target.id==='industryPanel') closeIndustry(); });
@@ -3884,6 +3890,9 @@ function frame(){
     }
     if(industryChanged && !$('#industryPanel').classList.contains('hidden')) renderIndustry();
 
+    // ----- factory tycoon: droppers produce, belts carry, processors refine, market sells -----
+    updateFactory(dt);
+
     // ----- building animations (saw spin, smoke, aquarium fish) -----
     islandGroup.children.forEach(ch=>{
       if(ch.userData.spin){ ch.userData.active ? ch.userData.spin.rotation.y += dt*14 : ch.userData.spin.rotation.y += dt*0.6; }
@@ -4099,20 +4108,20 @@ function rebuildCarryVis(){
 function addPearls(n){ state.coins+=n; updateEconomyHUD('pearl'); }
 
 // blueprints reuse the existing building meshes; costs are wood/rock only
+// ---------- Factory tycoon: droppers → conveyors → processors → market ----------
+// Each blueprint is a machine you place for 🦪 (coins). `fx` describes its behaviour.
+const FX_ICON  = { wood:'🪵', stone:'🪨', ore:'🟠', plank:'📦', ingot:'🔩', gear:'⚙️' };
+const FX_COL   = { wood:0xb07a45, stone:0x9aa6b2, ore:0xcc7a33, plank:0xd8b377, ingot:0xc9c2cf, gear:0xe0b020 };
+const FX_VALUE = { wood:2, stone:2, ore:4, plank:6, ingot:11, gear:24 };   // 🦪 paid at the Market
 const BLUEPRINTS = [
-  { bid:'hut',     icon:'🛖', name:'Otter Hut',    need:{wood:4},          lvl:1 },
-  { bid:'garden',  icon:'🌷', name:'Garden',       need:{wood:2,rock:1},   lvl:1 },
-  { bid:'house',   icon:'🏠', name:'Cozy House',   need:{wood:6,rock:3},   lvl:1 },
-  { bid:'well',    icon:'⛲', name:'Stone Well',    need:{rock:6,wood:2},   lvl:2 },
-  { bid:'dock',    icon:'⛵', name:'Little Dock',   need:{wood:6,rock:2},   lvl:2 },
-  { bid:'tree',    icon:'🌳', name:'Big Tree',      need:{wood:5},          lvl:2 },
-  { bid:'aquarium',icon:'🐠', name:'Aquarium',      need:{rock:8,shell:4},  lvl:3 },
-  { bid:'tower',   icon:'🏯', name:'Lantern Tower', need:{rock:10,wood:8},  lvl:4 },
-  // industrial — staff with a 👷 worker; they auto-refine your stockpile
-  { bid:'greenhouse',icon:'🌱', name:'Greenhouse',  need:{wood:4,shell:2},        lvl:2 },
-  { bid:'sawmill', icon:'🪚', name:'Sawmill',       need:{wood:6,rock:2},         lvl:2 },
-  { bid:'smelter', icon:'🏭', name:'Smelter',       need:{rock:6,wood:4},         lvl:3 },
-  { bid:'workshop',icon:'⚙️', name:'Workshop',      need:{wood:6,rock:4,metal:3}, lvl:4 },
+  { bid:'belt',    icon:'➡️', name:'Conveyor', cost:6,   lvl:1, fx:{kind:'belt'} },
+  { bid:'logger',  icon:'🌲', name:'Logger',    cost:24,  lvl:1, fx:{kind:'dropper', out:'wood',  rate:1.8} },
+  { bid:'quarry',  icon:'⛰️', name:'Quarry',    cost:28,  lvl:1, fx:{kind:'dropper', out:'stone', rate:2.0} },
+  { bid:'mine',    icon:'⛏️', name:'Ore Mine',  cost:44,  lvl:1, fx:{kind:'dropper', out:'ore',   rate:2.4} },
+  { bid:'sawmill2',icon:'🪚', name:'Sawmill',   cost:55,  lvl:1, fx:{kind:'proc', in:'wood',  out:'plank', time:1.6} },
+  { bid:'smelter2',icon:'🏭', name:'Smelter',   cost:90,  lvl:1, fx:{kind:'proc', in:'ore',   out:'ingot', time:2.0} },
+  { bid:'press',   icon:'⚙️', name:'Workshop',  cost:150, lvl:1, fx:{kind:'proc', in:'ingot', out:'gear',  time:2.6} },
+  { bid:'market',  icon:'💰', name:'Market',    cost:45,  lvl:1, fx:{kind:'seller'} },
 ];
 const sites = [];
 function needStr(need){ return Object.entries(need).map(([k,v])=>RES3[k].icon+v).join(' '); }
@@ -4259,50 +4268,210 @@ function renderIndustry(){
 function openIndustry(){ renderIndustry(); $('#industryPanel').classList.remove('hidden'); }
 function closeIndustry(){ $('#industryPanel').classList.add('hidden'); }
 
+// ================= FACTORY SIM (droppers • conveyors • processors • market) =================
+const factory = {};                 // "ix,iz" -> machine
+const FX_DIR = [[0,1],[1,0],[0,-1],[-1,0]];   // rot 0..3 → output (dix,diz); matches rotation.y = rot*PI/2
+const FX_STEP = 0.30;               // seconds per transport step
+let fxAcc = 0;
+const fxKey = (ix,iz)=> ix+','+iz;
+const fxItemGeo = new THREE.IcosahedronGeometry(0.18,0);
+function fxNeighbor(m){ const d=FX_DIR[m.dir]; return factory[fxKey(m.ix+d[0], m.iz+d[1])] || null; }
+function fxOutItem(m){
+  if(m.fx.kind==='belt')    return m.item;
+  if(m.fx.kind==='dropper') return m.item;
+  if(m.fx.kind==='proc')    return m.pstate==='done' ? m.item : null;
+  return null;
+}
+function fxCanAccept(m, it){
+  if(m.fx.kind==='belt')   return m.item==null;
+  if(m.fx.kind==='seller') return true;
+  if(m.fx.kind==='proc')   return m.pstate==='idle' && it===m.fx.in;
+  return false;            // droppers don't accept
+}
+function fxDeposit(tgt, it, from){
+  if(tgt.fx.kind==='seller'){
+    addPearls(FX_VALUE[it]||1);
+    spawnBurst(new THREE.Vector3(tgt.x, GRASS_Y+1.0, tgt.z), 0xffe07a);
+    beep(740,0.04,'triangle',0.04);
+    return;
+  }
+  tgt.item=it; tgt.itemFrom={x:from.x,z:from.z}; tgt.itemT=0;
+  if(tgt.fx.kind==='proc'){ tgt.pstate='working'; tgt.ptimer=0; }
+}
+function fxClearOut(m){
+  if(m.fx.kind==='belt'){ m.item=null; }
+  else if(m.fx.kind==='dropper'){ m.item=null; m.dtimer=0; }
+  else if(m.fx.kind==='proc'){ m.item=null; m.pstate='idle'; m.ptimer=0; }
+}
+function fxStep(){
+  const list=Object.values(factory);
+  for(const m of list){ m._resv=false; m._move=null; }
+  const movers=[];
+  for(const m of list){ if(fxOutItem(m)!=null) movers.push(m); }
+  for(const m of movers){
+    const tgt=fxNeighbor(m), it=fxOutItem(m);
+    if(tgt && !tgt._resv && fxCanAccept(tgt,it)){ m._move=tgt; tgt._resv=true; }
+  }
+  for(const m of movers){
+    if(!m._move) continue;
+    fxDeposit(m._move, fxOutItem(m), m); fxClearOut(m);
+  }
+}
+function fxUpdateItemMesh(m, dt){
+  const show = (m.item!=null) && m.fx.kind!=='seller';
+  if(!show){ if(m.itemMesh) m.itemMesh.visible=false; return; }
+  if(!m.itemMesh){
+    m.itemMesh=new THREE.Mesh(fxItemGeo, new THREE.MeshStandardMaterial({roughness:0.5}));
+    m.itemMesh.castShadow=true; islandGroup.add(m.itemMesh);
+  }
+  const mat=m.itemMesh.material;
+  if(mat._id!==m.item){ const c=FX_COL[m.item]||0xffffff; mat.color.setHex(c); mat.emissive.setHex(c); mat.emissiveIntensity=0.2; mat._id=m.item; }
+  m.itemMesh.visible=true;
+  if(m.itemT<1) m.itemT=Math.min(1, m.itemT + dt/FX_STEP);
+  let px=m.x, pz=m.z;
+  if(m.itemFrom && m.itemT<1){ px=THREE.MathUtils.lerp(m.itemFrom.x,m.x,m.itemT); pz=THREE.MathUtils.lerp(m.itemFrom.z,m.z,m.itemT); }
+  const yy = GRASS_Y + (m.fx.kind==='belt'?0.32:0.55) + Math.sin(performance.now()*0.005+m.ix)*0.03;
+  m.itemMesh.position.set(px,yy,pz); m.itemMesh.rotation.y += dt*2.5;
+}
+function updateFactory(dt){
+  // production / processing timers (smooth)
+  for(const k in factory){ const m=factory[k];
+    if(m.fx.kind==='dropper'){
+      if(m.item==null){ m.dtimer+=dt; if(m.dtimer>=m.fx.rate){ m.dtimer=0; m.item=m.fx.out; m.itemFrom=null; m.itemT=1; } }
+    } else if(m.fx.kind==='proc'){
+      if(m.pstate==='working'){ m.ptimer+=dt; if(m.ptimer>=m.fx.time){ m.pstate='done'; m.item=m.fx.out; m.itemFrom=null; m.itemT=1; } }
+      if(m.mesh) m.mesh.userData.active = (m.pstate==='working');
+      if(m.beltRoll!==undefined){} // none
+    } else if(m.fx.kind==='belt'){
+      // scroll the belt chevrons to suggest motion
+      if(m.mesh && m.mesh.userData.chev){ m.mesh.userData.scroll=(m.mesh.userData.scroll||0)+dt*1.6; const s=m.mesh.userData.scroll%1; m.mesh.userData.chev.forEach((cv,i)=>{ cv.position.z = -0.35 + ((s+i*0.5)%1)*0.7; }); }
+    }
+  }
+  // discrete transport steps
+  fxAcc+=dt; let n=0;
+  while(fxAcc>=FX_STEP && n<4){ fxAcc-=FX_STEP; fxStep(); n++; }
+  for(const k in factory){ fxUpdateItemMesh(factory[k], dt); }
+}
+function factoryCount(kind){ let n=0; for(const k in factory) if(factory[k].fx.kind===kind) n++; return n; }
+
+// ----- factory machine meshes (compact, top-down readable) -----
+function makeFxMesh(bp){
+  const g=new THREE.Group(); const fx=bp.fx;
+  const metalM=new THREE.MeshStandardMaterial({color:0x9aa0aa,metalness:0.6,roughness:0.4});
+  if(fx.kind==='belt'){
+    const base=new THREE.Mesh(new THREE.BoxGeometry(TILE*0.86,0.1,TILE*0.86), new THREE.MeshStandardMaterial({color:0x2c3038,roughness:0.8})); base.position.y=0.12; g.add(base);
+    const band=new THREE.Mesh(new THREE.BoxGeometry(TILE*0.6,0.04,TILE*0.84), new THREE.MeshStandardMaterial({color:0x3a4049,roughness:0.7})); band.position.y=0.19; g.add(band);
+    for(const sz of [-0.55,0.55]){ const rl=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,TILE*0.62,8),metalM); rl.rotation.z=Math.PI/2; rl.position.set(0,0.19,sz*0.6); g.add(rl); }
+    const chev=[];
+    for(let i=0;i<2;i++){ const c=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.22,3), new THREE.MeshStandardMaterial({color:0xffd166,emissive:0x6a5410,emissiveIntensity:0.5})); c.rotation.x=-Math.PI/2; c.position.set(0,0.23,-0.35+i*0.5); g.add(c); chev.push(c); }
+    g.userData.chev=chev;
+  } else if(fx.kind==='dropper'){
+    const col = fx.out==='wood'?0x4a8f3f : fx.out==='stone'?0x8a929c : 0xcc7a33;
+    const body=new THREE.Mesh(new THREE.BoxGeometry(TILE*0.8,0.9,TILE*0.8), new THREE.MeshStandardMaterial({color:0x6b6f78,roughness:0.85})); body.position.y=0.55; g.add(body);
+    const hop=new THREE.Mesh(new THREE.ConeGeometry(0.55,0.6,4), new THREE.MeshStandardMaterial({color:col,roughness:0.7})); hop.rotation.y=Math.PI/4; hop.position.y=1.25; g.add(hop);
+    const spout=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.3,0.4), metalM); spout.position.set(0,0.4,0.6); g.add(spout);
+    const sign=makeTextSprite(bp.icon,'#ffe7b0'); sign.position.set(0,1.95,0); sign.scale.set(1.0,1.0,1.0); g.add(sign);
+  } else if(fx.kind==='proc'){
+    const wallC = fx.out==='ingot'?0x6b5550 : fx.out==='gear'?0x5a6470 : 0x7a5a3a;
+    const wall=new THREE.Mesh(new THREE.BoxGeometry(TILE*0.86,1.2,TILE*0.86), new THREE.MeshStandardMaterial({color:wallC,roughness:0.85})); wall.position.y=0.7; g.add(wall);
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(TILE*0.92,0.16,TILE*0.92), new THREE.MeshStandardMaterial({color:0x3a3f47,metalness:0.4,roughness:0.5})); roof.position.y=1.35; g.add(roof);
+    const chimney=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.16,0.7,10), metalM); chimney.position.set(-0.45,1.75,-0.35); g.add(chimney);
+    const gear=new THREE.Group();
+    const disc=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.08,fx.out==='plank'?16:10), metalM); disc.rotation.x=Math.PI/2; gear.add(disc);
+    const teeth=fx.out==='plank'?16:8; for(let i=0;i<teeth;i++){ const tt=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.1,0.08), metalM); const a=i/teeth*Math.PI*2; tt.position.set(Math.cos(a)*0.38,Math.sin(a)*0.38,0); tt.rotation.z=a; gear.add(tt); }
+    gear.position.set(0.5,0.8,0.66); g.add(gear); g.userData.spin=gear; g.userData.active=false;
+    g.userData.chimney = new THREE.Vector3(-0.45,2.25,-0.35);
+    const sign=makeTextSprite(bp.icon,'#ffe7b0'); sign.position.set(0,2.1,0); sign.scale.set(1.0,1.0,1.0); g.add(sign);
+  } else if(fx.kind==='seller'){
+    const base=new THREE.Mesh(new THREE.BoxGeometry(TILE*0.82,0.3,TILE*0.82), new THREE.MeshStandardMaterial({color:0x8a6a44,roughness:0.9})); base.position.y=0.15; g.add(base);
+    const counter=new THREE.Mesh(new THREE.BoxGeometry(TILE*0.82,0.6,0.3), new THREE.MeshStandardMaterial({color:0xc9a23a,metalness:0.3,roughness:0.5})); counter.position.set(0,0.6,0.4); g.add(counter);
+    for(const sx of [-0.5,0.5]){ const p=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.3,6), new THREE.MeshStandardMaterial({color:0x7a4a28})); p.position.set(sx,1.0,-0.4); g.add(p); }
+    const awn=new THREE.Mesh(new THREE.BoxGeometry(TILE*0.92,0.12,0.9), new THREE.MeshStandardMaterial({color:0xe55a4a})); awn.position.set(0,1.6,0); g.add(awn);
+    const sign=makeTextSprite('💰','#ffe7b0'); sign.position.set(0,2.15,0); sign.scale.set(1.1,1.1,1.1); g.add(sign);
+  }
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  return g;
+}
+function placeFx(bp, tile, rot){
+  const m = makeFxMesh(bp);
+  m.position.set(tile.x, GRASS_Y, tile.z); m.rotation.y=(rot||0)*Math.PI/2; m.scale.setScalar(0.01); islandGroup.add(m);
+  growAnims.push({ obj:m, t:0 });
+  tile.used=true; tile.obj=m;
+  const mac={ type:bp.bid, fx:bp.fx, ix:tile.ix, iz:tile.iz, x:tile.x, z:tile.z, dir:rot||0, mesh:m,
+              item:null, dtimer:0, ptimer:0, pstate:'idle', itemT:1, itemFrom:null, itemMesh:null, cost:bp.cost };
+  factory[fxKey(tile.ix,tile.iz)] = mac;
+  state.placed.push({ obj:m, tile, def:bp, kind:'fx' });
+  state.builds++; gainXP(2);
+  beep(620,0.05,'triangle',0.05); spawnRing(m.position.clone().setY(GRASS_Y+0.1), 0x9be86a, 1.8);
+}
+function removeFxAt(tile){
+  const mac=factory[fxKey(tile.ix,tile.iz)]; if(!mac) return false;
+  const refund=Math.floor((mac.cost||0)/2); if(refund>0){ state.coins+=refund; updateEconomyHUD('pearl'); }
+  if(mac.itemMesh) islandGroup.remove(mac.itemMesh);
+  islandGroup.remove(mac.mesh);
+  delete factory[fxKey(tile.ix,tile.iz)];
+  const pi=state.placed.findIndex(p=>p.tile===tile); if(pi>=0) state.placed.splice(pi,1);
+  tile.used=false; tile.obj=null; state.builds=Math.max(0,state.builds-1);
+  spawnBurst(new THREE.Vector3(tile.x,GRASS_Y+0.5,tile.z), 0xffffff); beep(300,0.07,'square',0.05);
+  if(refund>0) toast(`♻️ Removed — refunded 🦪${refund}`);
+  return true;
+}
+
 // ---------- Top-down build mode (select • rotate • place) ----------
+let buildDelete=false;
 function enterBuildMode(){
   if(buildMode) return;
   if(state.diving||state.sailing){ toast('Come ashore to build!'); return; }
-  buildMode=true; buildRot=0;
+  buildMode=true; buildRot=0; buildDelete=false;
   buildCursor.set(otter.position.x*0.4, GRASS_Y, Math.min(otter.position.z, ISLAND_R-3));
   if(Math.hypot(buildCursor.x,buildCursor.z) > ISLAND_R-2) buildCursor.set(0,GRASS_Y,0);
-  buildBp = BLUEPRINTS.find(b=>state.level>=b.lvl) || BLUEPRINTS[0];
+  buildBp = BLUEPRINTS[0];
   makeGhost();
   renderBuildBar();
+  const bb=$('#buildBtn'); if(bb) bb.classList.add('hidden');
   $('#buildUI').classList.remove('hidden');
   closeBlueprint(); closeCook(); closeDialogue();
-  toast('🔨 Build mode — move to aim, 🔄 rotate, ✓ place.');
+  toast('🏭 Build: 🌲 dropper → ➡️ belts → 🏭 → 💰 Market. Aim, 🔄 rotate, ✓ place.');
 }
 function exitBuildMode(){
-  buildMode=false;
+  buildMode=false; buildDelete=false;
   if(buildGhost){ scene.remove(buildGhost); buildGhost=null; }
   $('#buildUI').classList.add('hidden');
+  const bb=$('#buildBtn'); if(bb) bb.classList.remove('hidden');
 }
 function makeGhost(){
   if(buildGhost){ scene.remove(buildGhost); buildGhost=null; }
-  buildGhost = makeBuilding(buildBp.bid);
+  buildGhost = makeFxMesh(buildBp);
   buildGhost.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.material=o.material.clone(); o.material.transparent=true; o.material.opacity=0.55; o.material.depthWrite=false; } });
   buildGhost.rotation.y = buildRot*Math.PI/2;
   scene.add(buildGhost);
 }
-function setBuildBp(bp){ if(state.level<bp.lvl){ toast(`🔒 Reach Village Lv ${bp.lvl}`); return; } buildBp=bp; makeGhost(); renderBuildBar(); beep(540,0.05,'triangle',0.04); }
+function setBuildBp(bp){ buildDelete=false; buildBp=bp; makeGhost(); renderBuildBar(); beep(540,0.05,'triangle',0.04); }
 function buildRotate(){ buildRot=(buildRot+1)%4; if(buildGhost) buildGhost.rotation.y=buildRot*Math.PI/2; beep(480,0.05,'triangle',0.04); }
 function buildPlaceTile(){ return tileAt(buildCursor.x, buildCursor.z); }
+function toggleDelete(){ buildDelete=!buildDelete; renderBuildBar(); if(buildGhost) buildGhost.visible=!buildDelete; toast(buildDelete?'🗑️ Bulldoze: aim & tap ✓ to remove (50% refund)':'🏗️ Build mode'); beep(buildDelete?300:520,0.05,'triangle',0.05); }
 function buildPlace(){
   const tl=buildPlaceTile();
-  if(!tl || tl.used){ toast('🚫 Can’t build there'); beep(180,0.08,'square'); return; }
-  startSite(tl, buildBp, buildRot);
-  spawnRing(new THREE.Vector3(tl.x,GRASS_Y+0.05,tl.z), 0x9be86a, 2.2); addShake(0.1);
+  if(!tl){ toast('🚫 Off the build area'); beep(180,0.08,'square'); return; }
+  if(buildDelete){ if(!removeFxAt(tl)){ toast('Nothing to remove here'); beep(180,0.07,'square'); } return; }
+  if(tl.used){ toast('🚫 Tile occupied'); beep(180,0.08,'square'); return; }
+  if(state.coins < buildBp.cost){ toast(`💸 Need 🦪${buildBp.cost} — sell goods at the 💰 Market!`); beep(180,0.08,'square'); return; }
+  state.coins -= buildBp.cost; updateEconomyHUD('pearl');
+  placeFx(buildBp, tl, buildRot);
+  addShake(0.06);
 }
 function renderBuildBar(){
   const bar=$('#buildChips'); if(!bar) return; bar.innerHTML='';
   BLUEPRINTS.forEach(bp=>{
-    const locked=state.level<bp.lvl;
-    const b=document.createElement('button'); b.className='bChip'+(bp===buildBp?' on':'')+(locked?' locked':'');
-    b.innerHTML=`<span class="bcI">${bp.icon}</span><span class="bcN">${bp.name}</span><span class="bcC">${locked?'Lv'+bp.lvl:needStr(bp.need)}</span>`;
+    const can=state.coins>=bp.cost;
+    const b=document.createElement('button'); b.className='bChip'+(bp===buildBp&&!buildDelete?' on':'')+(can?'':' locked');
+    b.innerHTML=`<span class="bcI">${bp.icon}</span><span class="bcN">${bp.name}</span><span class="bcC">🦪${bp.cost}</span>`;
     b.addEventListener('click',()=>setBuildBp(bp));
     bar.appendChild(b);
   });
+  const del=document.createElement('button'); del.className='bChip'+(buildDelete?' on':'');
+  del.innerHTML=`<span class="bcI">🗑️</span><span class="bcN">Bulldoze</span><span class="bcC">+50%</span>`;
+  del.addEventListener('click',toggleDelete); bar.appendChild(del);
 }
 function updateBuildMode(dt, dx, dz){
   const sp=14;
@@ -4310,14 +4479,17 @@ function updateBuildMode(dt, dx, dz){
   const d=Math.hypot(buildCursor.x,buildCursor.z), lim=ISLAND_R-1.5;
   if(d>lim){ const s=lim/d; buildCursor.x*=s; buildCursor.z*=s; }
   const tl=buildPlaceTile();
-  if(buildGhost){
+  if(buildGhost && !buildDelete){
+    buildGhost.visible=true;
     const gx = tl?tl.x:buildCursor.x, gz = tl?tl.z:buildCursor.z;
     buildGhost.position.set(gx, GRASS_Y, gz);
-    const ok = tl && !tl.used;
+    const ok = tl && !tl.used && state.coins>=buildBp.cost;
     buildGhost.traverse(o=>{ if(o.isMesh){ o.material.color && o.material.color.setHex(ok?0x9be86a:0xff6b6b); } });
-  }
-  // tile cursor highlight
-  if(tl){ tileCursor.visible=true; tileCursor.position.set(tl.x, TILE_Y+0.03, tl.z); tileCursor.material.color.setHex(tl.used?0xff6b6b:0x9be86a); }
+  } else if(buildGhost){ buildGhost.visible=false; }
+  // tile cursor highlight (green = valid action on this tile)
+  if(tl){ tileCursor.visible=true; tileCursor.position.set(tl.x, TILE_Y+0.03, tl.z);
+    const good = buildDelete ? tl.used : !tl.used;
+    tileCursor.material.color.setHex(good?0x9be86a:0xff6b6b); }
   else tileCursor.visible=false;
 }
 
@@ -4438,16 +4610,14 @@ function init(){
   generateIslands();         // scatter typed islands far across the ocean (rare villages)
   buildExtraIslands();       // resource / coral / pirate / village / treasure isles
   buildHomeDockAndMail();    // pier by the boat + a mailbox for daily letters
-  buildBakery();             // village kitchen — cook dishes to charm new villagers
-  buildWalrus();             // Sven the Walrus at his forge — talk to him to build
   scatterHazards();          // rock hazards out in the open ocean
   spawnSharks(5);            // hostile sharks patrol the open sea
   spawnSchools(8);           // ambient shimmering fish shoals
   for(let i=0;i<6;i++) spawnFish();
-  // deep-sea reef/fish/treasure are built lazily on first dive (keeps boot fast)
   scatterForage();           // 🌳 trees (wood) & 🪨 rocks (rock) to gather
-  // hide the old crafting/inventory UI — the game now uses carry + build-plots
-  ['#craftBtn','#placeBtn','#pickBtn','#editBtn','#bagBtn','#hotbar'].forEach(s=>{ const e=$(s); if(e) e.style.display='none'; });
+  state.coins = Math.max(state.coins, 120);  // seed money to bootstrap the first factory line
+  // hide retired UI — the game is now a build-button factory tycoon
+  ['#craftBtn','#placeBtn','#pickBtn','#editBtn','#bagBtn','#hotbar','#industryBtn'].forEach(s=>{ const e=$(s); if(e) e.style.display='none'; });
   updateResHUD(); updateStatsHUD(); updateEconomyHUD(); updateSurvivalHUD(); drawMiniMap();
   startTitleScene();         // cinematic sunset title until the player taps Play
 }
