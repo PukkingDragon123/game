@@ -147,6 +147,15 @@
     transition: transform .12s cubic-bezier(.34,1.56,.64,1);
   }
   #fishBtn:active { transform: scale(.86) rotate(8deg); }
+  #industryBtn {
+    position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 104px); right: 12px;
+    pointer-events:auto; cursor:pointer; width: 42px; height: 42px;
+    border:1.5px solid rgba(255,255,255,.2);
+    border-radius: 0; background: var(--panel); color:#fff; font-size:22px;
+    backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.28);
+    transition: transform .12s cubic-bezier(.34,1.56,.64,1);
+  }
+  #industryBtn:active { transform: scale(.86) rotate(-8deg); }
 
   #editBtn {
     position:absolute; top: calc(max(12px, env(safe-area-inset-top)) + 104px); right: 12px;
@@ -576,6 +585,21 @@
   #forgeTools{ display:flex; flex-direction:column; gap:6px; }
   #forgePanel{ position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); padding:18px; }
   #forgePanel.hidden{ display:none; }
+  /* industry panel */
+  #industryPanel{ position:fixed; inset:0; z-index:62; display:flex; align-items:center; justify-content:center; background:rgba(8,16,26,.5); padding:18px; }
+  #industryPanel.hidden{ display:none; }
+  #indList{ display:flex; flex-direction:column; gap:6px; max-height:46vh; overflow:auto; }
+  .indRow{ display:flex; align-items:center; gap:8px; border:3px solid var(--pxbd); background:var(--panel-lite); padding:7px 9px; box-shadow:0 4px 0 0 var(--pxbd); }
+  .indRow .iIcon{ font-size:24px; }
+  .indRow .iMid{ flex:1; display:flex; flex-direction:column; line-height:1.25; min-width:0; }
+  .indRow .iName{ font-size:18px; color:#ffe7b0; }
+  .indRow .iRec{ font-size:15px; opacity:.9; }
+  .indRow .iStat{ font-size:13px; }
+  .indRow .iStat.run{ color:#9be86a; } .indRow .iStat.idle{ color:#ffd166; } .indRow .iStat.off{ color:#ff8a8a; }
+  .indRow button{ pointer-events:auto; cursor:pointer; border:3px solid var(--pxbd); background:var(--panel); color:#fff; font-family:var(--hand); font-size:15px; padding:8px 10px; box-shadow:0 4px 0 0 var(--pxbd); white-space:nowrap; }
+  .indRow button:active{ box-shadow:none; transform:translateY(4px); }
+  .indRow button.on{ background:#3a5a3a; }
+  #indLabor{ text-align:center; }
 </style>
 </head>
 <body>
@@ -606,6 +630,7 @@
   <div id="pantryHud">🐟 0 · 🫐 0 · 🍎 0</div>
 
   <button id="fishBtn" title="Fish Collection">🐠</button>
+  <button id="industryBtn" title="Industry (I)">🏭</button>
 
   <!-- Oxygen + depth (diving only) -->
   <div id="diveHud" class="hidden">
@@ -638,6 +663,16 @@
       <div class="forgeRow"><button id="forgeBuild">🏗️ Build</button><button id="forgeDeposit">📦 Deposit carried</button></div>
       <p class="craftHint">Deposit gathered resources, then craft tools from the stockpile:</p>
       <div id="forgeTools"></div>
+    </div>
+  </div>
+
+  <!-- Industry: staff production chains with villagers -->
+  <div id="industryPanel" class="hidden">
+    <div class="craftCard">
+      <div class="invHead"><span id="craftTitle">🏭 Industry</span><button id="indClose" class="invX">✕</button></div>
+      <div id="indStock" class="forgeStock"></div>
+      <p class="craftHint" id="indLabor">Assign idle villagers to run your factories. They refine the stockpile automatically.</p>
+      <div id="indList"></div>
     </div>
   </div>
 
@@ -935,10 +970,15 @@ const BUILDINGS = [
   { id:'house',   icon:'🏠', name:'Cozy House',  cost:{wood:12,stone:6},         xp:40, pop:1, lvl:2, customizable:true },
   { id:'tree',    icon:'🌳', name:'Big Tree',     cost:{reed:5,wood:5,shell:3},   xp:30, pop:0, lvl:3 },
   { id:'tower',   icon:'🏯', name:'Lantern Tower',cost:{stone:14,wood:10,shell:6},xp:60,pop:2, lvl:4 },
-  // --- industrial (produce pearls each day) ---
-  { id:'sawmill', icon:'🪚', name:'Sawmill',     cost:{},  xp:30, pop:1, lvl:2, dayPearls:8 },
-  { id:'smelter', icon:'🏭', name:'Smelter',     cost:{},  xp:42, pop:1, lvl:3, dayPearls:16 },
-  { id:'workshop',icon:'⚙️', name:'Workshop',    cost:{},  xp:54, pop:1, lvl:4, dayPearls:26 },
+  // --- industrial production chains (need a 👷 worker; auto-refine the stockpile) ---
+  { id:'greenhouse',icon:'🌱', name:'Greenhouse',cost:{},  xp:26, pop:0, lvl:2,
+    produces:{ chain:true, out:{berry:1,fruit:1}, every:9 } },             //  → 🫐🍎 food
+  { id:'sawmill', icon:'🪚', name:'Sawmill',     cost:{},  xp:30, pop:0, lvl:2,
+    produces:{ chain:true, in:{wood:1}, out:{plank:1}, every:5 } },        // 🪵 → 📦 planks
+  { id:'smelter', icon:'🏭', name:'Smelter',     cost:{},  xp:42, pop:0, lvl:3,
+    produces:{ chain:true, in:{rock:2}, out:{metal:1}, every:6 } },        // 🪨 → 🔩 metal
+  { id:'workshop',icon:'⚙️', name:'Workshop',    cost:{},  xp:54, pop:0, lvl:4,
+    produces:{ chain:true, in:{plank:1,metal:1}, out:{pearl:9}, every:7 } },// 📦🔩 → 🦪 pearls
   // --- special actions (not placed on a tile) ---
   { id:'pet',     icon:'🐾', name:'Adopt Pet',   cost:{food:6},                  xp:20, lvl:2, special:'pet' },
   { id:'land',    icon:'🏝️', name:'Buy Land',    cost:{coins:30},                xp:25, lvl:1, special:'expand' },
@@ -998,7 +1038,7 @@ const state = {
   cooked: 0,
   jobs: { gatherer:0, fisher:0, cook:0 }, // assigned villager jobs (passive bonuses)
   hunger: 100, thirst: 100, energy: 100,  // survival stats
-  stock: { wood:0, rock:0, metal:0, shell:0 },  // home stockpile (deposit at the forge)
+  stock: { wood:0, rock:0, metal:0, shell:0, plank:0 },  // home stockpile (deposit at the forge)
   tools: { axe:false, pickaxe:false, rod:false }, // crafted tools
   swim: 1,           // swim stamina (open water); empties -> paddle back to shore
   oxygen: MAX_OXYGEN,
@@ -2488,6 +2528,18 @@ function makeBuilding(id, variant=0){
     const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.95,12,1,false,0,Math.PI),new THREE.MeshStandardMaterial({color:0xb87a40})); lid.rotation.z=Math.PI/2; lid.position.y=0.6; g.add(lid);
     for(const yy of [0.3,0.6]){ const band=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.07,0.7),new THREE.MeshStandardMaterial({color:0x5a3a22})); band.position.y=yy; g.add(band); }
     const lock=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.18,0.05),new THREE.MeshStandardMaterial({color:0xffd24a,metalness:0.6,roughness:0.3})); lock.position.set(0,0.34,0.34); g.add(lock);
+  } else if(id==='greenhouse'){
+    // little glass greenhouse with rows of sprouts inside
+    const base=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.3,1.3),new THREE.MeshStandardMaterial({color:0x8a6a44,roughness:0.9})); base.position.y=0.15; g.add(base);
+    const glassM=new THREE.MeshStandardMaterial({color:0xbfeefe,roughness:0.1,metalness:0.1,transparent:true,opacity:0.4});
+    const walls=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.0,1.2),glassM); walls.position.y=0.8; g.add(walls);
+    const roofA=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.85,0.6,4,1,true),glassM); roofA.rotation.y=Math.PI/4; roofA.position.y=1.55; roofA.scale.z=1.45; g.add(roofA);
+    const sprouts=[];
+    for(let i=0;i<6;i++){ const sx=(i%3-1)*0.45, sz=(i<3?-0.3:0.3);
+      const st=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.45,5),new THREE.MeshStandardMaterial({color:0x4a8f3f})); st.position.set(sx,0.55,sz); g.add(st);
+      const lf=new THREE.Mesh(new THREE.SphereGeometry(0.13,8,7),new THREE.MeshStandardMaterial({color:i%2?0x6a6ad9:0xff5e5e})); lf.position.set(sx,0.82,sz); lf.scale.y=0.8; g.add(lf); sprouts.push(lf);
+    }
+    g.userData.float = false;
   } else if(id==='sawmill'||id==='smelter'||id==='workshop'){
     // industrial: stone/metal building with a chimney (smoke) + a spinning gear
     const wallC = id==='smelter'?0x6b5550 : id==='workshop'?0x5a6470 : 0x7a5a3a;
@@ -2750,8 +2802,29 @@ function toast(msg){
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1800);
 }
 
-const producers = [];   // { building, def, timer } for manufacture facilities
+const producers = [];   // { building, def, timer, worker } production-chain facilities
 function pay(cost){ for(const k in cost) spend(k, cost[k]); }
+
+// ----- production-chain resource routing (pearls / pantry food / stockpile) -----
+const GOOD_ICON = { wood:'🪵', rock:'🪨', metal:'🔩', shell:'🐚', plank:'📦', berry:'🫐', fruit:'🍎', fish:'🐟', pearl:'🦪' };
+const GOOD_COL  = { wood:0xb07a45, rock:0x9aa6b2, metal:0xc9a23a, shell:0xffd9e6, plank:0xd8b377, berry:0x6a6ad9, fruit:0xff5e5e, fish:0x8fb0c4, pearl:0xeaf6ff };
+function resGet(k){ if(k==='pearl') return state.coins; if(k in state.pantry) return state.pantry[k]; return state.stock[k]||0; }
+function resAdd(k,n){ if(k==='pearl'){ addPearls(n); return; } if(k in state.pantry) state.pantry[k]+=n; else state.stock[k]=(state.stock[k]||0)+n; }
+function resTake(k,n){ if(k in state.pantry) state.pantry[k]=Math.max(0,state.pantry[k]-n); else state.stock[k]=Math.max(0,(state.stock[k]||0)-n); }
+function recipeStr(d){
+  const ins = d.in ? Object.entries(d.in).map(([k,v])=>GOOD_ICON[k]+v).join('') : '∅';
+  const outs= Object.entries(d.out).map(([k,v])=>GOOD_ICON[k]+v).join('');
+  return `${ins} → ${outs}`;
+}
+// labor pool: villagers (population) staff the factories
+function assignedWorkers(){ return producers.reduce((n,p)=>n+(p.worker?1:0),0); }
+function idleWorkers(){ return Math.max(0, (state.pop||0) - assignedWorkers()); }
+function toggleWorker(pr){
+  if(pr.worker){ pr.worker=false; beep(360,0.06,'triangle'); }
+  else if(idleWorkers()>0){ pr.worker=true; pr.timer=0; beep(660,0.06,'triangle'); setTimeout(()=>beep(880,0.07,'triangle'),60); }
+  else { toast('👷 No idle villagers — recruit more at the dock!'); beep(180,0.08,'square'); return; }
+  renderIndustry(); updateStatsHUD();
+}
 
 // ----- place a crafted building/furniture item from the inventory onto a tile -----
 function doPlaceBuild(b, tile, rot){
@@ -2760,7 +2833,7 @@ function doPlaceBuild(b, tile, rot){
   m.position.set(tile.x, GRASS_Y, tile.z); m.rotation.y=(rot||0)*Math.PI/2; m.scale.setScalar(0.01); islandGroup.add(m);
   tile.obj=m; state.placed.push({ obj:m, tile, def:b, kind:'build' });
   growAnims.push({ obj:m, t:0 });
-  if(b.produces) producers.push({ building:m, def:b.produces, timer:0 });
+  if(b.produces){ producers.push({ building:m, def:b.produces, timer:0, worker:false, name:b.name, icon:b.icon }); toast('👷 Open Industry (🏭) to staff it with a worker!'); }
   if(b.storage){ state.chests.push({ obj:m, slots:new Array(24).fill(null) }); toast('📦 Stand on it & press E to open storage'); }
   state.builds++; state.pop += b.pop||0; if(b.pop>0) addFollower();
   gainXP(b.xp); flashGrid();
@@ -3243,10 +3316,11 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(fishing){ if(k===' '||k==='e'||k==='enter'){ e.preventDefault(); fishingClick(); } return; }
   if(k==='e'||k==='enter'||k===' '){ if(!e.repeat){ e.preventDefault(); interact(); } }
-  if(k==='i'||k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
+  if(k==='tab'){ if(!e.repeat){ e.preventDefault(); toggleInv(); } }
+  if(k==='i'){ if(!e.repeat){ e.preventDefault(); if($('#industryPanel').classList.contains('hidden')) openIndustry(); else closeIndustry(); } }
   if(k==='c'){ if(!e.repeat) openForge(); }
   if(k==='r'){ if(!e.repeat && buildMode) buildRotate(); }
-  if(k==='escape'){ if(buildMode){ exitBuildMode(); return; } $('#invPanel')&&!$('#invPanel').classList.contains('hidden')&&closeInv(); closeBlueprint(); closeCook(); closeDialogue&&closeDialogue(); }
+  if(k==='escape'){ if(buildMode){ exitBuildMode(); return; } $('#invPanel')&&!$('#invPanel').classList.contains('hidden')&&closeInv(); closeBlueprint(); closeCook(); closeForge&&closeForge(); closeIndustry&&closeIndustry(); closeDialogue&&closeDialogue(); }
   if(k>='1'&&k<='8'){ state.hotsel=(+k)-1; renderHotbar(); }
   keys[k]=true;
 });
@@ -3304,6 +3378,9 @@ $('#forgeClose')?.addEventListener('click', closeForge);
 $('#forgePanel')?.addEventListener('click', e=>{ if(e.target.id==='forgePanel') closeForge(); });
 $('#forgeBuild')?.addEventListener('click', ()=>{ closeForge(); enterBuildMode(); });
 $('#forgeDeposit')?.addEventListener('click', depositToStock);
+$('#industryBtn')?.addEventListener('click', openIndustry);
+$('#indClose')?.addEventListener('click', closeIndustry);
+$('#industryPanel')?.addEventListener('click', e=>{ if(e.target.id==='industryPanel') closeIndustry(); });
 
 // ----- inventory wiring -----
 function toggleInv(){
@@ -3784,29 +3861,33 @@ function frame(){
     miniTick += dt;
     if(miniTick>0.1){ miniTick=0; drawMiniMap(); }
 
-    // ----- manufacture facilities tick -----
+    // ----- production-chain facilities tick (staffed = running) -----
+    let industryChanged=false;
     for(const pr of producers){
-      pr.timer += dt;
-      if(pr.timer >= pr.def.every){
-        pr.timer = 0;
-        if(pr.def.in==='fish'){            // fish factory: fish -> food
-          if(countItem('fish')>0){
-            removeItem('fish',1);
-            const gain = 1 + Math.floor(Math.random()*2);
-            addItem('food',gain); updateResHUD('food');
-            spawnBurst(pr.building.position.clone().setY(2.4), 0xff9d4d);
+      const d=pr.def, m=pr.building; let running=false;
+      if(pr.worker){
+        let ok=true;
+        if(d.in){ for(const k in d.in){ if(resGet(k) < d.in[k]){ ok=false; break; } } }
+        if(ok){
+          running=true; pr.timer += dt;
+          if(pr.timer >= d.every){
+            pr.timer = 0;
+            if(d.in) for(const k in d.in) resTake(k, d.in[k]);
+            for(const k in d.out){ resAdd(k, d.out[k]); spawnBurst(m.position.clone().setY(2.3), GOOD_COL[k]||0xffffff); }
+            beep(d.out.pearl?760:520, 0.05, 'triangle', 0.04);
+            updateEconomyHUD(d.out.pearl?'pearl':null); renderForge(); industryChanged=true;
           }
-        } else {                            // wood cutter etc: passive output
-          addItem(pr.def.out, pr.def.amount); updateResHUD(pr.def.out);
-          spawnBurst(pr.building.position.clone().setY(1.9), (RES[pr.def.out]&&RES[pr.def.out].color)||0xffffff);
-        }
-      }
+        } else { pr.timer=0; pr.starved=true; }
+        pr.starved = !ok;
+      } else pr.timer=0;
+      m.userData.active = running;        // gear/spin only turns while producing
     }
+    if(industryChanged && !$('#industryPanel').classList.contains('hidden')) renderIndustry();
 
     // ----- building animations (saw spin, smoke, aquarium fish) -----
     islandGroup.children.forEach(ch=>{
-      if(ch.userData.spin) ch.userData.spin.rotation.y += dt*14;
-      if(ch.userData.chimney && Math.random()<0.04){
+      if(ch.userData.spin){ ch.userData.active ? ch.userData.spin.rotation.y += dt*14 : ch.userData.spin.rotation.y += dt*0.6; }
+      if(ch.userData.chimney && ch.userData.active!==false && Math.random()<0.04){
         spawnBurst(ch.localToWorld(ch.userData.chimney.clone()), 0xd9d9d9);
       }
       if(ch.userData.tank){
@@ -4027,10 +4108,11 @@ const BLUEPRINTS = [
   { bid:'tree',    icon:'🌳', name:'Big Tree',      need:{wood:5},          lvl:2 },
   { bid:'aquarium',icon:'🐠', name:'Aquarium',      need:{rock:8,shell:4},  lvl:3 },
   { bid:'tower',   icon:'🏯', name:'Lantern Tower', need:{rock:10,wood:8},  lvl:4 },
-  // industrial — need 🔩 metal, and earn 🦪 pearls every day
-  { bid:'sawmill', icon:'🪚', name:'Sawmill',       need:{wood:6,metal:2},        lvl:2 },
-  { bid:'smelter', icon:'🏭', name:'Smelter',       need:{rock:6,metal:4},        lvl:3 },
-  { bid:'workshop',icon:'⚙️', name:'Workshop',      need:{wood:6,rock:4,metal:5}, lvl:4 },
+  // industrial — staff with a 👷 worker; they auto-refine your stockpile
+  { bid:'greenhouse',icon:'🌱', name:'Greenhouse',  need:{wood:4,shell:2},        lvl:2 },
+  { bid:'sawmill', icon:'🪚', name:'Sawmill',       need:{wood:6,rock:2},         lvl:2 },
+  { bid:'smelter', icon:'🏭', name:'Smelter',       need:{rock:6,wood:4},         lvl:3 },
+  { bid:'workshop',icon:'⚙️', name:'Workshop',      need:{wood:6,rock:4,metal:3}, lvl:4 },
 ];
 const sites = [];
 function needStr(need){ return Object.entries(need).map(([k,v])=>RES3[k].icon+v).join(' '); }
@@ -4139,7 +4221,7 @@ function craftTool(t){
   renderForge();
 }
 function renderForge(){
-  const s=$('#forgeStock'); if(s) s.textContent = `Stockpile —  ${RES3.wood.icon}${state.stock.wood}  ${RES3.rock.icon}${state.stock.rock}  ${RES3.metal.icon}${state.stock.metal}  ${RES3.shell.icon}${state.stock.shell}`;
+  const s=$('#forgeStock'); if(s) s.textContent = `Stockpile —  ${RES3.wood.icon}${state.stock.wood}  ${RES3.rock.icon}${state.stock.rock}  ${RES3.metal.icon}${state.stock.metal}  📦${state.stock.plank}  ${RES3.shell.icon}${state.stock.shell}`;
   const list=$('#forgeTools'); if(!list) return; list.innerHTML='';
   FORGE_TOOLS.forEach(t=>{
     const owned=state.tools[t.id], ok=!owned&&stockHas(t.cost);
@@ -4151,6 +4233,31 @@ function renderForge(){
 }
 function openForge(){ renderForge(); $('#forgePanel').classList.remove('hidden'); }
 function closeForge(){ $('#forgePanel').classList.add('hidden'); }
+
+// ---------- Industry: staff production chains with villagers ----------
+function renderIndustry(){
+  const st=$('#indStock'); if(st) st.textContent = `Stockpile —  🪵${state.stock.wood}  🪨${state.stock.rock}  🔩${state.stock.metal}  📦${state.stock.plank}  🐚${state.stock.shell}`;
+  const lab=$('#indLabor'); if(lab) lab.innerHTML = `👷 <b>${idleWorkers()}</b> idle villager${idleWorkers()===1?'':'s'} · ${assignedWorkers()} working · ${state.pop} total`;
+  const list=$('#indList'); if(!list) return; list.innerHTML='';
+  if(!producers.length){ list.innerHTML='<p class="craftHint">Build a 🌱 Greenhouse, 🪚 Sawmill, 🏭 Smelter or ⚙️ Workshop, then staff it here.</p>'; return; }
+  producers.forEach(pr=>{
+    const d=pr.def;
+    let stat, cls;
+    if(!pr.worker){ stat='⏸️ no worker'; cls='off'; }
+    else if(pr.starved){ stat='📭 needs '+ (d.in?Object.keys(d.in).map(k=>GOOD_ICON[k]).join(''):''); cls='idle'; }
+    else { stat='⚙️ running'; cls='run'; }
+    const row=document.createElement('div'); row.className='indRow';
+    row.innerHTML=`<span class="iIcon">${pr.icon}</span>
+      <span class="iMid"><span class="iName">${pr.name}</span><span class="iRec">${recipeStr(d)} · every ${d.every}s</span><span class="iStat ${cls}">${stat}</span></span>`;
+    const btn=document.createElement('button');
+    btn.textContent = pr.worker ? '👷 Remove' : '➕ Staff';
+    if(pr.worker) btn.classList.add('on');
+    btn.addEventListener('click',()=>toggleWorker(pr));
+    row.appendChild(btn); list.appendChild(row);
+  });
+}
+function openIndustry(){ renderIndustry(); $('#industryPanel').classList.remove('hidden'); }
+function closeIndustry(){ $('#industryPanel').classList.add('hidden'); }
 
 // ---------- Top-down build mode (select • rotate • place) ----------
 function enterBuildMode(){
